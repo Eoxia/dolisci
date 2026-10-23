@@ -1,0 +1,19 @@
+# Copyright (C) 2026 EVARISK <technique@evarisk.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+#
+# Module
+#
+ModuleDoliSciName = DoliSci
+DoliSciDescription = Outils pour les SCI : modèle de facture « Quittance »
+DoliSciDescriptionLong = Ajoute le modèle PDF de facture « Quittance », pour les quittances de loyer.
+
+#
+# Modèle de facture « Quittance »
+#
+DoliSciQuittanceTitle = Quittance
+DoliSciQuittanceDescription = Modèle Sponge titré « Quittance » au lieu de « Facture », pour les quittances de loyer
