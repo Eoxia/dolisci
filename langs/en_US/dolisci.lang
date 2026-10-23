@@ -1,0 +1,19 @@
+# Copyright (C) 2026 EVARISK <technique@evarisk.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+#
+# Module
+#
+ModuleDoliSciName = DoliSci
+DoliSciDescription = Tools for property companies (SCI): "Rent receipt" invoice template
+DoliSciDescriptionLong = Adds the "Rent receipt" PDF invoice template.
+
+#
+# "Rent receipt" invoice template
+#
+DoliSciQuittanceTitle = Rent receipt
+DoliSciQuittanceDescription = Sponge template titled "Rent receipt" instead of "Invoice"

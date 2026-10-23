@@ -1,0 +1,75 @@
+includes:
+    - phpstan.baseline.neon
+
+parameters:
+    phpVersion: 80100 # PHP 8.1 (CI target)
+    level: 8
+    tmpDir: .github/tmp/phpstan
+
+    bootstrapFiles:
+        - dev/phpstan/bootstrap.php
+
+    paths:
+        - .
+
+    excludePaths:
+        analyseAndScan:
+            - vendor/ (?)
+            - langs/ (?)
+            - dev/ (?)
+
+    # Fichiers isoles du coeur qui portent des fonctions utilisees par le module.
+    scanFiles:
+        # llxHeader()/llxFooter()/top_httphead() vivent dans main.inc.php
+        - ../../main.inc.php
+
+    # Scanne, sans les analyser, les classes du coeur Dolibarr que le module utilise.
+    # dolisci ne depend pas de Saturne : son modele de facture etend pdf_sponge du coeur.
+    # A garder en phase avec le sparse-checkout de .github/workflows/quality.yml.
+    # Liste derivee des include du module et des classes qu ils tirent :
+    #   grep -rhoE "DOL_DOCUMENT_ROOT *\. *['\"]/[^'\"]+" --include=*.php .
+    scanDirectories:
+        - ../../compta/facture/class/
+        - ../../core/class/
+        - ../../core/db/
+        - ../../core/lib/
+        - ../../core/modules/
+        - ../../product/class/
+        - ../../societe/class/
+        - ../../user/class/
+
+    # Performance
+    parallel:
+        processTimeout: 300.0
+        maximumNumberOfProcesses: 2
+
+    # Herite de la configuration de Dolibarr : reduit le bruit sur ses patterns dynamiques.
+    checkNullables: false
+    checkUnionTypes: false
+    polluteScopeWithLoopInitialAssignments: false
+    polluteScopeWithAlwaysIterableForeach: false
+    reportMaybes: false
+    reportMaybesInMethodSignatures: false
+    reportStaticMethodSignatures: false
+    reportMagicMethods: false
+    reportMagicProperties: false
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+
+    universalObjectCratesClasses:
+        - stdClass
+        - SimpleXMLElement
+        # Dolibarr affecte les proprietes d'un objet dynamiquement depuis la ligne SQL.
+        - CommonObject
+
+    ignoreErrors:
+        # Dolibarr ne documente jamais le type des valeurs d'un tableau (`@return array`),
+        # donc cette erreur tomberait sur chaque nouveau fichier sans jamais pouvoir etre
+        # resorbee.
+        - identifier: missingType.iterableValue
+        - '#.*phan-var#'
+        - '#Empty array passed to foreach#'
+        - '#Unable to resolve the template type T#'
+        - '#in empty\(\) always exists and is always falsy#'
+        - '#in empty\(\) always exists and is not falsy#'
+        - '#in isset\(\) is not nullable#'
