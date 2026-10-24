@@ -8,12 +8,142 @@
 #
 # Module
 #
-ModuleDoliSciName = DoliSci
-DoliSciDescription = Tools for property companies (SCI): "Rent receipt" invoice template
-DoliSciDescriptionLong = Adds the "Rent receipt" PDF invoice template.
+ModuleDoliSciName = DoliSCI
+DoliSciDescription = Tools for property companies (SCI): simplified property, fiscal lot, rental and rent receipt management
+DoliSciDescriptionLong = Simplified management for property companies (SCI): real estate projects (buildings and units), purchased property products with fiscal lots, separate rental services (base rent 706100 and charges provision 708800), and "Rent receipt" PDF invoice template.
+
+#
+# Permissions
+#
+ReadAdminPageDoliSci = Access the module setup page
+
+#
+# Setup
+#
+DoliSciSetup = DoliSCI module setup
+DoliSciSetupPage = Configure real estate projects behavior and automatic invoice linking.
+DoliSciSetupProjectsSection = Real Estate Projects & Building / Unit Hierarchy
+DoliSciEnableSubProjects = Enable Building / Unit hierarchy (Dolibarr sub-projects)
+DoliSciEnableSubProjectsHelp = Allows linking individual units (apartments, parking spaces, cellars) to a parent project representing the whole building.
+DoliSciHideTasksOnSciProjects = Hide "Tasks" and "Time spent" tabs on real estate projects
+DoliSciHideTasksOnSciProjectsHelp = Simplifies "Real estate property" projects to keep only the financial overview, contacts/addresses, and documents.
+DoliSciAutoLinkInvoiceProject = Automatically link invoices to the real estate project
+DoliSciAutoLinkInvoiceProjectHelp = When adding a property product or rental service (rent / charges provision) line to an invoice or recurring template, automatically assigns the linked real estate project.
+DoliSciSyncDataModelBtn = Initialize / Update SCI extra fields and contact roles
+DoliSciDataModelSynced = SCI data model (Project/Product/Service extrafields and contact roles) synchronized successfully.
+DoliSciInitialization = Initialization
+DoliSciInitializeBtn = Initialize
+DoliSciSynchronizeBtn = Synchronize
+DoliSciStatusPresentAndCompliant = Present and compliant
+DoliSciStatusMissingOrNonCompliant = Missing / Non-compliant
+DoliSciInitPageDesc = Check compliance and initialize the extra fields and contact roles required by the DoliSCI module.
+DoliSciInitProjectExtrafields = Project extra fields (SCI project type)
+DoliSciInitProductServiceExtrafields = Product (Properties & Fiscal lots) and Service (Rentals: Rent & Charges) extra fields
+DoliSciInitContactRoles = Project contact roles (Property address, Tenant, Co-tenant, Guarantor, Condominium manager, Notary)
+TypeContact_project_external_DOLISCI_PROPERTY_ADDRESS = Property address
+TypeContact_project_external_DOLISCI_TENANT = Tenant
+TypeContact_project_external_DOLISCI_COTENANT = Co-tenant
+TypeContact_project_external_DOLISCI_GUARANTOR = Guarantor / Surety
+TypeContact_project_external_DOLISCI_SYNDIC = Condominium manager (Syndic)
+TypeContact_project_external_DOLISCI_NOTARY = Notary
+
+#
+# Project Extrafields
+#
+DoliSciProjectType = SCI project type
+DoliSciProjectTypeHelp = Select "Real estate property" for a building or rental unit, or "Major works" for a construction project.
+DoliSciProjectTypeProperty = Building / Real estate property
+DoliSciProjectTypeWorks = Major works
+
+#
+# Product Extrafields (Purchased property & Fiscal lot)
+#
+DoliSciPropertySection = Purchased Real Estate & Fiscal Lot (DoliSCI)
+DoliSciPropertyProject = Linked real estate project
+DoliSciPropertyProjectHelp = Real estate project (Building or Unit) grouping this purchased property and its rentals.
+DoliSciPropertyNature = Property nature
+DoliSciNatureBuilding = Entire building
+DoliSciNatureApartment = Apartment
+DoliSciNatureHouse = Individual house
+DoliSciNatureCommercial = Commercial / professional premises
+DoliSciNatureParking = Garage / Parking / Box
+DoliSciNatureCellar = Cellar / Storage
+DoliSciNatureLand = Land
+DoliSciLegalRegime = Building legal regime
+DoliSciRegimeCoOwnership = Condominium (Co-ownership)
+DoliSciRegimeSingleOwnership = Single ownership
+DoliSciDpeNotApplicable = Not applicable / Blank
+DoliSciFiscalLot = Fiscal lot No. / Cadastral ref.
+DoliSciFiscalLotHelp = Condominium lot number or cadastral reference from the notary deed (e.g. Lot 101 - Section AB 124).
+DoliSciTantiemes = Condominium share (tantièmes)
+DoliSciTantiemesHelp = Share of common areas attached to the lot (e.g. 125 / 1000).
+DoliSciFloorDoor = Building / Staircase / Floor / Door
+DoliSciRooms = Number of main rooms
+DoliSciDpeEnergy = Energy class (EPC / DPE)
+DoliSciDpeGes = GHG emissions class (GES)
+DoliSciPurchaseDate = Purchase date (Notary deed)
+DoliSciPurchasePrice = Purchase price
+
+#
+# Service Extrafields (Rentals: Rent & Charges provision)
+#
+DoliSciRentalSection = Real Estate Rental (DoliSCI)
+DoliSciServiceNature = Rental service nature
+DoliSciServiceNatureHelp = Separate base rent (706100) and rental charges provision (708800) into two distinct services.
+DoliSciServiceNatureRent = Base rent (706100)
+DoliSciServiceNatureCharges = Rental charges provision (708800)
+DoliSciServiceNatureChargesRegul = Annual charges reconciliation
+DoliSciServiceNatureDeposit = Security deposit
+DoliSciLinkedPropertyProduct = Rented property (Fiscal lot)
+DoliSciLinkedPropertyProductHelp = Product representing the purchased property covered by this rental service.
+DoliSciServiceProjectHelp = Linked real estate project (automatically populated from the linked property product).
+DoliSciLeaseType = Lease type
+DoliSciLeaseUnfurnished = Unfurnished residential lease
+DoliSciLeaseFurnished = Furnished residential lease
+DoliSciLeaseShared = Shared housing / Room
+DoliSciLeaseCommercial = Commercial / professional lease
+DoliSciLeaseParking = Parking / box rental
+DoliSciDeposit = Reference security deposit
+DoliSciIrlRef = Reference rent revision index (IRL / ILC)
+DoliSciIrlRefHelp = Latest applied rent index (e.g. Q4 2025 - 145.78).
+
+#
+# Actions & Summary Tables on Project / Product card
+#
+DoliSciGenerateRentalServices = Generate Rent + Charges Services
+DoliSciRentServiceLabel = Rent - %s
+DoliSciChargesServiceLabel = Monthly rental charges provision - %s
+DoliSciRentalServicesGenerated = Rental services ready: %s
+DoliSciProjectPropertiesTitle = Purchased Properties & Fiscal Lots (Products)
+DoliSciProjectRentalsTitle = Rental Services: Base Rent & Charges Provisions (Services)
+DoliSciNoPropertyLinked = No property product (purchased asset / fiscal lot) linked to this real estate project.
+DoliSciNoRentalServiceLinked = No rental service (rent / charges provision) linked to this real estate project.
 
 #
 # "Rent receipt" invoice template
 #
 DoliSciQuittanceTitle = Rent receipt
-DoliSciQuittanceDescription = Sponge template titled "Rent receipt" instead of "Invoice"
+DoliSciQuittanceDescription = Template added by the DoliSCI module based on the Sponge template
+
+#
+# DoliSCI Menu & Dashboard
+#
+ReadModuleDoliSci = Access the DoliSCI workspace
+DoliSciMenuDashboard = DoliSCI Dashboard
+DoliSciMenuProjects = Property Projects
+DoliSciMenuNewProject = New property project
+DoliSciMenuListProjects = List of property projects
+DoliSciMenuProducts = Property Products (Lots)
+DoliSciMenuNewProduct = New property product
+DoliSciMenuListProducts = List of property products
+DoliSciMenuServices = Rent & Charges Services
+DoliSciMenuNewRentService = New rent service (706100)
+DoliSciMenuNewChargesService = New charges service (708800)
+DoliSciMenuListServices = List of rent & charges services
+DoliSciKpiTotalRentHT = Monthly Rent excl. tax (706100)
+DoliSciKpiTotalChargesHT = Monthly Charges excl. tax (708800)
+DoliSciInitTags = DoliSCI Isolation Tags / Categories (Projects, Property Products, Rent & Charges Services)
+DoliSciTagProjectProperty = Real estate property
+DoliSciTagProductProperty = Property / Fiscal lot
+DoliSciTagServiceRent = Rent (706100)
+DoliSciTagServiceCharges = Rental charges (708800)

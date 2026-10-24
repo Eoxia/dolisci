@@ -1,0 +1,81 @@
+/* Copyright (C) 2026 EVARISK <technique@evarisk.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* Keep the full-color DoliSCI logo in the Dolibarr top menu bar */
+div.mainmenu.dolisci {
+	filter: none;
+}
+
+.fiche > .table-fiche-title.nogreyscale tr.toptitle td.col-picto,
+.fiche > .table-fiche-title.nogreyscale tr.toptitle td.col-title {
+	filter: none;
+}
+
+/* KPI summary cards on DoliSCI dashboard */
+.dolisci-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 14px;
+	margin-bottom: 22px;
+}
+
+.dolisci-kpi-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-left: 4px solid #0284c7;
+	border-radius: 6px;
+	padding: 14px 16px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dolisci-kpi-card.kpi-green {
+	border-left-color: #16a34a;
+}
+
+.dolisci-kpi-card.kpi-teal {
+	border-left-color: #0d9488;
+}
+
+.dolisci-kpi-card.kpi-amber {
+	border-left-color: #d97706;
+}
+
+.dolisci-kpi-label {
+	font-size: 0.85em;
+	color: #64748b;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-bottom: 6px;
+}
+
+.dolisci-kpi-value {
+	font-size: 1.55em;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+/* Simplify Project creation/edition form when in DoliSCI:
+ * Keep only Ref, Label, Parent, Usage, Status (Validated), Description, Tags/Categories, and SCI Project Type
+ */
+table:has(.dolisci-simplified-project-form) tr:has(#socid),
+table:has(.dolisci-simplified-project-form) tr.classuseopportunity,
+table:has(.dolisci-simplified-project-form) tr.classuseorganizeevent,
+table:has(.dolisci-simplified-project-form) tr:has(input[name="budget_amount"]),
+table:has(.dolisci-simplified-project-form) tr:has(#projectstart),
+table:has(.dolisci-simplified-project-form) tr:has(#public),
+table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact) {
+	display: none !important;
+}
