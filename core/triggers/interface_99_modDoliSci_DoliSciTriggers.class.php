@@ -89,9 +89,9 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
 								$tenantContact->statut       = 1;
 
 								if ($tenantContact->create($user) > 0) {
-									$tenantCats = GETPOST('dolisci_tenant_contcats', 'array:int');
+									$tenantCats = array_map('intval', (array) GETPOST('dolisci_tenant_contcats', 'array:int'));
 									if (!empty($tenantCats)) {
-										$tenantContact->setCategories($tenantCats, 'contact');
+										$tenantContact->setCategories($tenantCats);
 									} else {
 										dolisciAssignTag($this->db, $tenantContact, 'DOLISCI_TAG_CONTACT_TENANT', 'contact');
 									}
@@ -116,9 +116,9 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
 								$guarantorContact->statut       = 1;
 
 								if ($guarantorContact->create($user) > 0) {
-									$guarantorCats = GETPOST('dolisci_guarantor_contcats', 'array:int');
+									$guarantorCats = array_map('intval', (array) GETPOST('dolisci_guarantor_contcats', 'array:int'));
 									if (!empty($guarantorCats)) {
-										$guarantorContact->setCategories($guarantorCats, 'contact');
+										$guarantorContact->setCategories($guarantorCats);
 									} else {
 										dolisciAssignTag($this->db, $guarantorContact, 'DOLISCI_TAG_CONTACT_GUARANTOR', 'contact');
 									}
@@ -181,9 +181,9 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
 
 							if ($newAddrContact->create($user) > 0) {
 								$addressContactId = (int) $newAddrContact->id;
-								$addrCats         = GETPOST('dolisci_addr_contcats', 'array:int');
+								$addrCats         = array_map('intval', (array) GETPOST('dolisci_addr_contcats', 'array:int'));
 								if (!empty($addrCats)) {
-									$newAddrContact->setCategories($addrCats, 'contact');
+									$newAddrContact->setCategories($addrCats);
 								}
 								dolisciAssignTag($this->db, $newAddrContact, 'DOLISCI_TAG_CONTACT_ADDRESS', 'contact');
 								$object->array_options['options_dolisci_fk_socpeople'] = $addressContactId;
