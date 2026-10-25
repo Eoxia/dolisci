@@ -618,11 +618,8 @@ function dolisciSyncItem(DoliDB $db, string $itemKey): int
     $tagDefs = dolisciGetTagDefinitions();
     if (isset($tagDefs[$itemKey])) {
         require_once DOL_DOCUMENT_ROOT . '/categories/class/categorie.class.php';
-        $tagLangs = $langs;
-        if ($tagLangs->defaultlang === 'en_US' && getDolGlobalString('MAIN_LANG_DEFAULT', 'fr_FR') === 'auto' && empty($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-            $tagLangs = new Translate('', $conf);
-            $tagLangs->setDefaultLang('fr_FR');
-        }
+        $tagLangs = new Translate('', $conf);
+        $tagLangs->setDefaultLang('fr_FR');
         $tagLangs->load('dolisci@dolisci');
 
         $category   = new Categorie($db);
