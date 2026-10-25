@@ -174,7 +174,7 @@ class modDoliSci extends DolibarrModules
             'prefix'   => '<i class="fas fa-plus-circle pictofixedwidth"></i>',
             'mainmenu' => 'dolisci',
             'leftmenu' => 'dolisci_thirdparties_new',
-            'url'      => '/societe/card.php?mainmenu=dolisci&leftmenu=dolisci_thirdparties&action=create&client=1',
+            'url'      => '/societe/card.php?mainmenu=dolisci&leftmenu=dolisci_thirdparties&action=create&type=c&customer=1&prospect=0&private=1',
             'langs'    => 'dolisci@dolisci',
             'position' => 1000 + $r,
             'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',

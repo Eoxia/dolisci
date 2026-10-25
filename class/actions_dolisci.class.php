@@ -90,6 +90,53 @@ class ActionsDoliSci extends CommonHookActions
     }
 
     /**
+     * Check whether the current Thirdparty card is viewed/created/edited within DoliSCI context
+     *
+     * @param  CommonObject|null $object Current object
+     * @return bool                      True if in DoliSCI Thirdparty context
+     */
+    protected function isDoliSciThirdpartyContext($object = null): bool
+    {
+        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos(GETPOST('leftmenu', 'aZ09'), 'dolisci_') === 0) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check whether the current Contact card is viewed/created/edited within DoliSCI context
+     *
+     * @param  CommonObject|null $object Current object
+     * @return bool                      True if in DoliSCI Contact context
+     */
+    protected function isDoliSciContactContext($object = null): bool
+    {
+        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos(GETPOST('leftmenu', 'aZ09'), 'dolisci_') === 0) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Hide all extrafields for a given table_element when in DoliSCI simplified form context
+     * (Preserve keys in 'label' array so third-party hooks do not trigger Undefined array key warnings)
+     *
+     * @param  string $tableElement Table element ('societe' or 'socpeople')
+     * @return void
+     */
+    protected function hideAllExtrafieldsForElement(string $tableElement): void
+    {
+        global $extrafields;
+
+        if (isset($extrafields->attributes[$tableElement]['label']) && is_array($extrafields->attributes[$tableElement]['label'])) {
+            foreach (array_keys($extrafields->attributes[$tableElement]['label']) as $efKey) {
+                $extrafields->attributes[$tableElement]['enabled'][$efKey] = '0';
+                $extrafields->attributes[$tableElement]['list'][$efKey]    = '0';
+            }
+        }
+    }
+
+    /**
      * Filter extrafields on the Property Product card when in DoliSCI quick creation/edition context:
      * keep only 'dolisci_fk_project' (Real estate project) visible, make it required, and filter options on DoliSCI projects.
      *
@@ -228,6 +275,33 @@ class ActionsDoliSci extends CommonHookActions
                 . '</style>'
                 . '</td></tr>';
         }
+        if (in_array('thirdpartycard', $contexts, true) && ($action === 'create' || $action === 'edit') && $this->isDoliSciThirdpartyContext($object)) {
+            $this->hideAllExtrafieldsForElement('societe');
+            $this->resprints = '<tr class="dolisci-simplified-thirdparty-form" style="display:none"><td colspan="4">'
+                . '<style>'
+                . '#selectthirdpartytype, #selectthirdpartytype + br,'
+                . 'table:has(.dolisci-simplified-thirdparty-form) > tbody > tr:not(:has(#name)):not(:has(#address)):not(:has(#zipcode)):not(:has(#selectcountry_id)):not(:has(#email)):not(:has(#idprof1)):not(:has(#custcats)),'
+                . 'table:has(.dolisci-simplified-thirdparty-form) tr:has(#email) > td:nth-child(n+3),'
+                . 'table:has(.dolisci-simplified-thirdparty-form) tr:has(#idprof1) > td:nth-child(n+3)'
+                . '{ display: none !important; }'
+                . '</style>'
+                . '</td></tr>';
+        }
+        if (in_array('contactcard', $contexts, true) && ($action === 'create' || $action === 'edit') && $this->isDoliSciContactContext($object)) {
+            $this->hideAllExtrafieldsForElement('socpeople');
+            $this->resprints = '<tr class="dolisci-simplified-contact-form" style="display:none"><td colspan="4">'
+                . '<style>'
+                . 'table:has(.dolisci-simplified-contact-form) > tbody > tr:not(:has(#lastname)):not(:has(#firstname)):not(:has(#socid)):not(:has(#address)):not(:has(#zipcode)):not(:has(#selectcountry_id)):not(:has(#phone_pro)):not(:has(#phone_mobile)):not(:has(#email)):not(:has(#contcats)),'
+                . 'table:has(.dolisci-simplified-contact-form) tr:has(#phone_pro) > td:nth-child(n+3),'
+                . 'table:has(.dolisci-simplified-contact-form) tr:has(#phone_mobile) > td:nth-child(n+3),'
+                . 'table:has(.dolisci-simplified-contact-form) tr:has(#email) > td:nth-child(n+3),'
+                . 'form[name="formsoc"]:has(.dolisci-simplified-contact-form) hr,'
+                . 'form[name="formsoc"]:has(.dolisci-simplified-contact-form) table:has(.comboperso),'
+                . 'form[name="formsoc"]:has(.dolisci-simplified-contact-form) table:has(#birthday)'
+                . '{ display: none !important; }'
+                . '</style>'
+                . '</td></tr>';
+        }
         return 0;
     }
 
@@ -266,6 +340,12 @@ class ActionsDoliSci extends CommonHookActions
                 $extrafields->attributes['projet']['enabled']['dolisci_fk_socpeople'] = '0';
                 $extrafields->attributes['projet']['list']['dolisci_fk_socpeople']    = '0';
             }
+        }
+        if (in_array('thirdpartycard', $contexts, true) && ($action === 'create' || $action === 'edit') && $this->isDoliSciThirdpartyContext($object)) {
+            $this->hideAllExtrafieldsForElement('societe');
+        }
+        if (in_array('contactcard', $contexts, true) && ($action === 'create' || $action === 'edit') && $this->isDoliSciContactContext($object)) {
+            $this->hideAllExtrafieldsForElement('socpeople');
         }
         return 0;
     }
@@ -443,13 +523,31 @@ class ActionsDoliSci extends CommonHookActions
             }
         }
 
-        // 2c. Pre-select Customer Tenant tag ("Locataire") when creating a Thirdparty in DoliSCI context
-        if (in_array('thirdpartycard', $contexts, true) && $action === 'create') {
-            if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos($leftmenu, 'dolisci_') === 0) {
+        // 2c. Simplify Thirdparty creation in DoliSCI context:
+        //     - Enable Dolibarr native "also create identical associated contact" (private = 1)
+        //     - Force customer = 1
+        //     - Pre-select Customer Tenant tag ("Locataire") and Contact Tenant tag ("Locataire")
+        if (in_array('thirdpartycard', $contexts, true) && $this->isDoliSciThirdpartyContext($object)) {
+            $conf->global->THIRDPARTY_SUGGEST_ALSO_ADDRESS_CREATION = 1;
+            $conf->global->THIRDPARTY_DEFAULT_CREATE_CONTACT        = 1;
+
+            if ($action === 'create' || $action === 'add') {
+                $_GET['private']   = '1';
+                $_POST['private']  = '1';
+                $_GET['customer']  = '1';
+                $_POST['customer'] = '1';
+                $_GET['prospect']  = '0';
+                $_POST['prospect'] = '0';
+
                 $tagCustomerTenantId = getDolGlobalInt('DOLISCI_TAG_CUSTOMER_TENANT');
                 if ($tagCustomerTenantId > 0 && !GETPOSTISSET('custcats')) {
                     $_POST['custcats'] = [$tagCustomerTenantId];
                     $_GET['custcats']  = [$tagCustomerTenantId];
+                }
+                $tagContactTenantId = getDolGlobalInt('DOLISCI_TAG_CONTACT_TENANT');
+                if ($tagContactTenantId > 0 && !GETPOSTISSET('contcats')) {
+                    $_POST['contcats'] = [$tagContactTenantId];
+                    $_GET['contcats']  = [$tagContactTenantId];
                 }
             }
         }

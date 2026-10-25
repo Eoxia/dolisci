@@ -150,6 +150,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // 3c. Simplified Thirdparty/Tenant card in DoliSCI: keep label "Nom du tiers" and force private=1 + customer=1
+    var simplifiedThirdpartyForm = document.querySelector('.dolisci-simplified-thirdparty-form');
+    if (simplifiedThirdpartyForm) {
+        var typeNameSpan = document.getElementById('TypeName');
+        var tpNameInput = document.querySelector('input[name="ThirdPartyName"]');
+        if (typeNameSpan && tpNameInput && tpNameInput.value) {
+            typeNameSpan.textContent = tpNameInput.value;
+        }
+        var radioPrivate = document.getElementById('radioprivate');
+        if (radioPrivate) {
+            radioPrivate.checked = true;
+        }
+        var hiddenPrivate = document.querySelector('form[name="formsoc"] input[type="hidden"][name="private"]');
+        if (hiddenPrivate) {
+            hiddenPrivate.value = '1';
+        }
+        var customerInput = document.getElementById('customerinput');
+        if (customerInput) {
+            customerInput.checked = true;
+        }
+    }
+
     // 4. Replace fa-tag with DoliSCI menu icons in category <option data-html> and rendered category badges
     var tagColorIconMap = {
         '#0284c7': 'fa-city',
