@@ -43,12 +43,9 @@ if (!isModEnabled('dolisci') || (!$user->hasRight('dolisci', 'read') && !$user->
 	accessforbidden();
 }
 
-$modDoliSci     = new modDoliSci($db);
-$efDefs         = dolisciGetExtrafieldDefinitions();
-$natureOpts     = $efDefs['ef:product:dolisci_property_nature']['param']['options'] ?? [];
-$regimeOpts     = $efDefs['ef:product:dolisci_legal_regime']['param']['options'] ?? [];
-$servNatureOpts = $efDefs['ef:product:dolisci_service_nature']['param']['options'] ?? [];
-$leaseTypeOpts  = $efDefs['ef:product:dolisci_lease_type']['param']['options'] ?? [];
+$modDoliSci = new modDoliSci($db);
+$efDefs     = dolisciGetExtrafieldDefinitions();
+$natureOpts = $efDefs['ef:product:dolisci_property_nature']['param']['options'] ?? [];
 
 /*
  * View
@@ -84,9 +81,9 @@ $tagRentId     = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
 $tagChargesId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
 $serviceTagIds = array_values(array_filter([$tagRentId, $tagChargesId]));
 
-// 1. Fetch Real Estate Projects (BIEN_IMMO or tagged "Bien immobilier")
+// 1. Fetch Real Estate Projects (BIEN_IMMO or tagged "Immob.")
 $projects = [];
-$sqlProj = "SELECT p.rowid, p.ref, p.title, p.fk_statut, p.fk_project, p.public, p.entity,"
+$sqlProj = "SELECT p.rowid, p.ref, p.title, p.description, p.fk_statut, p.fk_project, p.public, p.entity,"
 	. " pa.rowid AS parent_id, pa.ref AS parent_ref, pa.title AS parent_title"
 	. " FROM " . MAIN_DB_PREFIX . "projet AS p"
 	. " LEFT JOIN " . MAIN_DB_PREFIX . "projet_extrafields AS ef ON ef.fk_object = p.rowid"
@@ -103,9 +100,41 @@ if ($resProj) {
 	}
 }
 
-// 2. Fetch Property Products (type == 0 with DoliSCI data or tagged "Bien / Lot immobilier")
+// Fetch project contacts (DOLISCI_SYNDIC and DOLISCI_PROPERTY_ADDRESS) in a single batch query
+$projectSyndics   = [];
+$projectAddresses = [];
+if (!empty($projects)) {
+	$inProjectIds = implode(',', array_map('intval', array_keys($projects)));
+	$sqlContacts  = "SELECT ec.element_id AS fk_project, tc.code, sp.firstname, sp.lastname, sp.address, sp.zip, sp.town, s.nom AS socname"
+		. " FROM " . MAIN_DB_PREFIX . "element_contact AS ec"
+		. " INNER JOIN " . MAIN_DB_PREFIX . "c_type_contact AS tc ON tc.rowid = ec.fk_c_type_contact"
+		. " INNER JOIN " . MAIN_DB_PREFIX . "socpeople AS sp ON sp.rowid = ec.fk_socpeople"
+		. " LEFT JOIN " . MAIN_DB_PREFIX . "societe AS s ON s.rowid = sp.fk_soc"
+		. " WHERE tc.element = 'project' AND tc.source = 'external'"
+		. " AND tc.code IN ('DOLISCI_SYNDIC', 'DOLISCI_PROPERTY_ADDRESS')"
+		. " AND ec.element_id IN (" . $inProjectIds . ") LIMIT 200";
+	$resContacts = $db->query($sqlContacts);
+	if ($resContacts) {
+		while ($objC = $db->fetch_object($resContacts)) {
+			$pid = (int) $objC->fk_project;
+			if ($objC->code === 'DOLISCI_SYNDIC') {
+				$syndicLabel = trim(($objC->socname ?: '') . ' ' . trim($objC->firstname . ' ' . $objC->lastname));
+				if ($syndicLabel !== '') {
+					$projectSyndics[$pid] = $syndicLabel;
+				}
+			} elseif ($objC->code === 'DOLISCI_PROPERTY_ADDRESS') {
+				$addrLabel = trim($objC->address . ' ' . $objC->zip . ' ' . $objC->town);
+				if ($addrLabel !== '') {
+					$projectAddresses[$pid] = $addrLabel;
+				}
+			}
+		}
+	}
+}
+
+// 2. Fetch Property Products (type == 0 with DoliSCI data or tagged "Bien")
 $properties = [];
-$sqlProp = "SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.surface,"
+$sqlProp = "SELECT p.rowid, p.ref, p.label, p.description, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.surface,"
 	. " ef.dolisci_fk_project, ef.dolisci_property_nature, ef.dolisci_legal_regime, ef.dolisci_fiscal_lot,"
 	. " ef.dolisci_tantiemes, ef.dolisci_floor_door, ef.dolisci_rooms, ef.dolisci_dpe_energy, ef.dolisci_dpe_ges, ef.dolisci_purchase_price,"
 	. " pr.rowid AS proj_id, pr.ref AS proj_ref, pr.title AS proj_title, pr.fk_statut AS proj_statut"
@@ -125,7 +154,7 @@ if ($resProp) {
 	}
 }
 
-// 3. Fetch Rental Services (type == 1 with DoliSCI data or tagged "Loyer (706100)" / "Charges locatives (708800)")
+// 3. Fetch Rental Services (type == 1 with DoliSCI data or tagged "Loyer" / "Charge")
 $services     = [];
 $totalRent    = 0.0;
 $totalCharges = 0.0;
@@ -164,62 +193,200 @@ print '<div class="dolisci-kpi-card kpi-green"><div class="dolisci-kpi-label"><i
 print '<div class="dolisci-kpi-card kpi-amber"><div class="dolisci-kpi-label"><i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: #d97706;"></i>' . dolPrintHTML($langs->trans('DoliSciKpiTotalChargesHT')) . '</div><div class="dolisci-kpi-value">' . price($totalCharges, 1, $langs, 1, -1, -1, 'auto') . '</div></div>';
 print '</div>';
 
-// Table 1: Real Estate Projects
-print load_fiche_titre($langs->trans('DoliSciMenuProjects'), '<a href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects&contextpage=dolisciprojectlist">' . $langs->trans('DoliSciMenuListProjects') . '</a>', 'fa-city');
+// Group properties by project ID and services by property ID (or project ID)
+$propsByProject   = [];
+$unlinkedProps    = [];
+foreach ($properties as $propId => $propObj) {
+	$pid = (int) $propObj->dolisci_fk_project;
+	if ($pid > 0) {
+		if (!isset($propsByProject[$pid])) {
+			$propsByProject[$pid] = [];
+		}
+		$propsByProject[$pid][$propId] = $propObj;
+	} else {
+		$unlinkedProps[$propId] = $propObj;
+	}
+}
+
+$servsByProp    = [];
+$servsByProject = [];
+foreach ($services as $servId => $servObj) {
+	$propId = (int) $servObj->dolisci_fk_property_product;
+	$projId = (int) $servObj->dolisci_service_fk_project;
+	if ($propId > 0) {
+		if (!isset($servsByProp[$propId])) {
+			$servsByProp[$propId] = [];
+		}
+		$servsByProp[$propId][$servId] = $servObj;
+	} elseif ($projId > 0) {
+		if (!isset($servsByProject[$projId])) {
+			$servsByProject[$projId] = [];
+		}
+		$servsByProject[$projId][$servId] = $servObj;
+	}
+}
+
+// =========================================================================
+// Table 1: Synthèse Projets / Biens / Loyers & Charges / Syndic
+// =========================================================================
+$matrixLinks = '<a class="marginrightonly" href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects&contextpage=dolisciprojectlist">' . $langs->trans('DoliSciMenuListProjects') . '</a>'
+	. ' | <a class="marginleftonly marginrightonly" href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>'
+	. ' | <a class="marginleftonly" href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_services&type=1">' . $langs->trans('DoliSciMenuListServices') . '</a>';
+
+print load_fiche_titre($langs->trans('DoliSciPatrimonyMatrixTitle'), $matrixLinks, 'fa-city');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
-print '<td>' . $langs->trans('Project') . '</td>';
-print '<td>' . $langs->trans('Label') . '</td>';
-print '<td>' . $langs->trans('Parent') . '</td>';
-print '<td class="right">' . $langs->trans('Status') . '</td>';
+print '<td><i class="fas fa-city pictofixedwidth" style="color: #0284c7;"></i>' . $langs->trans('DoliSciMenuProjects') . '</td>';
+print '<td><i class="fas fa-key pictofixedwidth" style="color: #0d9488;"></i>' . $langs->trans('DoliSciMenuProducts') . '</td>';
+print '<td><i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: #16a34a;"></i>' . $langs->trans('DoliSciMenuServices') . '</td>';
+print '<td><i class="fas fa-user-tie pictofixedwidth"></i>' . $langs->trans('DoliSciSyndicAndChargesCol') . '</td>';
 print '</tr>';
 
-if (!empty($projects)) {
-	foreach ($projects as $obj) {
-		$proj            = new Project($db);
-		$proj->id        = (int) $obj->rowid;
-		$proj->ref       = (string) $obj->ref;
-		$proj->title     = (string) $obj->title;
-		$proj->statut    = (int) $obj->fk_statut;
-		$proj->status    = (int) $obj->fk_statut;
-		$proj->public    = (int) $obj->public;
+$matrixRowsPrinted = 0;
 
-		$parentHtml = '';
-		if (!empty($obj->parent_id)) {
-			$parentProj        = new Project($db);
-			$parentProj->id    = (int) $obj->parent_id;
-			$parentProj->ref   = (string) $obj->parent_ref;
-			$parentProj->title = (string) $obj->parent_title;
-			$parentHtml        = $parentProj->getNomUrl(1) . ' - ' . dolPrintHTML($parentProj->title);
+foreach ($projects as $projId => $projObj) {
+	$proj         = new Project($db);
+	$proj->id     = (int) $projObj->rowid;
+	$proj->ref    = (string) $projObj->ref;
+	$proj->title  = (string) $projObj->title;
+	$proj->statut = (int) $projObj->fk_statut;
+	$proj->status = (int) $projObj->fk_statut;
+	$proj->public = (int) $projObj->public;
+	$projHtml     = $proj->getNomUrl(1) . ' - ' . dolPrintHTML($proj->title);
+
+	$syndicText = isset($projectSyndics[$projId]) ? dolPrintHTML($projectSyndics[$projId]) : '-';
+	$linkedProps = $propsByProject[$projId] ?? [];
+
+	if (empty($linkedProps)) {
+		$projServs = array_values($servsByProject[$projId] ?? []);
+		$nbRows    = max(1, count($projServs));
+		for ($i = 0; $i < $nbRows; $i++) {
+			$matrixRowsPrinted++;
+			$servHtml = '-';
+			if (isset($projServs[$i])) {
+				$s             = new Product($db);
+				$s->id         = (int) $projServs[$i]->rowid;
+				$s->ref        = (string) $projServs[$i]->ref;
+				$s->label      = (string) $projServs[$i]->label;
+				$s->type       = 1;
+				$s->entity     = (int) $projServs[$i]->entity;
+				$s->status     = (int) $projServs[$i]->tosell;
+				$s->status_buy = (int) $projServs[$i]->tobuy;
+				$servHtml      = $s->getNomUrl(1) . ' - ' . dolPrintHTML($s->label) . ' (' . price($projServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
+			}
+			print '<tr class="oddeven">';
+			print '<td class="nowraponall">' . ($i === 0 ? $projHtml : '-') . '</td>';
+			print '<td>-</td>';
+			print '<td class="nowraponall">' . $servHtml . '</td>';
+			print '<td>' . ($i === 0 ? $syndicText : '') . '</td>';
+			print '</tr>';
 		}
+		continue;
+	}
 
+	foreach ($linkedProps as $propId => $propObj) {
+		$prod             = new Product($db);
+		$prod->id         = (int) $propObj->rowid;
+		$prod->ref        = (string) $propObj->ref;
+		$prod->label      = (string) $propObj->label;
+		$prod->type       = 0;
+		$prod->entity     = (int) $propObj->entity;
+		$prod->status     = (int) $propObj->tosell;
+		$prod->status_buy = (int) $propObj->tobuy;
+		$propHtml         = $prod->getNomUrl(1) . ' - ' . dolPrintHTML($prod->label);
+
+		$propServs = array_values($servsByProp[$propId] ?? []);
+		$nbRows    = max(1, count($propServs));
+		$tantiemes = !empty($propObj->dolisci_tantiemes) ? $langs->trans('DoliSciTantiemes') . ' : ' . dolPrintHTML((string) $propObj->dolisci_tantiemes) : '';
+
+		for ($i = 0; $i < $nbRows; $i++) {
+			$matrixRowsPrinted++;
+			$servHtml = '-';
+			if (isset($propServs[$i])) {
+				$s             = new Product($db);
+				$s->id         = (int) $propServs[$i]->rowid;
+				$s->ref        = (string) $propServs[$i]->ref;
+				$s->label      = (string) $propServs[$i]->label;
+				$s->type       = 1;
+				$s->entity     = (int) $propServs[$i]->entity;
+				$s->status     = (int) $propServs[$i]->tosell;
+				$s->status_buy = (int) $propServs[$i]->tobuy;
+				$servHtml      = $s->getNomUrl(1) . ' - ' . dolPrintHTML($s->label) . ' (' . price($propServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
+			}
+
+			$col4 = '';
+			if ($i === 0) {
+				$col4 = $syndicText;
+			} elseif ($i === 1 && $tantiemes !== '') {
+				$col4 = $tantiemes;
+			}
+
+			print '<tr class="oddeven">';
+			print '<td class="nowraponall">' . ($i === 0 ? $projHtml : '-') . '</td>';
+			print '<td class="nowraponall">' . ($i === 0 ? $propHtml : '-') . '</td>';
+			print '<td class="nowraponall">' . $servHtml . '</td>';
+			print '<td>' . $col4 . '</td>';
+			print '</tr>';
+		}
+	}
+}
+
+// Also render any unlinked properties in the matrix
+foreach ($unlinkedProps as $propId => $propObj) {
+	$prod             = new Product($db);
+	$prod->id         = (int) $propObj->rowid;
+	$prod->ref        = (string) $propObj->ref;
+	$prod->label      = (string) $propObj->label;
+	$prod->type       = 0;
+	$prod->entity     = (int) $propObj->entity;
+	$prod->status     = (int) $propObj->tosell;
+	$prod->status_buy = (int) $propObj->tobuy;
+	$propHtml         = $prod->getNomUrl(1) . ' - ' . dolPrintHTML($prod->label);
+
+	$propServs = array_values($servsByProp[$propId] ?? []);
+	$nbRows    = max(1, count($propServs));
+	for ($i = 0; $i < $nbRows; $i++) {
+		$matrixRowsPrinted++;
+		$servHtml = '-';
+		if (isset($propServs[$i])) {
+			$s             = new Product($db);
+			$s->id         = (int) $propServs[$i]->rowid;
+			$s->ref        = (string) $propServs[$i]->ref;
+			$s->label      = (string) $propServs[$i]->label;
+			$s->type       = 1;
+			$s->entity     = (int) $propServs[$i]->entity;
+			$s->status     = (int) $propServs[$i]->tosell;
+			$s->status_buy = (int) $propServs[$i]->tobuy;
+			$servHtml      = $s->getNomUrl(1) . ' - ' . dolPrintHTML($s->label) . ' (' . price($propServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
+		}
 		print '<tr class="oddeven">';
-		print '<td class="nowraponall">' . $proj->getNomUrl(1) . '</td>';
-		print '<td>' . dolPrintHTML($proj->title) . '</td>';
-		print '<td>' . $parentHtml . '</td>';
-		print '<td class="right">' . $proj->getLibStatut(5) . '</td>';
+		print '<td>-</td>';
+		print '<td class="nowraponall">' . ($i === 0 ? $propHtml : '-') . '</td>';
+		print '<td class="nowraponall">' . $servHtml . '</td>';
+		print '<td>-</td>';
 		print '</tr>';
 	}
-} else {
+}
+
+if ($matrixRowsPrinted === 0) {
 	print '<tr class="oddeven"><td colspan="4" class="opacitymedium">' . $langs->trans('None') . '</td></tr>';
 }
 print '</table></div><br>';
 
-// Table 2: Property Products (Purchased Properties & Fiscal Lots)
-print load_fiche_titre($langs->trans('DoliSciMenuProducts'), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>', 'fa-key');
+// =========================================================================
+// Table 2: Présentation des biens au <date> (Nom | Adresse | Descriptif | Superficie + Total surface)
+// =========================================================================
+$todayStr = dol_print_date(dol_now(), 'day');
+print load_fiche_titre($langs->trans('DoliSciPropertiesPresentationTitle', $todayStr), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>', 'fa-key');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
-print '<td>' . $langs->trans('Product') . '</td>';
-print '<td>' . $langs->trans('DoliSciPropertyProject') . '</td>';
-print '<td>' . $langs->trans('DoliSciPropertyNature') . '</td>';
-print '<td>' . $langs->trans('DoliSciLegalRegime') . '</td>';
-print '<td>' . $langs->trans('DoliSciFiscalLot') . '</td>';
-print '<td>' . $langs->trans('DoliSciTantiemes') . '</td>';
-print '<td class="right">' . $langs->trans('Surface') . '</td>';
-print '<td class="center">DPE / GES</td>';
-print '<td class="right">' . $langs->trans('DoliSciPurchasePrice') . '</td>';
+print '<td>' . $langs->trans('Name') . '</td>';
+print '<td>' . $langs->trans('DoliSciAddress') . '</td>';
+print '<td>' . $langs->trans('DoliSciDescriptionCol') . '</td>';
+print '<td class="right">' . $langs->trans('DoliSciSurfaceCol') . '</td>';
 print '</tr>';
 
+$totalSurface = 0.0;
 if (!empty($properties)) {
 	foreach ($properties as $obj) {
 		$prod             = new Product($db);
@@ -231,109 +398,36 @@ if (!empty($properties)) {
 		$prod->status     = (int) $obj->tosell;
 		$prod->status_buy = (int) $obj->tobuy;
 
-		$projHtml = '';
-		if (!empty($obj->proj_id)) {
-			$proj         = new Project($db);
-			$proj->id     = (int) $obj->proj_id;
-			$proj->ref    = (string) $obj->proj_ref;
-			$proj->title  = (string) $obj->proj_title;
-			$proj->statut = (int) $obj->proj_statut;
-			$proj->status = (int) $obj->proj_statut;
-			$projHtml     = $proj->getNomUrl(1) . ' - ' . dolPrintHTML($proj->title);
-		}
+		$projId  = (int) $obj->proj_id;
+		$address = $projectAddresses[$projId] ?? ((string) ($obj->proj_title ?: '-'));
 
 		$natureKey   = (string) $obj->dolisci_property_nature;
-		$natureLabel = isset($natureOpts[$natureKey]) ? $langs->trans((string) $natureOpts[$natureKey]) : $natureKey;
-		$regimeKey   = (string) $obj->dolisci_legal_regime;
-		$regimeLabel = isset($regimeOpts[$regimeKey]) ? $langs->trans((string) $regimeOpts[$regimeKey]) : $regimeKey;
-		$dpe         = trim(($obj->dolisci_dpe_energy ?: '-') . ' / ' . ($obj->dolisci_dpe_ges ?: '-'));
+		$natureLabel = isset($natureOpts[$natureKey]) ? $langs->trans((string) $natureOpts[$natureKey]) : '';
+		$descText    = trim(dol_string_nohtmltag((string) $obj->description));
+		$descriptif  = $descText !== '' ? $descText : ($natureLabel !== '' ? $natureLabel : '-');
+
+		$surfaceVal  = (float) $obj->surface;
+		$surfaceHtml = 'NA';
+		if ($surfaceVal > 0) {
+			$totalSurface += $surfaceVal;
+			$surfaceHtml   = price($surfaceVal) . ' m²';
+		}
 
 		print '<tr class="oddeven">';
 		print '<td class="nowraponall">' . $prod->getNomUrl(1) . ' - ' . dolPrintHTML($prod->label) . '</td>';
-		print '<td>' . $projHtml . '</td>';
-		print '<td>' . dolPrintHTML($natureLabel) . '</td>';
-		print '<td>' . dolPrintHTML($regimeLabel) . '</td>';
-		print '<td>' . dolPrintHTML((string) $obj->dolisci_fiscal_lot) . '</td>';
-		print '<td>' . dolPrintHTML((string) $obj->dolisci_tantiemes) . '</td>';
-		print '<td class="right">' . ($obj->surface > 0 ? price($obj->surface) . ' m²' : '') . '</td>';
-		print '<td class="center">' . dolPrintHTML($dpe) . '</td>';
-		print '<td class="right">' . ($obj->dolisci_purchase_price !== null ? price($obj->dolisci_purchase_price, 1, $langs, 1, -1, -1, 'auto') : '') . '</td>';
+		print '<td>' . dolPrintHTML($address) . '</td>';
+		print '<td>' . dolPrintHTML($descriptif) . '</td>';
+		print '<td class="right nowraponall">' . $surfaceHtml . '</td>';
 		print '</tr>';
 	}
+	print '<tr class="liste_total">';
+	print '<td></td>';
+	print '<td></td>';
+	print '<td class="right"><strong>' . dolPrintHTML($langs->trans('DoliSciTotalSurface')) . '</strong></td>';
+	print '<td class="right nowraponall"><strong>' . price($totalSurface) . ' m²</strong></td>';
+	print '</tr>';
 } else {
-	print '<tr class="oddeven"><td colspan="9" class="opacitymedium">' . $langs->trans('DoliSciNoPropertyLinked') . '</td></tr>';
-}
-print '</table></div><br>';
-
-// Table 3: Rental Services (Rent 706100 & Charges 708800)
-print load_fiche_titre($langs->trans('DoliSciMenuServices'), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_services&type=1">' . $langs->trans('DoliSciMenuListServices') . '</a>', 'fa-file-invoice-dollar');
-print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
-print '<tr class="liste_titre">';
-print '<td>' . $langs->trans('Service') . '</td>';
-print '<td>' . $langs->trans('DoliSciServiceNature') . '</td>';
-print '<td>' . $langs->trans('DoliSciServiceProject') . '</td>';
-print '<td>' . $langs->trans('DoliSciLinkedPropertyProduct') . '</td>';
-print '<td>' . $langs->trans('DoliSciLeaseType') . '</td>';
-print '<td>' . $langs->trans('ProductAccountancySellCode') . '</td>';
-print '<td class="right">' . $langs->trans('SellingPriceHT') . '</td>';
-print '<td class="right">' . $langs->trans('DoliSciDeposit') . '</td>';
-print '<td>' . $langs->trans('DoliSciIrlRef') . '</td>';
-print '</tr>';
-
-if (!empty($services)) {
-	foreach ($services as $obj) {
-		$serv             = new Product($db);
-		$serv->id         = (int) $obj->rowid;
-		$serv->ref        = (string) $obj->ref;
-		$serv->label      = (string) $obj->label;
-		$serv->type       = (int) $obj->fk_product_type;
-		$serv->entity     = (int) $obj->entity;
-		$serv->status     = (int) $obj->tosell;
-		$serv->status_buy = (int) $obj->tobuy;
-
-		$projHtml = '';
-		if (!empty($obj->proj_id)) {
-			$proj         = new Project($db);
-			$proj->id     = (int) $obj->proj_id;
-			$proj->ref    = (string) $obj->proj_ref;
-			$proj->title  = (string) $obj->proj_title;
-			$proj->statut = (int) $obj->proj_statut;
-			$proj->status = (int) $obj->proj_statut;
-			$projHtml     = $proj->getNomUrl(1) . ' - ' . dolPrintHTML($proj->title);
-		}
-
-		$linkedPropHtml = '';
-		if (!empty($obj->lp_id)) {
-			$linkedProp             = new Product($db);
-			$linkedProp->id         = (int) $obj->lp_id;
-			$linkedProp->ref        = (string) $obj->lp_ref;
-			$linkedProp->label      = (string) $obj->lp_label;
-			$linkedProp->type       = (int) $obj->lp_type;
-			$linkedProp->entity     = (int) $obj->lp_entity;
-			$linkedProp->status     = (int) $obj->lp_tosell;
-			$linkedProp->status_buy = (int) $obj->lp_tobuy;
-			$linkedPropHtml         = $linkedProp->getNomUrl(1);
-		}
-
-		$servNatureKey   = (string) $obj->dolisci_service_nature;
-		$servNatureLabel = isset($servNatureOpts[$servNatureKey]) ? $langs->trans((string) $servNatureOpts[$servNatureKey]) : $servNatureKey;
-		$leaseKey        = (string) $obj->dolisci_lease_type;
-		$leaseLabel      = isset($leaseTypeOpts[$leaseKey]) ? $langs->trans((string) $leaseTypeOpts[$leaseKey]) : $leaseKey;
-
-		print '<tr class="oddeven">';
-		print '<td class="nowraponall">' . $serv->getNomUrl(1) . ' - ' . dolPrintHTML($serv->label) . '</td>';
-		print '<td>' . dolPrintHTML($servNatureLabel) . '</td>';
-		print '<td>' . $projHtml . '</td>';
-		print '<td class="nowraponall">' . $linkedPropHtml . '</td>';
-		print '<td>' . dolPrintHTML($leaseLabel) . '</td>';
-		print '<td><code>' . dolPrintHTML((string) $obj->accountancy_code_sell) . '</code></td>';
-		print '<td class="right">' . price($obj->price, 1, $langs, 1, -1, -1, 'auto') . '</td>';
-		print '<td class="right">' . ($obj->dolisci_deposit !== null ? price($obj->dolisci_deposit, 1, $langs, 1, -1, -1, 'auto') : '') . '</td>';
-		print '<td>' . dolPrintHTML((string) $obj->dolisci_irl_ref) . '</td>';
-		print '</tr>';
-	}
-} else {
-	print '<tr class="oddeven"><td colspan="9" class="opacitymedium">' . $langs->trans('DoliSciNoRentalServiceLinked') . '</td></tr>';
+	print '<tr class="oddeven"><td colspan="4" class="opacitymedium">' . $langs->trans('DoliSciNoPropertyLinked') . '</td></tr>';
 }
 print '</table></div>';
 
