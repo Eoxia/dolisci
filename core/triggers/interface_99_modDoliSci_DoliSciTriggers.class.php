@@ -62,9 +62,69 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
         switch ($action) {
             case 'COMPANY_CREATE':
                 if ($object instanceof Societe && !empty($object->client)) {
-                    if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci') {
+                    if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || GETPOSTINT('dolisci_thirdparty_create_form') === 1) {
                         require_once __DIR__ . '/../../lib/dolisci.lib.php';
                         dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_CUSTOMER_TENANT', 'customer');
+
+                        if (GETPOSTINT('dolisci_thirdparty_create_form') === 1) {
+                            require_once DOL_DOCUMENT_ROOT . '/contact/class/contact.class.php';
+
+                            // 1. Create associated Contact / Locataire
+                            $tenantLastname = trim(GETPOST('dolisci_tenant_lastname', 'alphanohtml'));
+                            if ($tenantLastname === '') {
+                                $tenantLastname = (string) $object->name;
+                            }
+                            if ($tenantLastname !== '') {
+                                $tenantContact               = new Contact($this->db);
+                                $tenantContact->socid        = (int) $object->id;
+                                $tenantContact->lastname     = $tenantLastname;
+                                $tenantContact->firstname    = trim(GETPOST('dolisci_tenant_firstname', 'alphanohtml'));
+                                $tenantContact->address      = trim(GETPOST('dolisci_tenant_address', 'alphanohtml')) ?: (string) $object->address;
+                                $tenantContact->zip          = trim(GETPOST('dolisci_tenant_zipcode', 'alphanohtml')) ?: (string) $object->zip;
+                                $tenantContact->town         = trim(GETPOST('dolisci_tenant_town', 'alphanohtml')) ?: (string) $object->town;
+                                $tenantContact->country_id   = GETPOSTINT('dolisci_tenant_country_id') ?: (int) $object->country_id;
+                                $tenantContact->phone_pro    = trim(GETPOST('dolisci_tenant_phone_pro', 'alphanohtml'));
+                                $tenantContact->phone_mobile = trim(GETPOST('dolisci_tenant_phone_mobile', 'alphanohtml'));
+                                $tenantContact->email        = trim(GETPOST('dolisci_tenant_email', 'email'));
+                                $tenantContact->statut       = 1;
+
+                                if ($tenantContact->create($user) > 0) {
+                                    $tenantCats = GETPOST('dolisci_tenant_contcats', 'array:int');
+                                    if (!empty($tenantCats)) {
+                                        $tenantContact->setCategories($tenantCats, 'contact');
+                                    } else {
+                                        dolisciAssignTag($this->db, $tenantContact, 'DOLISCI_TAG_CONTACT_TENANT', 'contact');
+                                    }
+                                }
+                            }
+
+                            // 2. Create associated Contact / Garant (if filled)
+                            $guarantorLastname  = trim(GETPOST('dolisci_guarantor_lastname', 'alphanohtml'));
+                            $guarantorFirstname = trim(GETPOST('dolisci_guarantor_firstname', 'alphanohtml'));
+                            if ($guarantorLastname !== '' || $guarantorFirstname !== '') {
+                                $guarantorContact               = new Contact($this->db);
+                                $guarantorContact->socid        = (int) $object->id;
+                                $guarantorContact->lastname     = $guarantorLastname !== '' ? $guarantorLastname : $guarantorFirstname;
+                                $guarantorContact->firstname    = $guarantorLastname !== '' ? $guarantorFirstname : '';
+                                $guarantorContact->address      = trim(GETPOST('dolisci_guarantor_address', 'alphanohtml'));
+                                $guarantorContact->zip          = trim(GETPOST('dolisci_guarantor_zipcode', 'alphanohtml'));
+                                $guarantorContact->town         = trim(GETPOST('dolisci_guarantor_town', 'alphanohtml'));
+                                $guarantorContact->country_id   = GETPOSTINT('dolisci_guarantor_country_id') ?: (int) $object->country_id;
+                                $guarantorContact->phone_pro    = trim(GETPOST('dolisci_guarantor_phone_pro', 'alphanohtml'));
+                                $guarantorContact->phone_mobile = trim(GETPOST('dolisci_guarantor_phone_mobile', 'alphanohtml'));
+                                $guarantorContact->email        = trim(GETPOST('dolisci_guarantor_email', 'email'));
+                                $guarantorContact->statut       = 1;
+
+                                if ($guarantorContact->create($user) > 0) {
+                                    $guarantorCats = GETPOST('dolisci_guarantor_contcats', 'array:int');
+                                    if (!empty($guarantorCats)) {
+                                        $guarantorContact->setCategories($guarantorCats, 'contact');
+                                    } else {
+                                        dolisciAssignTag($this->db, $guarantorContact, 'DOLISCI_TAG_CONTACT_GUARANTOR', 'contact');
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 break;
@@ -97,6 +157,41 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
 
                         $object->fetch_optionals();
                         $addressContactId = (int) ($object->array_options['options_dolisci_fk_socpeople'] ?? 0);
+
+                        // If inline "Nouveau Contact / Adresse du bien" fields are filled on the Project form, create the Contact automatically
+                        $inlineLastname  = trim(GETPOST('dolisci_addr_lastname', 'alphanohtml'));
+                        $inlineFirstname = trim(GETPOST('dolisci_addr_firstname', 'alphanohtml'));
+                        $inlineAddress   = trim(GETPOST('dolisci_addr_address', 'alphanohtml'));
+                        $inlineZip       = trim(GETPOST('dolisci_addr_zipcode', 'alphanohtml'));
+                        $inlineTown      = trim(GETPOST('dolisci_addr_town', 'alphanohtml'));
+                        if ($inlineLastname !== '' || $inlineAddress !== '' || $inlineTown !== '') {
+                            require_once DOL_DOCUMENT_ROOT . '/contact/class/contact.class.php';
+                            $newAddrContact               = new Contact($this->db);
+                            $newAddrContact->socid        = GETPOSTINT('dolisci_addr_socid') > 0 ? GETPOSTINT('dolisci_addr_socid') : 0;
+                            $newAddrContact->lastname     = $inlineLastname !== '' ? $inlineLastname : ($inlineAddress !== '' ? $inlineAddress : (string) $object->title);
+                            $newAddrContact->firstname    = $inlineFirstname;
+                            $newAddrContact->address      = $inlineAddress;
+                            $newAddrContact->zip          = $inlineZip;
+                            $newAddrContact->town         = $inlineTown;
+                            $newAddrContact->country_id   = GETPOSTINT('dolisci_addr_country_id') ?: ((int) ($conf->global->MAIN_INFO_SOCIETE_COUNTRY ? explode(':', $conf->global->MAIN_INFO_SOCIETE_COUNTRY)[0] : 1));
+                            $newAddrContact->phone_pro    = trim(GETPOST('dolisci_addr_phone_pro', 'alphanohtml'));
+                            $newAddrContact->phone_mobile = trim(GETPOST('dolisci_addr_phone_mobile', 'alphanohtml'));
+                            $newAddrContact->email        = trim(GETPOST('dolisci_addr_email', 'email'));
+                            $newAddrContact->statut       = 1;
+
+                            if ($newAddrContact->create($user) > 0) {
+                                $addressContactId = (int) $newAddrContact->id;
+                                $addrCats         = GETPOST('dolisci_addr_contcats', 'array:int');
+                                if (!empty($addrCats)) {
+                                    $newAddrContact->setCategories($addrCats, 'contact');
+                                }
+                                dolisciAssignTag($this->db, $newAddrContact, 'DOLISCI_TAG_CONTACT_ADDRESS', 'contact');
+                                $object->array_options['options_dolisci_fk_socpeople'] = $addressContactId;
+                                $object->insertExtraFields();
+                                $_POST['options_dolisci_fk_socpeople'] = $addressContactId;
+                            }
+                        }
+
                         if ($addressContactId > 0) {
                             $object->add_contact($addressContactId, 'DOLISCI_PROPERTY_ADDRESS', 'external');
                             require_once DOL_DOCUMENT_ROOT . '/contact/class/contact.class.php';

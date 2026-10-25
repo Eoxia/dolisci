@@ -79,7 +79,8 @@ $tagProjectId  = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
 $tagProductId  = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
 $tagRentId     = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
 $tagChargesId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
-$serviceTagIds = array_values(array_filter([$tagRentId, $tagChargesId]));
+$tagDepositId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT');
+$serviceTagIds = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId]));
 
 // 1. Fetch Real Estate Projects (tagged "Immob.") and their linked Property Address (dolisci_fk_socpeople)
 $projects         = [];
@@ -181,7 +182,11 @@ $sqlServ = "SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosel
 	. " AND (ef.dolisci_service_fk_project > 0 OR ef.dolisci_fk_property_product > 0 OR (ef.dolisci_service_nature IS NOT NULL AND ef.dolisci_service_nature <> '')"
 	. (!empty($serviceTagIds) ? " OR EXISTS (SELECT 1 FROM " . MAIN_DB_PREFIX . "categorie_product AS cp WHERE cp.fk_product = p.rowid AND cp.fk_categorie IN (" . implode(',', array_map('intval', $serviceTagIds)) . "))" : "")
 	. ")"
-	. " ORDER BY p.ref ASC LIMIT 100";
+	. " ORDER BY CASE"
+	. " WHEN ef.dolisci_service_nature = 'LOYER' OR p.ref LIKE 'Loyer\\_%' OR p.ref LIKE 'Loyer-%\\_%' OR p.accountancy_code_sell = '706100' THEN 1"
+	. " WHEN ef.dolisci_service_nature = 'CHARGES' OR p.ref LIKE 'Charge\\_%' OR p.ref LIKE 'Charge-%\\_%' OR p.ref LIKE 'Charges\\_%' OR p.ref LIKE 'Charges-%\\_%' OR p.accountancy_code_sell = '708800' THEN 2"
+	. " WHEN ef.dolisci_service_nature IN ('DEPOT_GARANTIE', 'CAUTION') OR p.ref LIKE 'Caution\\_%' OR p.ref LIKE 'Caution-%\\_%' OR p.accountancy_code_sell = '165000' THEN 3"
+	. " ELSE 4 END ASC, p.ref ASC LIMIT 100";
 $resServ = $db->query($sqlServ);
 if ($resServ) {
 	while ($obj = $db->fetch_object($resServ)) {
@@ -266,17 +271,19 @@ foreach ($projects as $projId => $projObj) {
 	$proj->statut = (int) $projObj->fk_statut;
 	$proj->status = (int) $projObj->fk_statut;
 	$proj->public = (int) $projObj->public;
-	$projHtml     = $proj->getNomUrl(1) . ' - ' . dolPrintHTML($proj->title);
+	$projHtml     = dolisciGetObjectNomUrl($proj) . ' - ' . dolPrintHTML($proj->title);
 
 	$syndicText = isset($projectSyndics[$projId]) ? dolPrintHTML($projectSyndics[$projId]) : '-';
 	$linkedProps = $propsByProject[$projId] ?? [];
 
 	if (empty($linkedProps)) {
 		$projServs = array_values($servsByProject[$projId] ?? []);
+		dolisciSortAndGroupRentalServices($projServs);
 		$nbRows    = max(1, count($projServs));
 		for ($i = 0; $i < $nbRows; $i++) {
 			$matrixRowsPrinted++;
-			$servHtml = '-';
+			$servHtml  = '-';
+			$servClass = 'nowraponall';
 			if (isset($projServs[$i])) {
 				$s             = new Product($db);
 				$s->id         = (int) $projServs[$i]->rowid;
@@ -286,12 +293,16 @@ foreach ($projects as $projId => $projObj) {
 				$s->entity     = (int) $projServs[$i]->entity;
 				$s->status     = (int) $projServs[$i]->tosell;
 				$s->status_buy = (int) $projServs[$i]->tobuy;
-				$servHtml      = $s->getNomUrl(1) . ' - ' . dolPrintHTML($s->label) . ' (' . price($projServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
+				$sNature       = (string) ($projServs[$i]->dolisci_service_nature ?? '');
+				$isChild       = !empty($projServs[$i]->dolisci_is_child);
+				$servPrefix    = $isChild ? '<span class="dolisci-service-child-prefix">-</span>' : '';
+				$servClass    .= $isChild ? ' dolisci-matrix-service-child' : ' dolisci-matrix-service-parent';
+				$servHtml      = $servPrefix . dolisciGetObjectNomUrl($s, $sNature) . ' - ' . dolPrintHTML($s->label) . ' (' . price($projServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
 			}
 			print '<tr class="oddeven">';
 			print '<td class="nowraponall">' . ($i === 0 ? $projHtml : '-') . '</td>';
 			print '<td>-</td>';
-			print '<td class="nowraponall">' . $servHtml . '</td>';
+			print '<td class="' . $servClass . '">' . $servHtml . '</td>';
 			print '<td>' . ($i === 0 ? $syndicText : '') . '</td>';
 			print '</tr>';
 		}
@@ -307,15 +318,17 @@ foreach ($projects as $projId => $projObj) {
 		$prod->entity     = (int) $propObj->entity;
 		$prod->status     = (int) $propObj->tosell;
 		$prod->status_buy = (int) $propObj->tobuy;
-		$propHtml         = $prod->getNomUrl(1) . ' - ' . dolPrintHTML($prod->label);
+		$propHtml         = dolisciGetObjectNomUrl($prod) . ' - ' . dolPrintHTML($prod->label);
 
 		$propServs = array_values($servsByProp[$propId] ?? []);
+		dolisciSortAndGroupRentalServices($propServs);
 		$nbRows    = max(1, count($propServs));
 		$tantiemes = !empty($propObj->dolisci_tantiemes) ? $langs->trans('DoliSciTantiemes') . ' : ' . dolPrintHTML((string) $propObj->dolisci_tantiemes) : '';
 
 		for ($i = 0; $i < $nbRows; $i++) {
 			$matrixRowsPrinted++;
-			$servHtml = '-';
+			$servHtml  = '-';
+			$servClass = 'nowraponall';
 			if (isset($propServs[$i])) {
 				$s             = new Product($db);
 				$s->id         = (int) $propServs[$i]->rowid;
@@ -325,7 +338,11 @@ foreach ($projects as $projId => $projObj) {
 				$s->entity     = (int) $propServs[$i]->entity;
 				$s->status     = (int) $propServs[$i]->tosell;
 				$s->status_buy = (int) $propServs[$i]->tobuy;
-				$servHtml      = $s->getNomUrl(1) . ' - ' . dolPrintHTML($s->label) . ' (' . price($propServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
+				$sNature       = (string) ($propServs[$i]->dolisci_service_nature ?? '');
+				$isChild       = !empty($propServs[$i]->dolisci_is_child);
+				$servPrefix    = $isChild ? '<span class="dolisci-service-child-prefix">-</span>' : '';
+				$servClass    .= $isChild ? ' dolisci-matrix-service-child' : ' dolisci-matrix-service-parent';
+				$servHtml      = $servPrefix . dolisciGetObjectNomUrl($s, $sNature) . ' - ' . dolPrintHTML($s->label) . ' (' . price($propServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
 			}
 
 			$col4 = '';
@@ -338,7 +355,7 @@ foreach ($projects as $projId => $projObj) {
 			print '<tr class="oddeven">';
 			print '<td class="nowraponall">' . ($i === 0 ? $projHtml : '-') . '</td>';
 			print '<td class="nowraponall">' . ($i === 0 ? $propHtml : '-') . '</td>';
-			print '<td class="nowraponall">' . $servHtml . '</td>';
+			print '<td class="' . $servClass . '">' . $servHtml . '</td>';
 			print '<td>' . $col4 . '</td>';
 			print '</tr>';
 		}
@@ -355,13 +372,15 @@ foreach ($unlinkedProps as $propId => $propObj) {
 	$prod->entity     = (int) $propObj->entity;
 	$prod->status     = (int) $propObj->tosell;
 	$prod->status_buy = (int) $propObj->tobuy;
-	$propHtml         = $prod->getNomUrl(1) . ' - ' . dolPrintHTML($prod->label);
+	$propHtml         = dolisciGetObjectNomUrl($prod) . ' - ' . dolPrintHTML($prod->label);
 
 	$propServs = array_values($servsByProp[$propId] ?? []);
+	dolisciSortAndGroupRentalServices($propServs);
 	$nbRows    = max(1, count($propServs));
 	for ($i = 0; $i < $nbRows; $i++) {
 		$matrixRowsPrinted++;
-		$servHtml = '-';
+		$servHtml  = '-';
+		$servClass = 'nowraponall';
 		if (isset($propServs[$i])) {
 			$s             = new Product($db);
 			$s->id         = (int) $propServs[$i]->rowid;
@@ -371,12 +390,16 @@ foreach ($unlinkedProps as $propId => $propObj) {
 			$s->entity     = (int) $propServs[$i]->entity;
 			$s->status     = (int) $propServs[$i]->tosell;
 			$s->status_buy = (int) $propServs[$i]->tobuy;
-			$servHtml      = $s->getNomUrl(1) . ' - ' . dolPrintHTML($s->label) . ' (' . price($propServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
+			$sNature       = (string) ($propServs[$i]->dolisci_service_nature ?? '');
+			$isChild       = !empty($propServs[$i]->dolisci_is_child);
+			$servPrefix    = $isChild ? '<span class="dolisci-service-child-prefix">-</span>' : '';
+			$servClass    .= $isChild ? ' dolisci-matrix-service-child' : ' dolisci-matrix-service-parent';
+			$servHtml      = $servPrefix . dolisciGetObjectNomUrl($s, $sNature) . ' - ' . dolPrintHTML($s->label) . ' (' . price($propServs[$i]->price, 1, $langs, 1, -1, -1, 'auto') . ')';
 		}
 		print '<tr class="oddeven">';
 		print '<td>-</td>';
 		print '<td class="nowraponall">' . ($i === 0 ? $propHtml : '-') . '</td>';
-		print '<td class="nowraponall">' . $servHtml . '</td>';
+		print '<td class="' . $servClass . '">' . $servHtml . '</td>';
 		print '<td>-</td>';
 		print '</tr>';
 	}
@@ -428,7 +451,7 @@ if (!empty($properties)) {
 		}
 
 		print '<tr class="oddeven">';
-		print '<td class="nowraponall">' . $prod->getNomUrl(1) . ' - ' . dolPrintHTML($prod->label) . '</td>';
+		print '<td class="nowraponall">' . dolisciGetObjectNomUrl($prod) . ' - ' . dolPrintHTML($prod->label) . '</td>';
 		print '<td>' . dolPrintHTML($address) . '</td>';
 		print '<td>' . dolPrintHTML($descriptif) . '</td>';
 		print '<td class="right nowraponall">' . $surfaceHtml . '</td>';

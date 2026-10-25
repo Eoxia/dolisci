@@ -157,3 +157,99 @@ span.fa-tag[style*="rgb(71, 85, 105)"]::before,
 .noborderoncategories[style*="rgb(71, 85, 105)"] span.fa-tag::before {
 	content: "\f0e3" !important;
 }
+
+/* Simplified 3-section Thirdparty + Tenant Contact + Guarantor Contact creation form */
+.dolisci-tp-create-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 4px;
+}
+
+.dolisci-tp-contacts-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+	gap: 16px;
+}
+
+.dolisci-form-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-left: 4px solid #2563eb;
+	border-radius: 6px;
+	padding: 14px 18px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dolisci-form-card.card-guarantor {
+	border-left-color: #0891b2;
+}
+
+.dolisci-form-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 1.05em;
+	font-weight: 600;
+	color: #1e293b;
+	padding-bottom: 10px;
+	margin-bottom: 10px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.dolisci-form-card table.noborder tr td {
+	padding: 6px 4px;
+	vertical-align: middle;
+}
+
+.dolisci-inline-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.dolisci-inline-fields input[type="text"],
+.dolisci-inline-fields textarea {
+	margin: 0;
+}
+
+/* Ensure the Generate Rent + Charges + Deposit modal dialog fits all 3 rows without vertical scrollbar */
+div.ui-dialog:has(#dolisci_rent_ref) .ui-dialog-content {
+	height: auto !important;
+	max-height: none !important;
+	overflow: visible !important;
+}
+
+/* Visual grouping of Rental Services by set: Loyer (parent) -> -Charge & -Caution (indented children) */
+tr.dolisci-rental-group-parent td:first-child {
+	font-weight: 600;
+	border-left: 3px solid #16a34a;
+}
+
+tr.dolisci-rental-group-sep td {
+	border-top: 2px solid #cbd5e1 !important;
+}
+
+tr.dolisci-rental-group-child td:first-child {
+	padding-left: 26px !important;
+	border-left: 3px solid #cbd5e1;
+}
+
+td.dolisci-matrix-service-parent {
+	font-weight: 600;
+}
+
+td.dolisci-matrix-service-child {
+	padding-left: 24px !important;
+}
+
+.dolisci-service-child-prefix {
+	display: inline-block;
+	color: #64748b;
+	font-weight: 700;
+	margin-right: 5px;
+}
+
+
+

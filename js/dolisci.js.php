@@ -96,6 +96,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 code = '706100';
             } else if (val === 'CHARGES') {
                 code = '708800';
+            } else if (val === 'DEPOT_GARANTIE' || val === 'CAUTION') {
+                code = '165000';
             }
             if (!code) {
                 return;
@@ -115,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 3. Simplified Project card in DoliSCI: replace "Create draft" button text since status is always Validated
-    //    and append a "+" button next to the Property Address select (#options_dolisci_fk_socpeople)
+    //    and append an inline "+" toggle button & inline Address creation card right below #options_dolisci_fk_socpeople
     var simplifiedProjectForm = document.querySelector('.dolisci-simplified-project-form');
     if (simplifiedProjectForm) {
         var form = simplifiedProjectForm.closest('form');
@@ -125,14 +127,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 submitBtn.value = 'Créer';
             }
         }
-        var addAddressUrl = simplifiedProjectForm.getAttribute('data-add-address-url');
         var addrSelect = document.getElementById('options_dolisci_fk_socpeople');
-        if (addAddressUrl && addrSelect && addrSelect.parentNode) {
-            var plusLink = document.createElement('a');
-            plusLink.href = addAddressUrl;
-            plusLink.className = 'paddingleft';
-            plusLink.innerHTML = '<span class="fa fa-plus-circle valignmiddle" title="Nouvelle adresse du bien"></span>';
-            addrSelect.parentNode.appendChild(plusLink);
+        var inlineAddrCard = document.getElementById('dolisci-project-inline-address-card');
+        if (addrSelect && addrSelect.parentNode && inlineAddrCard) {
+            var addrTd = addrSelect.closest('td') || addrSelect.parentNode;
+            var plusBtn = document.createElement('a');
+            plusBtn.href = '#';
+            plusBtn.className = 'paddingleft';
+            plusBtn.innerHTML = '<span class="fa fa-plus-circle valignmiddle" style="font-size:1.15em; color:#2563eb;" title="Ajouter une nouvelle adresse du bien ci-dessous"></span>';
+            addrSelect.parentNode.appendChild(plusBtn);
+            addrTd.appendChild(inlineAddrCard);
+
+            plusBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var isHidden = (inlineAddrCard.style.display === 'none' || inlineAddrCard.style.display === '');
+                inlineAddrCard.style.display = isHidden ? 'block' : 'none';
+                if (isHidden) {
+                    var lastInput = document.getElementById('dolisci_addr_lastname');
+                    var titleInput = document.querySelector('input[name="title"]');
+                    if (lastInput && lastInput.value.trim() === '' && titleInput && titleInput.value.trim() !== '') {
+                        lastInput.value = titleInput.value.trim();
+                    }
+                    var addrInput = document.getElementById('dolisci_addr_address');
+                    if (addrInput) {
+                        addrInput.focus();
+                    }
+                }
+            });
         }
     }
 
@@ -150,25 +171,117 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // 3c. Simplified Thirdparty/Tenant card in DoliSCI: keep label "Nom du tiers" and force private=1 + customer=1
-    var simplifiedThirdpartyForm = document.querySelector('.dolisci-simplified-thirdparty-form');
-    if (simplifiedThirdpartyForm) {
-        var typeNameSpan = document.getElementById('TypeName');
-        var tpNameInput = document.querySelector('input[name="ThirdPartyName"]');
-        if (typeNameSpan && tpNameInput && tpNameInput.value) {
-            typeNameSpan.textContent = tpNameInput.value;
+    // 3b. 3-section Thirdparty + Tenant Contact + Guarantor Contact creation form
+    var tpCreateWrapper = document.querySelector('.dolisci-tp-create-wrapper');
+    if (tpCreateWrapper) {
+        if (window.jQuery) {
+            window.jQuery('#selectcountry_id').off('change');
         }
-        var radioPrivate = document.getElementById('radioprivate');
-        if (radioPrivate) {
-            radioPrivate.checked = true;
+        var syncPairs = [
+            ['name', 'dolisci_tenant_lastname'],
+            ['address', 'dolisci_tenant_address'],
+            ['zipcode', 'dolisci_tenant_zipcode'],
+            ['town', 'dolisci_tenant_town']
+        ];
+        syncPairs.forEach(function (pair) {
+            var srcEl = document.getElementById(pair[0]);
+            var dstEl = document.getElementById(pair[1]);
+            if (srcEl && dstEl) {
+                dstEl.addEventListener('input', function () {
+                    dstEl.setAttribute('data-user-edited', dstEl.value.trim() !== '' ? '1' : '0');
+                });
+                var syncFn = function () {
+                    if (dstEl.getAttribute('data-user-edited') !== '1') {
+                        dstEl.value = srcEl.value;
+                    }
+                };
+                srcEl.addEventListener('input', syncFn);
+                srcEl.addEventListener('change', syncFn);
+                srcEl.addEventListener('blur', syncFn);
+            }
+        });
+    }
+
+    // 3c. Simplify Thirdparty edit form & Contact creation/edition form: group Name|Firstname and Address|Zip|Town|Country inline
+    var tpMarker = document.querySelector('tr.dolisci-simplified-thirdparty-form');
+    var contactMarker = document.querySelector('tr.dolisci-simplified-contact-form');
+    if (tpMarker || contactMarker) {
+        if (contactMarker) {
+            var lastEl = document.getElementById('lastname');
+            var firstEl = document.getElementById('firstname');
+            if (lastEl && firstEl) {
+                var lastRow = lastEl.closest('tr');
+                var firstRow = firstEl.closest('tr');
+                var lastTd = lastEl.closest('td');
+                if (lastRow && firstRow && lastTd && lastRow !== firstRow) {
+                    var labelTd = lastRow.querySelector('td:first-child');
+                    if (labelTd) {
+                        labelTd.innerHTML = '<label for="lastname">Nom | Prénom</label>';
+                    }
+                    lastEl.setAttribute('placeholder', 'Nom');
+                    firstEl.setAttribute('placeholder', 'Prénom');
+                    var inlineNameDiv = document.createElement('div');
+                    inlineNameDiv.className = 'dolisci-inline-fields';
+                    lastEl.parentNode.insertBefore(inlineNameDiv, lastEl);
+                    inlineNameDiv.appendChild(lastEl);
+                    inlineNameDiv.appendChild(firstEl);
+                    firstRow.style.display = 'none';
+                }
+            }
         }
-        var hiddenPrivate = document.querySelector('form[name="formsoc"] input[type="hidden"][name="private"]');
-        if (hiddenPrivate) {
-            hiddenPrivate.value = '1';
-        }
-        var customerInput = document.getElementById('customerinput');
-        if (customerInput) {
-            customerInput.checked = true;
+        var addrEl = document.getElementById('address');
+        var zipEl = document.getElementById('zipcode');
+        var townEl = document.getElementById('town');
+        var countryEl = document.getElementById('selectcountry_id');
+        if (addrEl && zipEl) {
+            var addrRow = addrEl.closest('tr');
+            var zipRow = zipEl.closest('tr');
+            var countryRow = countryEl ? countryEl.closest('tr') : null;
+            var addrTd = addrEl.closest('td');
+            if (addrRow && addrTd) {
+                var addrLabelTd = addrRow.querySelector('td:first-child');
+                if (addrLabelTd) {
+                    addrLabelTd.innerHTML = '<label for="address">Adresse | Code postal | Pays</label>';
+                }
+                var inlineAddrDiv = document.createElement('div');
+                inlineAddrDiv.className = 'dolisci-inline-fields';
+                if (addrEl.tagName.toLowerCase() === 'textarea') {
+                    var addrInput = document.createElement('input');
+                    addrInput.type = 'text';
+                    addrInput.name = addrEl.name;
+                    addrInput.id = addrEl.id;
+                    addrInput.value = addrEl.value;
+                    addrInput.placeholder = 'Adresse';
+                    addrInput.style.flex = '2';
+                    addrInput.style.minWidth = '220px';
+                    addrEl.parentNode.replaceChild(addrInput, addrEl);
+                    addrEl = addrInput;
+                }
+                zipEl.setAttribute('placeholder', 'Code postal');
+                if (townEl) {
+                    townEl.setAttribute('placeholder', 'Ville');
+                }
+                addrEl.parentNode.insertBefore(inlineAddrDiv, addrEl);
+                inlineAddrDiv.appendChild(addrEl);
+                inlineAddrDiv.appendChild(zipEl);
+                if (townEl) {
+                    inlineAddrDiv.appendChild(townEl);
+                }
+                if (countryRow && countryRow !== addrRow) {
+                    var countryTd = countryEl.closest('td');
+                    if (countryTd) {
+                        var countryWrap = document.createElement('span');
+                        while (countryTd.firstChild) {
+                            countryWrap.appendChild(countryTd.firstChild);
+                        }
+                        inlineAddrDiv.appendChild(countryWrap);
+                    }
+                    countryRow.style.display = 'none';
+                }
+                if (zipRow && zipRow !== addrRow) {
+                    zipRow.style.display = 'none';
+                }
+            }
         }
     }
 

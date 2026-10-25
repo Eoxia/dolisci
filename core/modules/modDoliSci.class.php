@@ -73,6 +73,7 @@ class modDoliSci extends DolibarrModules
                 'thirdpartylist',
                 'contactcard',
                 'contactlist',
+                'doliscicontactlist',
                 'invoicecard',
                 'invoicereccard',
                 'main',
@@ -92,6 +93,7 @@ class modDoliSci extends DolibarrModules
 
         $i = 0;
         $this->const = [
+            $i++ => ['DOLISCI_SIMPLIFIED_CARDS', 'integer', 1, 'Enable simplified cards when browsing in the DoliSCI environment', 0, 'current'],
             $i++ => ['DOLISCI_HIDE_TASKS_ON_SCI_PROJECTS', 'integer', 1, 'Hide tasks and time spent tabs on real estate projects', 0, 'current'],
             $i   => ['DOLISCI_AUTO_LINK_INVOICE_PROJECT', 'integer', 1, 'Automatically link invoices to the property project via product/service', 0, 'current'],
         ];
@@ -434,6 +436,22 @@ class modDoliSci extends DolibarrModules
             'mainmenu' => 'dolisci',
             'leftmenu' => 'dolisci_services_new_charges',
             'url'      => '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=CHARGES&accountancy_code_sell=708800',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'service\')',
+            'perms'    => '$user->hasRight(\'service\', \'creer\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_services',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuNewDepositService',
+            'prefix'   => '<i class="fas fa-plus-circle pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_services_new_deposit',
+            'url'      => '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=DEPOT_GARANTIE&accountancy_code_sell=165000',
             'langs'    => 'dolisci@dolisci',
             'position' => 1000 + $r,
             'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'service\')',

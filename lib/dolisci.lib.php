@@ -58,6 +58,52 @@ function dolisciAdminPrepareHead(): array
 }
 
 /**
+ * Synchronize the DoliSCI session & runtime environment variable (DOLISCI_ENV)
+ * according to the current top/left menu navigation.
+ *
+ * @return bool True if the user is currently inside the DoliSCI environment
+ */
+function dolisciSyncEnvironment(): bool
+{
+    $reqMainMenu = GETPOST('mainmenu', 'aZ09');
+    $reqLeftMenu = GETPOST('leftmenu', 'alphanohtml');
+    $scriptPath  = (string) ($_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? ''));
+
+    if ($reqMainMenu === 'dolisci' || strpos($reqLeftMenu, 'dolisci_') === 0 || strpos($scriptPath, '/dolisci/') !== false) {
+        $_SESSION['DOLISCI_ENV'] = 1;
+        $_SESSION['mainmenu']    = 'dolisci';
+    } elseif ($reqMainMenu !== '' && $reqMainMenu !== 'dolisci') {
+        $_SESSION['DOLISCI_ENV'] = 0;
+    } elseif (isset($_SESSION['mainmenu'])) {
+        $_SESSION['DOLISCI_ENV'] = ($_SESSION['mainmenu'] === 'dolisci') ? 1 : 0;
+    }
+
+    $inEnv = !empty($_SESSION['DOLISCI_ENV']);
+    $_ENV['DOLISCI_ENV'] = $inEnv ? '1' : '0';
+    if (function_exists('putenv')) {
+        @putenv('DOLISCI_ENV=' . ($inEnv ? '1' : '0'));
+    }
+
+    if ($inEnv) {
+        $_SESSION['pageforbacktolist']['project'] = dol_buildpath('/dolisci/project_list.php', 1);
+    }
+
+    return $inEnv;
+}
+
+/**
+ * Check whether simplified DoliSCI cards should be displayed (when inside the DoliSCI environment
+ * and DOLISCI_SIMPLIFIED_CARDS is enabled).
+ *
+ * @return bool True if simplified cards should be active
+ */
+function dolisciIsSimplifiedEnvironment(): bool
+{
+    $inEnv = dolisciSyncEnvironment();
+    return $inEnv && getDolGlobalInt('DOLISCI_SIMPLIFIED_CARDS', 1) > 0;
+}
+
+/**
  * Return all DoliSCI extrafield definitions for Projects, Products (properties), and Services (rentals)
  * following Saturne/Evarisk extrafield conventions (positions prefixed by module numero 436371,
  * translation keys in select options, entity = 0, langfile = 'dolisci@dolisci', standard CSS classes).
@@ -492,6 +538,14 @@ function dolisciGetTagDefinitions(): array
             'icon'     => 'fa-file-invoice-dollar',
             'position' => (int) ($moduleNumero . '40'),
         ],
+        'tag:DOLISCI_TAG_SERVICE_DEPOSIT' => [
+            'const'    => 'DOLISCI_TAG_SERVICE_DEPOSIT',
+            'type'     => 'product',
+            'label'    => 'DoliSciTagServiceDeposit',
+            'color'    => '0891b2',
+            'icon'     => 'fa-file-invoice-dollar',
+            'position' => (int) ($moduleNumero . '42'),
+        ],
         'tag:DOLISCI_TAG_CUSTOMER_TENANT' => [
             'const'    => 'DOLISCI_TAG_CUSTOMER_TENANT',
             'type'     => 'customer',
@@ -544,6 +598,28 @@ function dolisciGetTagDefinitions(): array
 }
 
 /**
+ * Return the category ID for a DoliSCI tag constant, automatically creating/syncing it if not yet initialized
+ *
+ * @param  DoliDB $db        Database handler
+ * @param  string $constName Tag constant name (e.g. 'DOLISCI_TAG_SERVICE_DEPOSIT')
+ * @return int               Category ID (>0) or 0
+ */
+function dolisciEnsureTagId(DoliDB $db, string $constName): int
+{
+	$tagId = getDolGlobalInt($constName);
+	if ($tagId > 0) {
+		return $tagId;
+	}
+	$itemKey = 'tag:' . $constName;
+	$tagDefs = dolisciGetTagDefinitions();
+	if (isset($tagDefs[$itemKey])) {
+		dolisciSyncItem($db, $itemKey);
+		return getDolGlobalInt($constName);
+	}
+	return 0;
+}
+
+/**
  * Assign a DoliSCI category/tag (by its constant name) to a Dolibarr object if not already linked
  *
  * @param  DoliDB       $db        Database handler
@@ -554,7 +630,7 @@ function dolisciGetTagDefinitions(): array
  */
 function dolisciAssignTag(DoliDB $db, CommonObject $object, string $constName, string $categType): int
 {
-	$tagId = getDolGlobalInt($constName);
+	$tagId = dolisciEnsureTagId($db, $constName);
 	if ($tagId <= 0 || empty($object->id)) {
 		return 0;
 	}
@@ -585,15 +661,399 @@ function dolisciAssignTag(DoliDB $db, CommonObject $object, string $constName, s
  */
 function dolisciIsRealEstateProject(DoliDB $db, int $projectId): bool
 {
-    $tagId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
-    if ($tagId <= 0 || $projectId <= 0) {
-        return false;
-    }
+	$tagId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+	if ($tagId <= 0 || $projectId <= 0) {
+		return false;
+	}
 
-    $sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_project = ' . ((int) $projectId) . ' AND fk_categorie = ' . ((int) $tagId) . ' LIMIT 1';
-    $res = $db->query($sql);
+	$sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_project = ' . ((int) $projectId) . ' AND fk_categorie = ' . ((int) $tagId) . ' LIMIT 1';
+	$res = $db->query($sql);
 
-    return ($res && $db->num_rows($res) > 0);
+	return ($res && $db->num_rows($res) > 0);
+}
+
+/**
+ * Check whether a Product (type = 0) is a DoliSCI Property Product
+ *
+ * @param  DoliDB  $db      Database handler
+ * @param  Product $product Product instance
+ * @return bool             True if DoliSCI property product
+ */
+function dolisciIsPropertyProduct(DoliDB $db, Product $product): bool
+{
+	if ((int) $product->type !== Product::TYPE_PRODUCT || empty($product->id)) {
+		return false;
+	}
+	if (empty($product->array_options)) {
+		$product->fetch_optionals();
+	}
+	if (!empty($product->array_options['options_dolisci_fk_project']) || !empty($product->array_options['options_dolisci_property_nature'])) {
+		return true;
+	}
+
+	$tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
+	if ($tagProductId > 0) {
+		$sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_product = ' . ((int) $product->id) . ' AND fk_categorie = ' . ((int) $tagProductId) . ' LIMIT 1';
+		$res = $db->query($sql);
+		if ($res && $db->num_rows($res) > 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Check whether a Service (type = 1) is a DoliSCI Rental / Charges / Deposit Service
+ *
+ * @param  DoliDB  $db      Database handler
+ * @param  Product $service Product instance (type = 1)
+ * @return bool             True if DoliSCI rental/charges/deposit service
+ */
+function dolisciIsRentalService(DoliDB $db, Product $service): bool
+{
+	if ((int) $service->type !== Product::TYPE_SERVICE || empty($service->id)) {
+		return false;
+	}
+	if (empty($service->array_options)) {
+		$service->fetch_optionals();
+	}
+	if (!empty($service->array_options['options_dolisci_fk_property_product'])
+		|| !empty($service->array_options['options_dolisci_service_fk_project'])
+		|| !empty($service->array_options['options_dolisci_service_nature'])
+	) {
+		return true;
+	}
+	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-[0-9]+)?_/i', (string) $service->ref)) {
+		return true;
+	}
+
+	$serviceTags = array_values(array_filter([
+		getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT'),
+		getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES'),
+		getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT'),
+	]));
+	if (!empty($serviceTags)) {
+		$sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_product = ' . ((int) $service->id)
+			. ' AND fk_categorie IN (' . implode(',', array_map('intval', $serviceTags)) . ') LIMIT 1';
+		$res = $db->query($sql);
+		if ($res && $db->num_rows($res) > 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Resolve the Property Product (type = 0) from either a Property Product or a linked DoliSCI Service (type = 1)
+ *
+ * @param  DoliDB  $db      Database handler
+ * @param  Product $product Product or Service instance
+ * @return Product|null     Property Product instance (type = 0) or null if not found
+ */
+function dolisciGetPropertyFromService(DoliDB $db, Product $product): ?Product
+{
+	if ((int) $product->type === Product::TYPE_PRODUCT && !empty($product->id)) {
+		if (empty($product->array_options)) {
+			$product->fetch_optionals();
+		}
+		return $product;
+	}
+
+	if ((int) $product->type !== Product::TYPE_SERVICE || empty($product->id)) {
+		return null;
+	}
+	if (empty($product->array_options)) {
+		$product->fetch_optionals();
+	}
+
+	$propId = (int) ($product->array_options['options_dolisci_fk_property_product'] ?? 0);
+	if ($propId > 0) {
+		$prop = new Product($db);
+		if ($prop->fetch($propId) > 0 && (int) $prop->type === Product::TYPE_PRODUCT) {
+			$prop->fetch_optionals();
+			return $prop;
+		}
+	}
+
+	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-[0-9]+)?_(.+?)(?:_[0-9]+)?$/i', (string) $product->ref, $matches)) {
+		$propRef = trim($matches[1]);
+		if ($propRef !== '') {
+			$prop = new Product($db);
+			if ($prop->fetch(0, $propRef) > 0 && (int) $prop->type === Product::TYPE_PRODUCT) {
+				$prop->fetch_optionals();
+				return $prop;
+			}
+		}
+	}
+	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-[0-9]+)?_(.+)$/i', (string) $product->ref, $matches)) {
+		$propRef = trim($matches[1]);
+		if ($propRef !== '') {
+			$prop = new Product($db);
+			if ($prop->fetch(0, $propRef) > 0 && (int) $prop->type === Product::TYPE_PRODUCT) {
+				$prop->fetch_optionals();
+				return $prop;
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Extract the rental group index (1, 2, 3...) from a Rental Service reference (e.g. Loyer-1_<ref> -> 1, Loyer-2_<ref> -> 2)
+ *
+ * @param  string $ref Service reference
+ * @return int         Group index (>= 1)
+ */
+function dolisciGetServiceGroupIndexFromRef(string $ref): int
+{
+	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-([0-9]+))?_(.+?)(?:_([0-9]+))?$/i', $ref, $m)) {
+		if (!empty($m[1])) {
+			return (int) $m[1];
+		}
+		if (!empty($m[3])) {
+			return (int) $m[3];
+		}
+	}
+	return 1;
+}
+
+/**
+ * Return only the Charges and Deposit (Caution) services attached to the same rental group as the given Service
+ *
+ * @param  DoliDB       $db          Database handler
+ * @param  Product      $service     Rental service instance (type = 1, e.g. Loyer-1_<ref>)
+ * @param  Product|null $propProduct Optional resolved Property Product instance (type = 0)
+ * @return array<int,stdClass>       List of child services (Charge & Caution) for this service's group
+ */
+function dolisciGetServiceChildServices(DoliDB $db, Product $service, ?Product $propProduct = null): array
+{
+	if ((int) $service->type !== Product::TYPE_SERVICE || empty($service->id)) {
+		return [];
+	}
+	if ($propProduct === null) {
+		$propProduct = dolisciGetPropertyFromService($db, $service);
+	}
+	if (!($propProduct instanceof Product) || empty($propProduct->id)) {
+		return [];
+	}
+
+	$rentalData    = dolisciGetPropertyRentalServices($db, $propProduct);
+	$allServices   = $rentalData['services'] ?? [];
+	$targetGroup   = dolisciGetServiceGroupIndexFromRef((string) $service->ref);
+	$childServices = [];
+
+	foreach ($allServices as $obj) {
+		$grpIdx     = (int) ($obj->dolisci_group_index ?? 1);
+		$natureRank = (int) ($obj->dolisci_nature_rank ?? 4);
+		if ($grpIdx === $targetGroup && $natureRank > 1 && (int) $obj->rowid !== (int) $service->id) {
+			$childServices[] = $obj;
+		}
+	}
+
+	return $childServices;
+}
+
+/**
+ * Return a link to a Project, Property Product (type = 0) or Rental Service (type = 1)
+ * using the DoliSCI pictos (fa-city for Project, fa-key for Property, fa-file-invoice-dollar for Service).
+ *
+ * @param  CommonObject $object        Project or Product/Service instance
+ * @param  string       $serviceNature Optional service nature ('LOYER', 'CHARGES', 'DEPOT_GARANTIE')
+ * @return string                      HTML link with DoliSCI picto
+ */
+function dolisciGetObjectNomUrl(CommonObject $object, string $serviceNature = ''): string
+{
+	if ($object instanceof Project) {
+		return '<i class="fas fa-city pictofixedwidth" style="color: #0284c7;"></i>' . $object->getNomUrl(0);
+	}
+	if ($object instanceof Product) {
+		if ((int) $object->type === Product::TYPE_PRODUCT) {
+			return '<i class="fas fa-key pictofixedwidth" style="color: #0d9488;"></i>' . $object->getNomUrl(0);
+		}
+		$ref   = (string) ($object->ref ?? '');
+		$color = '#16a34a';
+		if ($serviceNature === 'CHARGES' || $serviceNature === 'CHARGES_REGUL' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0) {
+			$color = '#d97706';
+		} elseif ($serviceNature === 'DEPOT_GARANTIE' || $serviceNature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0) {
+			$color = '#0284c7';
+		}
+		return '<i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: ' . $color . ';"></i>' . $object->getNomUrl(0);
+	}
+	return method_exists($object, 'getNomUrl') ? $object->getNomUrl(1) : '';
+}
+
+/**
+ * Sort and annotate rental services by rental group (1, 2, 3...) and by nature within each group (1: Loyer, 2: Charge, 3: Caution)
+ *
+ * @param  array<int,stdClass> $services List of service rows (modified in-place)
+ * @return void
+ */
+function dolisciSortAndGroupRentalServices(array &$services): void
+{
+	foreach ($services as $obj) {
+		$nature = (string) ($obj->dolisci_service_nature ?? '');
+		$ref    = (string) ($obj->ref ?? '');
+		$acc    = (string) ($obj->accountancy_code_sell ?? '');
+
+		$natureRank = 4;
+		if ($nature === 'LOYER' || stripos($ref, 'Loyer_') === 0 || stripos($ref, 'Loyer-') === 0 || $acc === '706100') {
+			$natureRank = 1;
+		} elseif ($nature === 'CHARGES' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0 || $acc === '708800') {
+			$natureRank = 2;
+		} elseif ($nature === 'DEPOT_GARANTIE' || $nature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0 || $acc === '165000') {
+			$natureRank = 3;
+		}
+
+		$groupIndex = 1;
+		$propKey    = '';
+		if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-([0-9]+))?_(.+?)(?:_([0-9]+))?$/i', $ref, $m)) {
+			if (!empty($m[1])) {
+				$groupIndex = (int) $m[1];
+			} elseif (!empty($m[3])) {
+				$groupIndex = (int) $m[3];
+			}
+			$propKey = strtolower(trim($m[2]));
+		}
+
+		$fkProp = (int) ($obj->dolisci_fk_property_product ?? 0);
+		$obj->dolisci_group_index = $groupIndex;
+		$obj->dolisci_nature_rank = $natureRank;
+		$obj->dolisci_is_child    = ($natureRank > 1);
+		$obj->dolisci_prop_key    = $fkProp > 0 ? ('id_' . $fkProp) : ('ref_' . $propKey);
+	}
+
+	usort($services, static function ($a, $b): int {
+		$propCmp = strcmp((string) ($a->dolisci_prop_key ?? ''), (string) ($b->dolisci_prop_key ?? ''));
+		if ($propCmp !== 0) {
+			return $propCmp;
+		}
+		$grpCmp = ((int) ($a->dolisci_group_index ?? 1)) <=> ((int) ($b->dolisci_group_index ?? 1));
+		if ($grpCmp !== 0) {
+			return $grpCmp;
+		}
+		$rankCmp = ((int) ($a->dolisci_nature_rank ?? 4)) <=> ((int) ($b->dolisci_nature_rank ?? 4));
+		if ($rankCmp !== 0) {
+			return $rankCmp;
+		}
+		return strcasecmp((string) ($a->ref ?? ''), (string) ($b->ref ?? ''));
+	});
+}
+
+/**
+ * Fetch linked rental, charges & deposit services for a given Property Product
+ *
+ * @param  DoliDB  $db              Database handler
+ * @param  Product $propertyProduct Property product instance (type = 0)
+ * @return array{count:int,rentCount:int,hasRent:bool,hasCharges:bool,hasDeposit:bool,hasAll:bool,hasBoth:bool,services:array<int,stdClass>}
+ */
+function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct): array
+{
+	$result = [
+		'count'      => 0,
+		'rentCount'  => 0,
+		'hasRent'    => false,
+		'hasCharges' => false,
+		'hasDeposit' => false,
+		'hasAll'     => false,
+		'hasBoth'    => false,
+		'services'   => [],
+	];
+
+	if (empty($propertyProduct->id) || (int) $propertyProduct->type !== Product::TYPE_PRODUCT) {
+		return $result;
+	}
+
+	$escapedPropRef = $db->escape($propertyProduct->ref);
+	$rentPrefix     = 'Loyer_' . $escapedPropRef;
+	$chargesPrefix  = 'Charge_' . $escapedPropRef;
+	$charges2Prefix = 'Charges_' . $escapedPropRef;
+	$depositPrefix  = 'Caution_' . $escapedPropRef;
+
+	$sql = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
+		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_service_fk_project,'
+		. ' pr.rowid AS pr_id, pr.ref AS pr_ref, pr.title AS pr_title, pr.fk_statut AS pr_status'
+		. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
+		. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
+		. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'projet AS pr ON pr.rowid = ef.dolisci_service_fk_project'
+		. ' WHERE p.entity IN (' . getEntity('product') . ')'
+		. ' AND p.fk_product_type = 1'
+		. ' AND (ef.dolisci_fk_property_product = ' . ((int) $propertyProduct->id)
+		. " OR p.ref = '" . $rentPrefix . "' OR p.ref LIKE '" . $rentPrefix . "\\_%' OR p.ref LIKE 'Loyer-%\\_" . $escapedPropRef . "'"
+		. " OR p.ref = '" . $chargesPrefix . "' OR p.ref LIKE '" . $chargesPrefix . "\\_%' OR p.ref LIKE 'Charge-%\\_" . $escapedPropRef . "'"
+		. " OR p.ref = '" . $charges2Prefix . "' OR p.ref LIKE '" . $charges2Prefix . "\\_%' OR p.ref LIKE 'Charges-%\\_" . $escapedPropRef . "'"
+		. " OR p.ref = '" . $depositPrefix . "' OR p.ref LIKE '" . $depositPrefix . "\\_%' OR p.ref LIKE 'Caution-%\\_" . $escapedPropRef . "')"
+		. " ORDER BY p.ref ASC LIMIT 100";
+
+	$res = $db->query($sql);
+	if ($res) {
+		while ($obj = $db->fetch_object($res)) {
+			$result['services'][] = $obj;
+			$nature = (string) ($obj->dolisci_service_nature ?? '');
+			$ref    = (string) ($obj->ref ?? '');
+			$acc    = (string) ($obj->accountancy_code_sell ?? '');
+
+			if ($nature === 'LOYER' || stripos($ref, 'Loyer_') === 0 || stripos($ref, 'Loyer-') === 0 || $acc === '706100') {
+				$result['hasRent'] = true;
+				$result['rentCount']++;
+			}
+			if ($nature === 'CHARGES' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0 || $acc === '708800') {
+				$result['hasCharges'] = true;
+			}
+			if ($nature === 'DEPOT_GARANTIE' || $nature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0 || $acc === '165000') {
+				$result['hasDeposit'] = true;
+			}
+		}
+	}
+
+	dolisciSortAndGroupRentalServices($result['services']);
+
+	$result['count']   = count($result['services']);
+	$result['hasAll']  = ($result['hasRent'] && $result['hasCharges'] && $result['hasDeposit']);
+	$result['hasBoth'] = $result['hasAll'];
+
+	return $result;
+}
+
+/**
+ * Count linked Property Products (type = 0) for a given Real Estate Project (including sub-projects if enabled)
+ *
+ * @param  DoliDB  $db      Database handler
+ * @param  Project $project Project instance
+ * @return int              Number of linked property products
+ */
+function dolisciGetProjectPropertiesCount(DoliDB $db, Project $project): int
+{
+	if (empty($project->id)) {
+		return 0;
+	}
+
+	$projectIds = [(int) $project->id];
+	if (getDolGlobalInt('PROJECT_ENABLE_SUB_PROJECT')) {
+		$children = $project->getChildren();
+		if (is_array($children)) {
+			foreach ($children as $child) {
+				$projectIds[] = (int) $child->rowid;
+			}
+		}
+	}
+	$inProjectIds = implode(',', array_map('intval', $projectIds));
+
+	$sql = 'SELECT COUNT(p.rowid) AS nb'
+		. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
+		. ' INNER JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
+		. ' WHERE p.entity IN (' . getEntity('product') . ')'
+		. ' AND p.fk_product_type = 0'
+		. ' AND ef.dolisci_fk_project IN (' . $inProjectIds . ')';
+
+	$res = $db->query($sql);
+	if ($res && ($obj = $db->fetch_object($res))) {
+		return (int) $obj->nb;
+	}
+
+	return 0;
 }
 
 /**

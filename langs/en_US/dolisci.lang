@@ -93,7 +93,7 @@ DoliSciServiceNatureHelp = Separate base rent (706100) and rental charges provis
 DoliSciServiceNatureRent = Base rent (706100)
 DoliSciServiceNatureCharges = Rental charges provision (708800)
 DoliSciServiceNatureChargesRegul = Annual charges reconciliation
-DoliSciServiceNatureDeposit = Security deposit
+DoliSciServiceNatureDeposit = Security deposit (165000)
 DoliSciLinkedPropertyProduct = Rented property (Fiscal lot)
 DoliSciLinkedPropertyProductHelp = Product representing the purchased property covered by this rental service.
 DoliSciServiceProjectHelp = Linked real estate project (automatically populated from the linked property product).
@@ -110,12 +110,13 @@ DoliSciIrlRefHelp = Latest applied rent index (e.g. Q4 2025 - 145.78).
 #
 # Actions & Summary Tables on Project / Product card
 #
-DoliSciGenerateRentalServices = Generate Rent + Charges Services
+DoliSciGenerateRentalServices = Generate Rent + Charges + Deposit Services
 DoliSciRentServiceLabel = Rent - %s
 DoliSciChargesServiceLabel = Monthly rental charges provision - %s
+DoliSciDepositServiceLabel = Security deposit - %s
 DoliSciRentalServicesGenerated = Rental services ready: %s
 DoliSciProjectPropertiesTitle = Purchased Properties & Fiscal Lots (Products)
-DoliSciProjectRentalsTitle = Rental Services: Base Rent & Charges Provisions (Services)
+DoliSciProjectRentalsTitle = Rental Services: Base Rent, Charges Provisions & Deposits (Services)
 DoliSciNoPropertyLinked = No property product (purchased asset / fiscal lot) linked to this real estate project.
 DoliSciNoRentalServiceLinked = No rental service (rent / charges provision) linked to this real estate project.
 
@@ -136,17 +137,19 @@ DoliSciMenuListProjects = Real estate projects
 DoliSciMenuProducts = Real Estate Property
 DoliSciMenuNewProduct = New real estate property
 DoliSciMenuListProducts = Real estate properties
-DoliSciMenuServices = Rent & Charges
+DoliSciMenuServices = Rent, Charges & Deposit
 DoliSciMenuNewRentService = New rent (706100)
 DoliSciMenuNewChargesService = New charges (708800)
-DoliSciMenuListServices = Rent & charges
+DoliSciMenuNewDepositService = New deposit (165000)
+DoliSciMenuListServices = Rent, charges & deposits
 DoliSciKpiTotalRentHT = Monthly Rent excl. tax (706100)
 DoliSciKpiTotalChargesHT = Monthly Charges excl. tax (708800)
-DoliSciInitTags = DoliSCI Isolation Tags / Categories (Projects, Property Products, Rent & Charges Services)
+DoliSciInitTags = DoliSCI Isolation Tags / Categories (Projects, Property Products, Rent, Charges & Deposit Services)
 DoliSciTagProjectProperty = Real Est.
 DoliSciTagProductProperty = Property
 DoliSciTagServiceRent = Rent
 DoliSciTagServiceCharges = Charge
+DoliSciTagServiceDeposit = Deposit
 DoliSciServiceProject = Linked real estate project
 DoliSciPropertiesPresentationTitle = Properties overview as of %s
 DoliSciAddress = Address
@@ -173,3 +176,28 @@ DoliSciMenuListContactTenants = Tenants
 DoliSciMenuListContactGuarantors = Guarantors
 DoliSciMenuListContactSyndics = Syndics
 DoliSciMenuListContactNotaries = Notaries
+DoliSciNewThirdpartyTenantSection = New Thirdparty / Tenant
+DoliSciContactTenantSection = Contact / Tenant
+DoliSciContactGuarantorSection = Contact / Guarantor
+DoliSciOptionalSection = Optional
+DoliSciTabRentalServices = Rent, Charges & Deposit
+DoliSciRentalServicesAlreadyCreatedTooltip = Rent, charges and deposit services are already created for this property.
+DoliSciPropertyRentalServicesListTitle = Rent, charges and deposit services linked to this property
+DoliSciNoRentalServiceForProperty = No rent, charges or deposit service linked to this property yet. Use the "Generate Rent + Charges + Deposit Services" button to create them.
+DoliSciPropertyProduct = Leased Real Estate Property (Fiscal Lot)
+DoliSciNewPropertyAddressSection = New Contact / Property Address
+DoliSciOrCreateAddressBelow = Or create a new property address below
+DoliSciDeleteAssociatedServicesLabel = Also delete associated services (%s)
+DoliSciServicesDeleted = Associated services deleted: %s
+DoliSciErrorDeleteProposeDisableTitle = Deletion failed — Set out of sale / out of purchase?
+DoliSciErrorDeleteProposeDisableConfirm = An error prevents deletion (%s). Would you like to set the property and all its associated services (%s) to <b>Not for sale</b> and <b>Not for purchase</b>?
+DoliSciPropertyAndServicesDisabled = Property and services set to not for sale / not for purchase: %s
+DoliSciTabProjectProperties = Properties & Rentals
+DoliSciSimplifiedCards = Enable simplified cards in the DoliSCI environment (DOLISCI_SIMPLIFIED_CARDS)
+DoliSciSimplifiedCardsHelp = When navigating inside the DoliSCI menu (environment variable DOLISCI_ENV=1), automatically simplifies creation, edition and view cards (Real estate project, Property product, Rent/Charges/Deposit services, Thirdparty/Tenant, Contact/Address).
+DoliSciCreateOrAttachChargesDeposit = Create / Attach Charges + Deposit
+DoliSciServiceChargesDepositListTitle = Charges and deposit services linked to this rent service
+DoliSciNoChargesDepositForService = No charges or deposit service linked to this rent service yet. Use the "Create / Attach Charges + Deposit" button to create or link them.
+
+
+

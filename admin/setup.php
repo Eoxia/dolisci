@@ -63,6 +63,10 @@ $formSetup = new FormSetup($db);
 
 $formSetup->newItem('DoliSciSetupProjectsSection')->setAsTitle();
 
+$item = $formSetup->newItem('DOLISCI_SIMPLIFIED_CARDS')->setAsYesNo();
+$item->nameText = $langs->trans('DoliSciSimplifiedCards');
+$item->helpText = $langs->trans('DoliSciSimplifiedCardsHelp');
+
 $item = $formSetup->newItem('PROJECT_ENABLE_SUB_PROJECT')->setAsYesNo();
 $item->nameText = $langs->trans('DoliSciEnableSubProjects');
 $item->helpText = $langs->trans('DoliSciEnableSubProjectsHelp');

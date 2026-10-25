@@ -21,11 +21,9 @@
  * \brief   DoliSCI Contacts / Addresses list wrapper (isolated contextpage = doliscicontactlist)
  */
 
-$_GET['mainmenu']     = 'dolisci';
-$_POST['mainmenu']    = 'dolisci';
-$_GET['leftmenu']     = $_GET['leftmenu'] ?? 'dolisci_contacts';
-$_GET['contextpage']  = 'doliscicontactlist';
-$_POST['contextpage'] = 'doliscicontactlist';
+$_GET['mainmenu']  = 'dolisci';
+$_POST['mainmenu'] = 'dolisci';
+$_GET['leftmenu']  = $_GET['leftmenu'] ?? 'dolisci_contacts';
 
 $dolibarrRoot = is_dir(__DIR__ . '/../../contact') ? realpath(__DIR__ . '/../..') : realpath(__DIR__ . '/..');
 chdir($dolibarrRoot . '/contact');
