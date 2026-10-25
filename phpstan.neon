@@ -31,6 +31,7 @@ parameters:
     scanDirectories:
         - ../../categories/class/
         - ../../compta/facture/class/
+        - ../../contact/class/
         - ../../core/class/
         - ../../core/db/
         - ../../core/lib/

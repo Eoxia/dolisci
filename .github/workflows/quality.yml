@@ -91,16 +91,19 @@ jobs:
                   sparse-checkout: |
                       htdocs/categories/class
                       htdocs/compta/facture/class
+                      htdocs/contact/class
                       htdocs/core/class
                       htdocs/core/db
                       htdocs/core/lib
                       htdocs/core/modules
+                      htdocs/core/tpl
                       htdocs/core/triggers
                       htdocs/fourn/class
                       htdocs/main.inc.php
                       htdocs/product/class
                       htdocs/projet/class
                       htdocs/societe/class
+                      htdocs/societe/tpl
                       htdocs/user/class
                   sparse-checkout-cone-mode: false
 

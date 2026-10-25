@@ -22,16 +22,16 @@
  */
 
 if (!defined('CSRFCHECK_WITH_TOKEN')) {
-    define('CSRFCHECK_WITH_TOKEN', '1');
+	define('CSRFCHECK_WITH_TOKEN', '1');
 }
 
 // Load DoliSci environment
 if (file_exists('../dolisci.main.inc.php')) {
-    require_once __DIR__ . '/../dolisci.main.inc.php';
+	require_once __DIR__ . '/../dolisci.main.inc.php';
 } elseif (file_exists('../../dolisci.main.inc.php')) {
-    require_once __DIR__ . '/../../dolisci.main.inc.php';
+	require_once __DIR__ . '/../../dolisci.main.inc.php';
 } else {
-    die('Include of dolisci main fails');
+	die('Include of dolisci main fails');
 }
 
 // Load DoliSci libraries
@@ -55,7 +55,7 @@ $backtopage = GETPOST('backtopage', 'alpha');
 // Security check - Protection if external user
 $permissionToRead = $user->hasRight('dolisci', 'adminpage', 'read') || $user->admin;
 if (!isModEnabled('dolisci') || !$permissionToRead) {
-    accessforbidden();
+	accessforbidden();
 }
 
 // Setup parameters via ModuleBuilder FormSetup
@@ -84,31 +84,31 @@ $item->helpText = $langs->trans('DoliSciAutoLinkInvoiceProjectHelp');
  */
 
 if ($action === 'update' && !empty($user->admin)) {
-    $formSetup->saveConfFromPost();
+	$formSetup->saveConfFromPost();
 }
 
 if ($action === 'set_subprojects' && $user->admin) {
-    $val = GETPOSTINT('value');
-    dolibarr_set_const($db, 'PROJECT_ENABLE_SUB_PROJECT', $val, 'integer', 0, '', $conf->entity);
-    setEventMessages($langs->trans('SetupSaved'), null);
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
+	$val = GETPOSTINT('value');
+	dolibarr_set_const($db, 'PROJECT_ENABLE_SUB_PROJECT', $val, 'integer', 0, '', $conf->entity);
+	setEventMessages($langs->trans('SetupSaved'), null);
+	header('Location: ' . $_SERVER['PHP_SELF']);
+	exit;
 }
 
 if ($action === 'set_hide_tasks' && $user->admin) {
-    $val = GETPOSTINT('value');
-    dolibarr_set_const($db, 'DOLISCI_HIDE_TASKS_ON_SCI_PROJECTS', $val, 'integer', 0, '', $conf->entity);
-    setEventMessages($langs->trans('SetupSaved'), null);
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
+	$val = GETPOSTINT('value');
+	dolibarr_set_const($db, 'DOLISCI_HIDE_TASKS_ON_SCI_PROJECTS', $val, 'integer', 0, '', $conf->entity);
+	setEventMessages($langs->trans('SetupSaved'), null);
+	header('Location: ' . $_SERVER['PHP_SELF']);
+	exit;
 }
 
 if ($action === 'set_auto_link_invoice' && $user->admin) {
-    $val = GETPOSTINT('value');
-    dolibarr_set_const($db, 'DOLISCI_AUTO_LINK_INVOICE_PROJECT', $val, 'integer', 0, '', $conf->entity);
-    setEventMessages($langs->trans('SetupSaved'), null);
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
+	$val = GETPOSTINT('value');
+	dolibarr_set_const($db, 'DOLISCI_AUTO_LINK_INVOICE_PROJECT', $val, 'integer', 0, '', $conf->entity);
+	setEventMessages($langs->trans('SetupSaved'), null);
+	header('Location: ' . $_SERVER['PHP_SELF']);
+	exit;
 }
 
 /*
@@ -131,7 +131,7 @@ print dol_get_fiche_head($head, 'settings', $title, -1, 'dolisci_color@dolisci')
 print '<span class="opacitymedium">' . $langs->trans('DoliSciSetupPage') . '</span><br><br>';
 
 if (!empty($formSetup->items)) {
-    print $formSetup->generateOutput();
+	print $formSetup->generateOutput();
 }
 
 // Page end
