@@ -307,49 +307,73 @@ class ActionsDoliSci extends CommonHookActions
         $leftmenu       = GETPOST('leftmenu', 'aZ09');
         $isRemoveFilter = GETPOST('button_removefilter_x', 'alpha') || GETPOST('button_removefilter.x', 'alpha') || GETPOST('button_removefilter', 'alpha');
 
-        // 1. Pre-filter Project list by DoliSCI tag "Bien immobilier" and set default columns when accessed in DoliSCI context
-        $isDoliSciProjectList = strpos($leftmenu, 'dolisci_projects') === 0
+        // 1. Isolate DoliSCI Project list (contextpage = dolisciprojectlist) vs general Project list (contextpage = projectlist)
+        $isDoliSciProjectList = ($contextpage === 'dolisciprojectlist'
             || GETPOST('contextpage', 'aZ') === 'dolisciprojectlist'
-            || GETPOST('mainmenu', 'aZ09') === 'dolisci'
-            || ($_SESSION['mainmenu'] ?? '') === 'dolisci';
+            || strpos($leftmenu, 'dolisci_projects') === 0);
 
-        if (in_array('projectlist', $contexts, true) && $isDoliSciProjectList) {
-            $contextpage = 'dolisciprojectlist';
+        if (in_array('projectlist', $contexts, true)) {
+            if ($isDoliSciProjectList) {
+                $contextpage = 'dolisciprojectlist';
 
-            if (!$isRemoveFilter) {
-                $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
-                if ($tagProjectId > 0 && empty($search_category_array)) {
-                    $search_category_array = [$tagProjectId];
+                if (!$isRemoveFilter) {
+                    $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+                    if ($tagProjectId > 0 && empty($search_category_array)) {
+                        $search_category_array = [$tagProjectId];
+                    }
                 }
-            }
 
-            // Default columns on DoliSCI project list: Ref, Label, Property Address, and ReedCRM columns (if ReedCRM enabled)
-            $defaultCheckedFields = [
-                'p.ref',
-                'p.title',
-                'ef.dolisci_fk_socpeople',
-            ];
-            if (isModEnabled('reedcrm')) {
-                $defaultCheckedFields[] = 'ef.commrelaunch';
-                $defaultCheckedFields[] = 'ef.reedcrm_website';
-                $defaultCheckedFields[] = 'ef.projectaddress';
-            }
-            if (isset($parameters['arrayfields']) && is_array($parameters['arrayfields'])) {
-                foreach ($parameters['arrayfields'] as $fieldKey => &$fieldDef) {
-                    $fieldDef['checked'] = in_array((string) $fieldKey, $defaultCheckedFields, true) ? '1' : '0';
+                // Default columns on DoliSCI project list (isolated from general projectlist): Ref, Label, Property Address
+                $defaultCheckedFields = [
+                    'p.ref',
+                    'p.title',
+                    'ef.dolisci_fk_socpeople',
+                ];
+                if (isset($parameters['arrayfields']) && is_array($parameters['arrayfields'])) {
+                    // Hide ReedCRM extrafields on DoliSCI real estate project list
+                    $reedcrmFields = [
+                        'ef.commrelaunch',
+                        'ef.reedcrm_gravityform',
+                        'ef.commtask',
+                        'ef.reedcrm_lastname',
+                        'ef.reedcrm_firstname',
+                        'ef.reedcrm_website',
+                        'ef.projectphone',
+                        'ef.reedcrm_email',
+                        'ef.opporigin',
+                        'ef.projectaddress',
+                        'ef.opprefusal',
+                    ];
+                    foreach ($reedcrmFields as $rcField) {
+                        if (isset($parameters['arrayfields'][$rcField])) {
+                            $parameters['arrayfields'][$rcField]['enabled'] = 0;
+                            $parameters['arrayfields'][$rcField]['checked'] = 0;
+                        }
+                    }
+                    if (empty($user->conf->MAIN_SELECTEDFIELDS_dolisciprojectlist)) {
+                        foreach ($parameters['arrayfields'] as $fieldKey => &$fieldDef) {
+                            $fieldDef['checked'] = in_array((string) $fieldKey, $defaultCheckedFields, true) ? '1' : '0';
+                        }
+                        unset($fieldDef);
+                    }
                 }
-                unset($fieldDef);
+            } elseif (isset($parameters['arrayfields']['ef.dolisci_fk_socpeople'])) {
+                // Hide DoliSCI Property Address extrafield on general Project list
+                $parameters['arrayfields']['ef.dolisci_fk_socpeople']['enabled'] = 0;
+                $parameters['arrayfields']['ef.dolisci_fk_socpeople']['checked'] = 0;
             }
         }
 
-        // 2. Pre-filter Product / Service list by DoliSCI tags ("Bien / Lot immobilier" or "Loyer (706100)" / "Charges locatives (708800)")
+        // 2. Pre-filter Product / Service list by DoliSCI tags ("Bien" or "Loyer" / "Charge")
         if (in_array('productservicelist', $contexts, true) && !$isRemoveFilter) {
-            if (strpos($leftmenu, 'dolisci_products') === 0) {
+            if ($contextpage === 'dolisciproductlist' || strpos($leftmenu, 'dolisci_products') === 0) {
+                $contextpage  = 'dolisciproductlist';
                 $tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
                 if ($tagProductId > 0 && empty($searchCategoryProductList)) {
                     $searchCategoryProductList = [$tagProductId];
                 }
-            } elseif (strpos($leftmenu, 'dolisci_services') === 0) {
+            } elseif ($contextpage === 'dolisciservicelist' || strpos($leftmenu, 'dolisci_services') === 0) {
+                $contextpage  = 'dolisciservicelist';
                 $tagRentId    = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
                 $tagChargesId = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
                 $serviceTags  = array_values(array_filter([$tagRentId, $tagChargesId]));

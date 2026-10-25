@@ -239,9 +239,13 @@ foreach ($services as $servId => $servObj) {
 // =========================================================================
 // Table 1: Synthèse Projets / Biens / Loyers & Charges / Syndic
 // =========================================================================
-$matrixLinks = '<a class="marginrightonly" href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects&contextpage=dolisciprojectlist">' . $langs->trans('DoliSciMenuListProjects') . '</a>'
-	. ' | <a class="marginleftonly marginrightonly" href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>'
-	. ' | <a class="marginleftonly" href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_services&type=1">' . $langs->trans('DoliSciMenuListServices') . '</a>';
+$listProjectsUrl = dol_buildpath('/dolisci/project_list.php?mainmenu=dolisci&leftmenu=dolisci_projects', 1);
+$listProductsUrl = dol_buildpath('/dolisci/product_list.php?mainmenu=dolisci&leftmenu=dolisci_products', 1);
+$listServicesUrl = dol_buildpath('/dolisci/service_list.php?mainmenu=dolisci&leftmenu=dolisci_services', 1);
+
+$matrixLinks = '<a class="marginrightonly" href="' . $listProjectsUrl . '">' . $langs->trans('DoliSciMenuListProjects') . '</a>'
+	. ' | <a class="marginleftonly marginrightonly" href="' . $listProductsUrl . '">' . $langs->trans('DoliSciMenuListProducts') . '</a>'
+	. ' | <a class="marginleftonly" href="' . $listServicesUrl . '">' . $langs->trans('DoliSciMenuListServices') . '</a>';
 
 print load_fiche_titre($langs->trans('DoliSciPatrimonyMatrixTitle'), $matrixLinks, 'fa-city');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
@@ -387,7 +391,7 @@ print '</table></div><br>';
 // Table 2: Présentation des biens au <date> (Nom | Adresse | Descriptif | Superficie + Total surface)
 // =========================================================================
 $todayStr = dol_print_date(dol_now(), 'day');
-print load_fiche_titre($langs->trans('DoliSciPropertiesPresentationTitle', $todayStr), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>', 'fa-key');
+print load_fiche_titre($langs->trans('DoliSciPropertiesPresentationTitle', $todayStr), '<a href="' . $listProductsUrl . '">' . $langs->trans('DoliSciMenuListProducts') . '</a>', 'fa-key');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
 print '<td>' . $langs->trans('Name') . '</td>';
