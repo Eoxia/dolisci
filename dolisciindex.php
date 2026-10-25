@@ -56,7 +56,7 @@ $helpUrl = 'FR:Module_DoliSci';
 
 llxHeader('', $title, $helpUrl, '', 0, 0, '', ['/dolisci/css/dolisci.css'], '', 'mod-dolisci page-index');
 
-$newProjectUrl = DOL_URL_ROOT . '/projet/card.php?mainmenu=dolisci&leftmenu=dolisci_projects&action=create&options_dolisci_project_type=BIEN_IMMO';
+$newProjectUrl = DOL_URL_ROOT . '/projet/card.php?mainmenu=dolisci&leftmenu=dolisci_projects&action=create';
 $newProductUrl = DOL_URL_ROOT . '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_products&action=create&type=0';
 $newRentUrl    = DOL_URL_ROOT . '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=LOYER&accountancy_code_sell=706100';
 $newChargesUrl = DOL_URL_ROOT . '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=CHARGES&accountancy_code_sell=708800';
@@ -81,22 +81,21 @@ $tagRentId     = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
 $tagChargesId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
 $serviceTagIds = array_values(array_filter([$tagRentId, $tagChargesId]));
 
-// 1. Fetch Real Estate Projects (BIEN_IMMO or tagged "Immob.")
+// 1. Fetch Real Estate Projects (tagged "Immob.")
 $projects = [];
-$sqlProj = "SELECT p.rowid, p.ref, p.title, p.description, p.fk_statut, p.fk_project, p.public, p.entity,"
-	. " pa.rowid AS parent_id, pa.ref AS parent_ref, pa.title AS parent_title"
-	. " FROM " . MAIN_DB_PREFIX . "projet AS p"
-	. " LEFT JOIN " . MAIN_DB_PREFIX . "projet_extrafields AS ef ON ef.fk_object = p.rowid"
-	. " LEFT JOIN " . MAIN_DB_PREFIX . "projet AS pa ON pa.rowid = p.fk_project"
-	. " WHERE p.entity IN (" . getEntity('project') . ")"
-	. " AND (ef.dolisci_project_type = 'BIEN_IMMO'"
-	. ($tagProjectId > 0 ? " OR EXISTS (SELECT 1 FROM " . MAIN_DB_PREFIX . "categorie_project AS cp WHERE cp.fk_project = p.rowid AND cp.fk_categorie = " . ((int) $tagProjectId) . ")" : "")
-	. ")"
-	. " ORDER BY p.ref ASC LIMIT 100";
-$resProj = $db->query($sqlProj);
-if ($resProj) {
-	while ($obj = $db->fetch_object($resProj)) {
-		$projects[(int) $obj->rowid] = $obj;
+if ($tagProjectId > 0) {
+	$sqlProj = "SELECT p.rowid, p.ref, p.title, p.description, p.fk_statut, p.fk_project, p.public, p.entity,"
+		. " pa.rowid AS parent_id, pa.ref AS parent_ref, pa.title AS parent_title"
+		. " FROM " . MAIN_DB_PREFIX . "projet AS p"
+		. " INNER JOIN " . MAIN_DB_PREFIX . "categorie_project AS cp ON cp.fk_project = p.rowid AND cp.fk_categorie = " . ((int) $tagProjectId)
+		. " LEFT JOIN " . MAIN_DB_PREFIX . "projet AS pa ON pa.rowid = p.fk_project"
+		. " WHERE p.entity IN (" . getEntity('project') . ")"
+		. " ORDER BY p.ref ASC LIMIT 100";
+	$resProj = $db->query($sqlProj);
+	if ($resProj) {
+		while ($obj = $db->fetch_object($resProj)) {
+			$projects[(int) $obj->rowid] = $obj;
+		}
 	}
 }
 

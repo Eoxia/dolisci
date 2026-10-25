@@ -64,15 +64,13 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
             case 'PROJECT_MODIFY':
                 if ($object instanceof Project) {
                     require_once __DIR__ . '/../../lib/dolisci.lib.php';
-                    $projectType  = $object->array_options['options_dolisci_project_type'] ?? GETPOST('options_dolisci_project_type', 'alphanohtml');
                     $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
                     $postCats     = GETPOSTISARRAY('categories') ? GETPOST('categories', 'array:int') : [];
-                    if ($projectType !== 'BIEN_IMMO' && $tagProjectId > 0 && in_array($tagProjectId, $postCats, true)) {
-                        $projectType = 'BIEN_IMMO';
-                        $object->array_options['options_dolisci_project_type'] = 'BIEN_IMMO';
-                        $object->insertExtraFields();
-                    }
-                    if ($projectType === 'BIEN_IMMO') {
+                    $isSciProject = GETPOST('mainmenu', 'aZ09') === 'dolisci'
+                        || ($_SESSION['mainmenu'] ?? '') === 'dolisci'
+                        || ($tagProjectId > 0 && in_array($tagProjectId, $postCats, true))
+                        || (!empty($object->id) && dolisciIsRealEstateProject($this->db, (int) $object->id));
+                    if ($isSciProject) {
                         $updates        = ['fk_statut = ' . ((int) Project::STATUS_VALIDATED)];
                         $object->statut = Project::STATUS_VALIDATED;
                         $object->status = Project::STATUS_VALIDATED;

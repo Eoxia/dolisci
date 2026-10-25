@@ -170,10 +170,6 @@ if (!empty($tagIds)) {
 }
 
 $groups = [
-    'project' => [
-        'title' => $langs->trans('DoliSciInitProjectExtrafields'),
-        'picto' => 'fa-city',
-    ],
     'product' => [
         'title' => $langs->trans('DoliSciPropertySection'),
         'picto' => 'fa-key',

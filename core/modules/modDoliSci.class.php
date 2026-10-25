@@ -170,7 +170,7 @@ class modDoliSci extends DolibarrModules
             'prefix'   => '<i class="fas fa-plus-circle pictofixedwidth"></i>',
             'mainmenu' => 'dolisci',
             'leftmenu' => 'dolisci_projects_new',
-            'url'      => '/projet/card.php?mainmenu=dolisci&leftmenu=dolisci_projects&action=create&options_dolisci_project_type=BIEN_IMMO',
+            'url'      => '/projet/card.php?mainmenu=dolisci&leftmenu=dolisci_projects&action=create',
             'langs'    => 'dolisci@dolisci',
             'position' => 1000 + $r,
             'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'project\')',

@@ -67,7 +67,6 @@ function dolisciAdminPrepareHead(): array
 function dolisciGetExtrafieldDefinitions(): array
 {
     $moduleNumero     = 436371;
-    $projectCondition = "isModEnabled('dolisci') && isModEnabled('project')";
     $productCondition = "isModEnabled('dolisci') && isModEnabled('product') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 0)";
     $serviceCondition = "isModEnabled('dolisci') && isModEnabled('service') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 1)";
     $defaultCss       = ['css' => 'minwidth100 maxwidth300 widthcentpercentminusx'];
@@ -86,28 +85,7 @@ function dolisciGetExtrafieldDefinitions(): array
     ];
 
     return [
-        // 1. Project extrafields
-        'ef:projet:dolisci_project_type' => [
-            'group'       => 'project',
-            'attrname'    => 'dolisci_project_type',
-            'label'       => 'DoliSciProjectType',
-            'type'        => 'select',
-            'pos'         => (int) ($moduleNumero . '10'),
-            'size'        => '',
-            'elementtype' => 'projet',
-            'param'       => [
-                'options' => [
-                    'BIEN_IMMO' => 'DoliSciProjectTypeProperty',
-                    'TRAVAUX'   => 'DoliSciProjectTypeWorks',
-                ],
-            ],
-            'list'        => '1',
-            'help'        => 'DoliSciProjectTypeHelp',
-            'enabled'     => $projectCondition,
-            'moreparams'  => $defaultCss,
-        ],
-
-        // 2. Product extrafields (type == 0: Purchased property & fiscal lot)
+        // 1. Product extrafields (type == 0: Purchased property & fiscal lot)
         'ef:product:dolisci_property_sep' => [
             'group'       => 'product',
             'attrname'    => 'dolisci_property_sep',
@@ -521,6 +499,26 @@ function dolisciAssignTag(DoliDB $db, CommonObject $object, string $constName, s
     }
 
     return 0;
+}
+
+/**
+ * Check whether a Project is tagged with the DoliSCI real estate project tag (DOLISCI_TAG_PROJECT_PROPERTY)
+ *
+ * @param  DoliDB $db        Database handler
+ * @param  int    $projectId Project ID
+ * @return bool              True if tagged as DoliSCI real estate project
+ */
+function dolisciIsRealEstateProject(DoliDB $db, int $projectId): bool
+{
+    $tagId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+    if ($tagId <= 0 || $projectId <= 0) {
+        return false;
+    }
+
+    $sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_project = ' . ((int) $projectId) . ' AND fk_categorie = ' . ((int) $tagId) . ' LIMIT 1';
+    $res = $db->query($sql);
+
+    return ($res && $db->num_rows($res) > 0);
 }
 
 /**

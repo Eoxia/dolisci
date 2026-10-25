@@ -51,17 +51,12 @@ class ActionsDoliSci extends CommonHookActions
      */
     protected function isDoliSciProjectContext($object = null): bool
     {
-        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci') {
+        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos(GETPOST('leftmenu', 'aZ09'), 'dolisci_') === 0) {
             return true;
         }
-        if (GETPOST('options_dolisci_project_type', 'alphanohtml') === 'BIEN_IMMO') {
-            return true;
-        }
-        if ($object instanceof Project) {
-            if (empty($object->array_options) && !empty($object->id)) {
-                $object->fetch_optionals();
-            }
-            if (($object->array_options['options_dolisci_project_type'] ?? '') === 'BIEN_IMMO') {
+        if ($object instanceof Project && !empty($object->id)) {
+            require_once __DIR__ . '/../lib/dolisci.lib.php';
+            if (dolisciIsRealEstateProject($this->db, (int) $object->id)) {
                 return true;
             }
         }
@@ -69,7 +64,7 @@ class ActionsDoliSci extends CommonHookActions
     }
 
     /**
-     * Keep only DoliSCI extrafields enabled/visible on the Project card when in DoliSCI context
+     * Disable extrafields on the Project card when in DoliSCI context
      * (Preserve keys in 'label' array so third-party hooks like ReedCRM do not trigger Undefined array key warnings)
      *
      * @return void
@@ -80,10 +75,8 @@ class ActionsDoliSci extends CommonHookActions
 
         if (isset($extrafields->attributes['projet']['label']) && is_array($extrafields->attributes['projet']['label'])) {
             foreach (array_keys($extrafields->attributes['projet']['label']) as $efKey) {
-                if (strpos((string) $efKey, 'dolisci_') !== 0) {
-                    $extrafields->attributes['projet']['enabled'][$efKey] = '0';
-                    $extrafields->attributes['projet']['list'][$efKey]    = '0';
-                }
+                $extrafields->attributes['projet']['enabled'][$efKey] = '0';
+                $extrafields->attributes['projet']['list'][$efKey]    = '0';
             }
         }
     }
@@ -144,9 +137,6 @@ class ActionsDoliSci extends CommonHookActions
         if (in_array('projectcard', $contexts, true) && $object instanceof Project) {
             if ($this->isDoliSciProjectContext($object)) {
                 $this->filterProjectExtrafieldsForDoliSci();
-                if ($action === 'create' && empty($object->array_options['options_dolisci_project_type'])) {
-                    $object->array_options['options_dolisci_project_type'] = GETPOST('options_dolisci_project_type', 'alphanohtml') ?: 'BIEN_IMMO';
-                }
             }
         }
         return 0;
@@ -193,11 +183,8 @@ class ActionsDoliSci extends CommonHookActions
             return 0;
         }
 
-        if (empty($object->array_options)) {
-            $object->fetch_optionals();
-        }
-        $projectType = $object->array_options['options_dolisci_project_type'] ?? '';
-        if ($projectType !== 'BIEN_IMMO') {
+        require_once __DIR__ . '/../lib/dolisci.lib.php';
+        if (!dolisciIsRealEstateProject($this->db, (int) $object->id)) {
             return 0;
         }
 
@@ -247,11 +234,10 @@ class ActionsDoliSci extends CommonHookActions
                 }
             }
 
-            // Default columns on DoliSCI project list: Ref, Label, ReedCRM columns (if ReedCRM enabled), and SCI Project Type
+            // Default columns on DoliSCI project list: Ref, Label, and ReedCRM columns (if ReedCRM enabled)
             $defaultCheckedFields = [
                 'p.ref',
                 'p.title',
-                'ef.dolisci_project_type',
             ];
             if (isModEnabled('reedcrm')) {
                 $defaultCheckedFields[] = 'ef.commrelaunch';
@@ -431,12 +417,10 @@ class ActionsDoliSci extends CommonHookActions
             }
         }
 
-        // 2. Real estate overview tables on Project card (BIEN_IMMO)
+        // 2. Real estate overview tables on Project card (tagged "Immob.")
         if (in_array('projectcard', $contexts, true) && $object instanceof Project && !empty($object->id) && $action !== 'edit') {
-            if (empty($object->array_options)) {
-                $object->fetch_optionals();
-            }
-            if (($object->array_options['options_dolisci_project_type'] ?? '') === 'BIEN_IMMO') {
+            require_once __DIR__ . '/../lib/dolisci.lib.php';
+            if (dolisciIsRealEstateProject($this->db, (int) $object->id)) {
                 $this->printProjectRealEstateTables($object);
             }
         }
