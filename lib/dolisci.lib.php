@@ -492,6 +492,14 @@ function dolisciGetTagDefinitions(): array
             'icon'     => 'fa-file-invoice-dollar',
             'position' => (int) ($moduleNumero . '40'),
         ],
+        'tag:DOLISCI_TAG_CUSTOMER_TENANT' => [
+            'const'    => 'DOLISCI_TAG_CUSTOMER_TENANT',
+            'type'     => 'customer',
+            'label'    => 'DoliSciTagCustomerTenant',
+            'color'    => '2563eb',
+            'icon'     => 'fa-user',
+            'position' => (int) ($moduleNumero . '45'),
+        ],
         'tag:DOLISCI_TAG_CONTACT_ADDRESS' => [
             'const'    => 'DOLISCI_TAG_CONTACT_ADDRESS',
             'type'     => 'contact',

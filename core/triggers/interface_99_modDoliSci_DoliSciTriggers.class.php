@@ -60,6 +60,15 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
         }
 
         switch ($action) {
+            case 'COMPANY_CREATE':
+                if ($object instanceof Societe && !empty($object->client)) {
+                    if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci') {
+                        require_once __DIR__ . '/../../lib/dolisci.lib.php';
+                        dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_CUSTOMER_TENANT', 'customer');
+                    }
+                }
+                break;
+
             case 'PROJECT_CREATE':
             case 'PROJECT_MODIFY':
                 if ($object instanceof Project) {

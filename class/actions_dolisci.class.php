@@ -340,7 +340,7 @@ class ActionsDoliSci extends CommonHookActions
      */
     public function doActions($parameters, &$object, &$action, $hookmanager): int
     {
-        global $conf, $contextpage, $langs, $search_categ, $search_category_array, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
+        global $conf, $contextpage, $langs, $search_categ, $search_categ_cus, $search_category_array, $searchCategoryCustomerList, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
 
         $contexts       = explode(':', $parameters['context'] ?? '');
         $leftmenu       = GETPOST('leftmenu', 'aZ09');
@@ -429,7 +429,32 @@ class ActionsDoliSci extends CommonHookActions
             }
         }
 
-        // 2b. Pre-filter Contact list by DoliSCI contact tags according to leftmenu or dolisci_contact_tag parameter
+        // 2b. Pre-filter Thirdparty list by DoliSCI customer tenant tag ("Locataire")
+        if (in_array('thirdpartylist', $contexts, true) && !$isRemoveFilter) {
+            if ($contextpage === 'doliscithirdpartylist' || strpos($leftmenu, 'dolisci_thirdparties') === 0) {
+                $contextpage         = 'doliscithirdpartylist';
+                $tagCustomerTenantId = getDolGlobalInt('DOLISCI_TAG_CUSTOMER_TENANT');
+                if ($tagCustomerTenantId > 0 && empty($searchCategoryCustomerList)) {
+                    $search_categ_cus          = $tagCustomerTenantId;
+                    $searchCategoryCustomerList = [$tagCustomerTenantId];
+                    $_GET['search_categ_cus']  = (string) $tagCustomerTenantId;
+                    $_POST['search_categ_cus'] = (string) $tagCustomerTenantId;
+                }
+            }
+        }
+
+        // 2c. Pre-select Customer Tenant tag ("Locataire") when creating a Thirdparty in DoliSCI context
+        if (in_array('thirdpartycard', $contexts, true) && $action === 'create') {
+            if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos($leftmenu, 'dolisci_') === 0) {
+                $tagCustomerTenantId = getDolGlobalInt('DOLISCI_TAG_CUSTOMER_TENANT');
+                if ($tagCustomerTenantId > 0 && !GETPOSTISSET('custcats')) {
+                    $_POST['custcats'] = [$tagCustomerTenantId];
+                    $_GET['custcats']  = [$tagCustomerTenantId];
+                }
+            }
+        }
+
+        // 2d. Pre-filter Contact list by DoliSCI contact tags according to leftmenu or dolisci_contact_tag parameter
         if (in_array('contactlist', $contexts, true) && !$isRemoveFilter && empty($search_categ)) {
             $contactMenuTagMap = [
                 'dolisci_contacts_address'   => 'DOLISCI_TAG_CONTACT_ADDRESS',
