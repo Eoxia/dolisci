@@ -490,7 +490,7 @@ class ActionsDoliSci extends CommonHookActions
         $resProp = $this->db->query($sqlProp);
 
         print '<div class="clearboth"></div><br>';
-        print load_fiche_titre($langs->trans('DoliSciProjectPropertiesTitle'), '', 'product');
+        print load_fiche_titre($langs->trans('DoliSciProjectPropertiesTitle'), '', 'fa-key');
         print '<div class="div-table-responsive-no-min">';
         print '<table class="noborder centpercent">';
         print '<tr class="liste_titre">';
@@ -560,7 +560,7 @@ class ActionsDoliSci extends CommonHookActions
         $resServ = $this->db->query($sqlServ);
 
         print '<br>';
-        print load_fiche_titre($langs->trans('DoliSciProjectRentalsTitle'), '', 'service');
+        print load_fiche_titre($langs->trans('DoliSciProjectRentalsTitle'), '', 'fa-file-invoice-dollar');
         print '<div class="div-table-responsive-no-min">';
         print '<table class="noborder centpercent">';
         print '<tr class="liste_titre">';

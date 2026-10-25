@@ -172,15 +172,15 @@ if (!empty($tagIds)) {
 $groups = [
     'project' => [
         'title' => $langs->trans('DoliSciInitProjectExtrafields'),
-        'picto' => 'project',
+        'picto' => 'fa-city',
     ],
     'product' => [
         'title' => $langs->trans('DoliSciPropertySection'),
-        'picto' => 'product',
+        'picto' => 'fa-key',
     ],
     'service' => [
         'title' => $langs->trans('DoliSciRentalSection'),
-        'picto' => 'service',
+        'picto' => 'fa-file-invoice-dollar',
     ],
 ];
 

@@ -66,14 +66,14 @@ $newChargesUrl = DOL_URL_ROOT . '/product/card.php?mainmenu=dolisci&leftmenu=dol
 
 $moreHtmlRight = '';
 if ($user->hasRight('projet', 'creer')) {
-	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewProject'), '', 'fa fa-plus-circle', $newProjectUrl);
+	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewProject'), '', 'fa fa-city', $newProjectUrl);
 }
 if ($user->hasRight('produit', 'creer')) {
-	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewProduct'), '', 'fa fa-plus-circle', $newProductUrl);
+	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewProduct'), '', 'fa fa-key', $newProductUrl);
 }
 if ($user->hasRight('service', 'creer')) {
-	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewRentService'), '', 'fa fa-plus-circle', $newRentUrl);
-	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewChargesService'), '', 'fa fa-plus-circle', $newChargesUrl);
+	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewRentService'), '', 'fa fa-file-invoice-dollar', $newRentUrl);
+	$moreHtmlRight .= dolGetButtonTitle($langs->trans('DoliSciMenuNewChargesService'), '', 'fa fa-coins', $newChargesUrl);
 }
 
 print load_fiche_titre($title . ' ' . $modDoliSci->version, $moreHtmlRight, 'dolisci_color.png@dolisci', 0, '', 'nogreyscale');
@@ -157,15 +157,15 @@ if ($resServ) {
 
 // KPI Cards
 print '<div class="dolisci-kpi-grid">';
-print '<div class="dolisci-kpi-card"><div class="dolisci-kpi-label">' . dolPrintHTML($langs->trans('DoliSciMenuProjects')) . '</div><div class="dolisci-kpi-value">' . count($projects) . '</div></div>';
-print '<div class="dolisci-kpi-card kpi-teal"><div class="dolisci-kpi-label">' . dolPrintHTML($langs->trans('DoliSciMenuProducts')) . '</div><div class="dolisci-kpi-value">' . count($properties) . '</div></div>';
-print '<div class="dolisci-kpi-card kpi-amber"><div class="dolisci-kpi-label">' . dolPrintHTML($langs->trans('DoliSciMenuServices')) . '</div><div class="dolisci-kpi-value">' . count($services) . '</div></div>';
-print '<div class="dolisci-kpi-card kpi-green"><div class="dolisci-kpi-label">' . dolPrintHTML($langs->trans('DoliSciKpiTotalRentHT')) . '</div><div class="dolisci-kpi-value">' . price($totalRent, 1, $langs, 1, -1, -1, 'auto') . '</div></div>';
-print '<div class="dolisci-kpi-card kpi-green"><div class="dolisci-kpi-label">' . dolPrintHTML($langs->trans('DoliSciKpiTotalChargesHT')) . '</div><div class="dolisci-kpi-value">' . price($totalCharges, 1, $langs, 1, -1, -1, 'auto') . '</div></div>';
+print '<div class="dolisci-kpi-card"><div class="dolisci-kpi-label"><i class="fas fa-city pictofixedwidth" style="color: #0284c7;"></i>' . dolPrintHTML($langs->trans('DoliSciMenuProjects')) . '</div><div class="dolisci-kpi-value">' . count($projects) . '</div></div>';
+print '<div class="dolisci-kpi-card kpi-teal"><div class="dolisci-kpi-label"><i class="fas fa-key pictofixedwidth" style="color: #0d9488;"></i>' . dolPrintHTML($langs->trans('DoliSciMenuProducts')) . '</div><div class="dolisci-kpi-value">' . count($properties) . '</div></div>';
+print '<div class="dolisci-kpi-card kpi-amber"><div class="dolisci-kpi-label"><i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: #d97706;"></i>' . dolPrintHTML($langs->trans('DoliSciMenuServices')) . '</div><div class="dolisci-kpi-value">' . count($services) . '</div></div>';
+print '<div class="dolisci-kpi-card kpi-green"><div class="dolisci-kpi-label"><i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: #16a34a;"></i>' . dolPrintHTML($langs->trans('DoliSciKpiTotalRentHT')) . '</div><div class="dolisci-kpi-value">' . price($totalRent, 1, $langs, 1, -1, -1, 'auto') . '</div></div>';
+print '<div class="dolisci-kpi-card kpi-amber"><div class="dolisci-kpi-label"><i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: #d97706;"></i>' . dolPrintHTML($langs->trans('DoliSciKpiTotalChargesHT')) . '</div><div class="dolisci-kpi-value">' . price($totalCharges, 1, $langs, 1, -1, -1, 'auto') . '</div></div>';
 print '</div>';
 
 // Table 1: Real Estate Projects
-print load_fiche_titre($langs->trans('DoliSciMenuProjects'), '<a href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects&contextpage=dolisciprojectlist">' . $langs->trans('DoliSciMenuListProjects') . '</a>', 'project');
+print load_fiche_titre($langs->trans('DoliSciMenuProjects'), '<a href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects&contextpage=dolisciprojectlist">' . $langs->trans('DoliSciMenuListProjects') . '</a>', 'fa-city');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
 print '<td>' . $langs->trans('Project') . '</td>';
@@ -206,7 +206,7 @@ if (!empty($projects)) {
 print '</table></div><br>';
 
 // Table 2: Property Products (Purchased Properties & Fiscal Lots)
-print load_fiche_titre($langs->trans('DoliSciMenuProducts'), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>', 'product');
+print load_fiche_titre($langs->trans('DoliSciMenuProducts'), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_products&type=0">' . $langs->trans('DoliSciMenuListProducts') . '</a>', 'fa-key');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
 print '<td>' . $langs->trans('Product') . '</td>';
@@ -266,7 +266,7 @@ if (!empty($properties)) {
 print '</table></div><br>';
 
 // Table 3: Rental Services (Rent 706100 & Charges 708800)
-print load_fiche_titre($langs->trans('DoliSciMenuServices'), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_services&type=1">' . $langs->trans('DoliSciMenuListServices') . '</a>', 'service');
+print load_fiche_titre($langs->trans('DoliSciMenuServices'), '<a href="' . DOL_URL_ROOT . '/product/list.php?mainmenu=dolisci&leftmenu=dolisci_services&type=1">' . $langs->trans('DoliSciMenuListServices') . '</a>', 'fa-file-invoice-dollar');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
 print '<td>' . $langs->trans('Service') . '</td>';
