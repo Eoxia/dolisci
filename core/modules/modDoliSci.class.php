@@ -69,6 +69,8 @@ class modDoliSci extends DolibarrModules
                 'projectlist',
                 'productcard',
                 'productservicelist',
+                'contactcard',
+                'contactlist',
                 'invoicecard',
                 'invoicereccard',
                 'main',
@@ -309,7 +311,136 @@ class modDoliSci extends DolibarrModules
             'user'     => 0,
         ];
 
-        // 5. Configuration
+        // 5. Contacts / Adresses (Addresses, Tenants, Co-tenants, Guarantors, Syndics, Notaries)
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuContacts',
+            'prefix'   => '<i class="fas fa-address-book pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuNewContact',
+            'prefix'   => '<i class="fas fa-plus-circle pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_new',
+            'url'      => '/contact/card.php?mainmenu=dolisci&leftmenu=dolisci_contacts&action=create',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'creer\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuListContactAddresses',
+            'prefix'   => '<i class="fas fa-map-marker-alt pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_address',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_address',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuListContactTenants',
+            'prefix'   => '<i class="fas fa-user pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_tenant',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_tenant',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuListContactCoTenants',
+            'prefix'   => '<i class="fas fa-user-friends pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_cotenant',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_cotenant',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuListContactGuarantors',
+            'prefix'   => '<i class="fas fa-user-shield pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_guarantor',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_guarantor',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuListContactSyndics',
+            'prefix'   => '<i class="fas fa-building pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_syndic',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_syndic',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        $this->menu[$r++] = [
+            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
+            'type'     => 'left',
+            'titre'    => 'DoliSciMenuListContactNotaries',
+            'prefix'   => '<i class="fas fa-gavel pictofixedwidth"></i>',
+            'mainmenu' => 'dolisci',
+            'leftmenu' => 'dolisci_contacts_notary',
+            'url'      => '/contact/list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_notary',
+            'langs'    => 'dolisci@dolisci',
+            'position' => 1000 + $r,
+            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+            'target'   => '',
+            'user'     => 0,
+        ];
+
+        // 6. Configuration
         $this->menu[$r++] = [
             'fk_menu'  => 'fk_mainmenu=dolisci',
             'type'     => 'left',

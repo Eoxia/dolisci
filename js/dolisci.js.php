@@ -142,7 +142,12 @@ document.addEventListener('DOMContentLoaded', function () {
         '#0d9488': 'fa-key',
         '#16a34a': 'fa-file-invoice-dollar',
         '#d97706': 'fa-file-invoice-dollar',
-        '#7c3aed': 'fa-map-marker-alt'
+        '#7c3aed': 'fa-map-marker-alt',
+        '#2563eb': 'fa-user',
+        '#3b82f6': 'fa-user-friends',
+        '#0891b2': 'fa-user-shield',
+        '#e11d48': 'fa-building',
+        '#475569': 'fa-gavel'
     };
     var optionsWithHtml = document.querySelectorAll('option[data-html]');
     for (var j = 0; j < optionsWithHtml.length; j++) {

@@ -500,6 +500,46 @@ function dolisciGetTagDefinitions(): array
             'icon'     => 'fa-map-marker-alt',
             'position' => (int) ($moduleNumero . '50'),
         ],
+        'tag:DOLISCI_TAG_CONTACT_TENANT' => [
+            'const'    => 'DOLISCI_TAG_CONTACT_TENANT',
+            'type'     => 'contact',
+            'label'    => 'DoliSciTagContactTenant',
+            'color'    => '2563eb',
+            'icon'     => 'fa-user',
+            'position' => (int) ($moduleNumero . '55'),
+        ],
+        'tag:DOLISCI_TAG_CONTACT_COTENANT' => [
+            'const'    => 'DOLISCI_TAG_CONTACT_COTENANT',
+            'type'     => 'contact',
+            'label'    => 'DoliSciTagContactCoTenant',
+            'color'    => '3b82f6',
+            'icon'     => 'fa-user-friends',
+            'position' => (int) ($moduleNumero . '60'),
+        ],
+        'tag:DOLISCI_TAG_CONTACT_GUARANTOR' => [
+            'const'    => 'DOLISCI_TAG_CONTACT_GUARANTOR',
+            'type'     => 'contact',
+            'label'    => 'DoliSciTagContactGuarantor',
+            'color'    => '0891b2',
+            'icon'     => 'fa-user-shield',
+            'position' => (int) ($moduleNumero . '65'),
+        ],
+        'tag:DOLISCI_TAG_CONTACT_SYNDIC' => [
+            'const'    => 'DOLISCI_TAG_CONTACT_SYNDIC',
+            'type'     => 'contact',
+            'label'    => 'DoliSciTagContactSyndic',
+            'color'    => 'e11d48',
+            'icon'     => 'fa-building',
+            'position' => (int) ($moduleNumero . '70'),
+        ],
+        'tag:DOLISCI_TAG_CONTACT_NOTARY' => [
+            'const'    => 'DOLISCI_TAG_CONTACT_NOTARY',
+            'type'     => 'contact',
+            'label'    => 'DoliSciTagContactNotary',
+            'color'    => '475569',
+            'icon'     => 'fa-gavel',
+            'position' => (int) ($moduleNumero . '75'),
+        ],
     ];
 }
 

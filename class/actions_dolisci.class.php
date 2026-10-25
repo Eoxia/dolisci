@@ -235,10 +235,10 @@ class ActionsDoliSci extends CommonHookActions
      */
     public function doActions($parameters, &$object, &$action, $hookmanager): int
     {
-        global $conf, $contextpage, $langs, $search_category_array, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
+        global $conf, $contextpage, $langs, $search_categ, $search_category_array, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
 
         $contexts       = explode(':', $parameters['context'] ?? '');
-        $leftmenu       = GETPOST('leftmenu', 'aZ09');
+        $leftmenu       = GETPOST('leftmenu', 'aZ09_');
         $isRemoveFilter = GETPOST('button_removefilter_x', 'alpha') || GETPOST('button_removefilter.x', 'alpha') || GETPOST('button_removefilter', 'alpha');
 
         // 1. Pre-filter Project list by DoliSCI tag "Bien immobilier" and set default columns when accessed in DoliSCI context
@@ -290,6 +290,24 @@ class ActionsDoliSci extends CommonHookActions
                 if (!empty($serviceTags) && empty($searchCategoryProductList)) {
                     $searchCategoryProductList     = $serviceTags;
                     $searchCategoryProductOperator = 1;
+                }
+            }
+        }
+
+        // 2b. Pre-filter Contact list by DoliSCI contact tags according to leftmenu
+        if (in_array('contactlist', $contexts, true) && !$isRemoveFilter && empty($search_categ)) {
+            $contactMenuTagMap = [
+                'dolisci_contacts_address'   => 'DOLISCI_TAG_CONTACT_ADDRESS',
+                'dolisci_contacts_tenant'    => 'DOLISCI_TAG_CONTACT_TENANT',
+                'dolisci_contacts_cotenant'  => 'DOLISCI_TAG_CONTACT_COTENANT',
+                'dolisci_contacts_guarantor' => 'DOLISCI_TAG_CONTACT_GUARANTOR',
+                'dolisci_contacts_syndic'    => 'DOLISCI_TAG_CONTACT_SYNDIC',
+                'dolisci_contacts_notary'    => 'DOLISCI_TAG_CONTACT_NOTARY',
+            ];
+            if (isset($contactMenuTagMap[$leftmenu])) {
+                $tagContactId = getDolGlobalInt($contactMenuTagMap[$leftmenu]);
+                if ($tagContactId > 0) {
+                    $search_categ = (string) $tagContactId;
                 }
             }
         }
