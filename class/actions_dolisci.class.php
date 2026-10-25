@@ -225,17 +225,44 @@ class ActionsDoliSci extends CommonHookActions
      */
     public function doActions($parameters, &$object, &$action, $hookmanager): int
     {
-        global $conf, $langs, $search_category_array, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
+        global $conf, $contextpage, $langs, $search_category_array, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
 
-        $contexts = explode(':', $parameters['context'] ?? '');
-        $leftmenu = GETPOST('leftmenu', 'aZ09');
+        $contexts       = explode(':', $parameters['context'] ?? '');
+        $leftmenu       = GETPOST('leftmenu', 'aZ09');
         $isRemoveFilter = GETPOST('button_removefilter_x', 'alpha') || GETPOST('button_removefilter.x', 'alpha') || GETPOST('button_removefilter', 'alpha');
 
-        // 1. Pre-filter Project list by DoliSCI tag "Bien immobilier" when accessed from DoliSCI left menu
-        if (in_array('projectlist', $contexts, true) && strpos($leftmenu, 'dolisci_projects') === 0 && !$isRemoveFilter) {
-            $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
-            if ($tagProjectId > 0 && empty($search_category_array)) {
-                $search_category_array = [$tagProjectId];
+        // 1. Pre-filter Project list by DoliSCI tag "Bien immobilier" and set default columns when accessed in DoliSCI context
+        $isDoliSciProjectList = strpos($leftmenu, 'dolisci_projects') === 0
+            || GETPOST('contextpage', 'aZ') === 'dolisciprojectlist'
+            || GETPOST('mainmenu', 'aZ09') === 'dolisci'
+            || ($_SESSION['mainmenu'] ?? '') === 'dolisci';
+
+        if (in_array('projectlist', $contexts, true) && $isDoliSciProjectList) {
+            $contextpage = 'dolisciprojectlist';
+
+            if (!$isRemoveFilter) {
+                $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+                if ($tagProjectId > 0 && empty($search_category_array)) {
+                    $search_category_array = [$tagProjectId];
+                }
+            }
+
+            // Default columns on DoliSCI project list: Ref, Label, ReedCRM columns (if ReedCRM enabled), and SCI Project Type
+            $defaultCheckedFields = [
+                'p.ref',
+                'p.title',
+                'ef.dolisci_project_type',
+            ];
+            if (isModEnabled('reedcrm')) {
+                $defaultCheckedFields[] = 'ef.commrelaunch';
+                $defaultCheckedFields[] = 'ef.reedcrm_website';
+                $defaultCheckedFields[] = 'ef.projectaddress';
+            }
+            if (isset($parameters['arrayfields']) && is_array($parameters['arrayfields'])) {
+                foreach ($parameters['arrayfields'] as $fieldKey => &$fieldDef) {
+                    $fieldDef['checked'] = in_array((string) $fieldKey, $defaultCheckedFields, true) ? '1' : '0';
+                }
+                unset($fieldDef);
             }
         }
 

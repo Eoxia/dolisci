@@ -165,7 +165,7 @@ print '<div class="dolisci-kpi-card kpi-green"><div class="dolisci-kpi-label">' 
 print '</div>';
 
 // Table 1: Real Estate Projects
-print load_fiche_titre($langs->trans('DoliSciMenuProjects'), '<a href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects">' . $langs->trans('DoliSciMenuListProjects') . '</a>', 'project');
+print load_fiche_titre($langs->trans('DoliSciMenuProjects'), '<a href="' . DOL_URL_ROOT . '/projet/list.php?mainmenu=dolisci&leftmenu=dolisci_projects&contextpage=dolisciprojectlist">' . $langs->trans('DoliSciMenuListProjects') . '</a>', 'project');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre">';
 print '<td>' . $langs->trans('Project') . '</td>';
