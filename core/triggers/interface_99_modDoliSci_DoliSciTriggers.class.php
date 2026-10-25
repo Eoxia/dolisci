@@ -71,17 +71,17 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
                         || ($tagProjectId > 0 && in_array($tagProjectId, $postCats, true))
                         || (!empty($object->id) && dolisciIsRealEstateProject($this->db, (int) $object->id));
                     if ($isSciProject) {
-                        $updates        = ['fk_statut = ' . ((int) Project::STATUS_VALIDATED)];
-                        $object->statut = Project::STATUS_VALIDATED;
-                        $object->status = Project::STATUS_VALIDATED;
-                        if (getDolGlobalInt('DOLISCI_HIDE_TASKS_ON_SCI_PROJECTS', 1) && !GETPOST('usage_task', 'alpha')) {
-                            $updates[]                 = 'usage_opportunity = 0';
-                            $updates[]                 = 'usage_task = 0';
-                            $updates[]                 = 'usage_bill_time = 0';
-                            $object->usage_opportunity = 0;
-                            $object->usage_task        = 0;
-                            $object->usage_bill_time   = 0;
-                        }
+                        $updates = [
+                            'fk_statut = ' . ((int) Project::STATUS_VALIDATED),
+                            'usage_opportunity = 0',
+                            'usage_task = 1',
+                            'usage_bill_time = 0',
+                        ];
+                        $object->statut            = Project::STATUS_VALIDATED;
+                        $object->status            = Project::STATUS_VALIDATED;
+                        $object->usage_opportunity = 0;
+                        $object->usage_task        = 1;
+                        $object->usage_bill_time   = 0;
                         $sql = 'UPDATE ' . MAIN_DB_PREFIX . 'projet SET ' . implode(', ', $updates) . ' WHERE rowid = ' . ((int) $object->id);
                         $this->db->query($sql);
                         dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_PROJECT_PROPERTY', 'project');

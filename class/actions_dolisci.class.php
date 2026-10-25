@@ -95,20 +95,20 @@ class ActionsDoliSci extends CommonHookActions
         $contexts = explode(':', $parameters['context'] ?? '');
         if (in_array('projectcard', $contexts, true) && $this->isDoliSciProjectContext($object)) {
             $this->filterProjectExtrafieldsForDoliSci();
-            if ($action === 'create' || $action === 'edit') {
-                $this->resprints = '<tr class="dolisci-simplified-project-form" style="display:none"><td colspan="2">'
-                    . '<style>'
-                    . 'table:has(.dolisci-simplified-project-form) tr:has(#socid),'
-                    . 'table:has(.dolisci-simplified-project-form) tr.classuseopportunity,'
-                    . 'table:has(.dolisci-simplified-project-form) tr.classuseorganizeevent,'
-                    . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="budget_amount"]),'
-                    . 'table:has(.dolisci-simplified-project-form) tr:has(#projectstart),'
-                    . 'table:has(.dolisci-simplified-project-form) tr:has(#public),'
-                    . 'table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact)'
-                    . '{ display: none !important; }'
-                    . '</style>'
-                    . '</td></tr>';
-            }
+            $this->resprints = '<tr class="dolisci-simplified-project-form" style="display:none"><td colspan="2">'
+                . '<style>'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="usage_task"]),'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="usage_opportunity"]),'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(#socid),'
+                . 'table:has(.dolisci-simplified-project-form) tr.classuseopportunity,'
+                . 'table:has(.dolisci-simplified-project-form) tr.classuseorganizeevent,'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="budget_amount"]),'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(#projectstart),'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(#public),'
+                . 'table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact)'
+                . '{ display: none !important; }'
+                . '</style>'
+                . '</td></tr>';
         }
         return 0;
     }
@@ -270,18 +270,18 @@ class ActionsDoliSci extends CommonHookActions
             }
         }
 
-        // 3. Simplify Project card when in DoliSCI context: force Validated status, uncheck usage by default, pre-select "Bien immobilier" tag
+        // 3. Simplify Project card when in DoliSCI context: force Validated status, check usage_task by default, pre-select "Immob." tag
         if (in_array('projectcard', $contexts, true) && $this->isDoliSciProjectContext($object)) {
             $status = Project::STATUS_VALIDATED;
             $conf->global->PROJECT_CREATE_NO_DRAFT = 1;
             $this->filterProjectExtrafieldsForDoliSci();
 
+            if (in_array($action, ['create', 'add', 'edit', 'update'], true)) {
+                $_POST['usage_opportunity'] = '';
+                $_POST['usage_task']        = 'on';
+                $_POST['usage_bill_time']   = '';
+            }
             if ($action === 'create') {
-                if (!GETPOSTISSET('usage_opportunity')) {
-                    $_POST['usage_opportunity'] = '';
-                    $_POST['usage_task']        = '';
-                    $_POST['usage_bill_time']   = '';
-                }
                 $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
                 if ($tagProjectId > 0 && !GETPOSTISARRAY('categories')) {
                     $_POST['categories'] = [$tagProjectId];
