@@ -8,12 +8,196 @@
 #
 # Module
 #
-ModuleDoliSciName = DoliSci
-DoliSciDescription = Outils pour les SCI : modèle de facture « Quittance »
-DoliSciDescriptionLong = Ajoute le modèle PDF de facture « Quittance », pour les quittances de loyer.
+ModuleDoliSciName = DoliSCI
+DoliSciDescription = Module pour la gestion de SCI simplement
+DoliSciDescriptionLong = Gestion simplifiée des SCI : projets immobiliers (immeubles et lots), produits biens achetés avec lot fiscal, services de location distincts (loyer principal 706100 et provision sur charges 708800) et modèle PDF de facture « Quittance ».
+
+#
+# Permissions
+#
+ReadAdminPageDoliSci = Accéder à la page de configuration du module
+
+#
+# Configuration
+#
+DoliSciSetup = Configuration du module DoliSCI
+DoliSciSetupPage = Configurez le fonctionnement des projets immobiliers et le rattachement automatique des factures.
+DoliSciSetupProjectsSection = Projets immobiliers & Hiérarchie Immeubles / Lots
+DoliSciEnableSubProjects = Activer la hiérarchie Immeubles / Lots (sous-projets Dolibarr)
+DoliSciEnableSubProjectsHelp = Permet de rattacher les lots individuels (appartements, parkings, caves) à un projet parent représentant l'immeuble entier.
+DoliSciHideTasksOnSciProjects = Masquer les onglets « Tâches » et « Temps consommé » sur les projets immobiliers
+DoliSciHideTasksOnSciProjectsHelp = Épure l'interface des projets de type « Bien immobilier » pour ne conserver que la vue financière (Vue d'ensemble), les contacts/adresses et les documents.
+DoliSciAutoLinkInvoiceProject = Rattachement automatique des factures au projet immobilier
+DoliSciAutoLinkInvoiceProjectHelp = Lors de l'ajout d'une ligne de produit (bien acheté) ou de service (loyer / provision sur charges) sur une facture ou un modèle récurrent, affecte automatiquement le projet immobilier rattaché.
+DoliSciSyncDataModelBtn = Initialiser / Mettre à jour les champs supplémentaires (Extrafields) et rôles de contacts SCI
+DoliSciDataModelSynced = Modèle de données SCI (Extrafields Projet/Produit/Service et rôles de contacts) synchronisé avec succès.
+DoliSciInitialization = Initialisation
+DoliSciInitializeBtn = Initialiser
+DoliSciSynchronizeBtn = Synchroniser
+DoliSciStatusPresentAndCompliant = Présent et conforme
+DoliSciStatusMissingOrNonCompliant = Manquant / Non conforme
+DoliSciInitPageDesc = Vérifiez la conformité et initialisez les champs supplémentaires (Extrafields) et les rôles de contacts nécessaires au fonctionnement du module DoliSCI.
+DoliSciInitProjectExtrafields = Champs supplémentaires sur les Projets (Type de projet SCI)
+DoliSciInitProductServiceExtrafields = Champs supplémentaires sur les Produits (Biens & Lots fiscaux) et Services (Locations : Loyers & Charges)
+DoliSciInitContactRoles = Rôles de contacts sur les Projets (Adresse du bien, Locataire, Colocataire, Garant, Syndic, Notaire)
+TypeContact_project_external_DOLISCI_PROPERTY_ADDRESS = Adresse du bien immobilier
+TypeContact_project_external_DOLISCI_TENANT = Locataire
+TypeContact_project_external_DOLISCI_COTENANT = Colocataire
+TypeContact_project_external_DOLISCI_GUARANTOR = Garant / Caution
+TypeContact_project_external_DOLISCI_SYNDIC = Syndic de copropriété
+TypeContact_project_external_DOLISCI_NOTARY = Notaire
+
+#
+# Extrafields Projet
+#
+DoliSciProjectType = Type de projet SCI
+DoliSciProjectTypeHelp = Sélectionnez « Bien immobilier » pour un immeuble ou un lot locatif, ou « Gros travaux » pour un chantier.
+DoliSciProjectTypeProperty = Immeuble / Bien immobilier
+DoliSciProjectTypeWorks = Gros travaux
+
+#
+# Extrafields Produit (Bien acheté & Lot fiscal)
+#
+DoliSciPropertySection = Bien immobilier acheté & Lot fiscal (DoliSCI)
+DoliSciPropertyProject = Projet immobilier rattaché
+DoliSciPropertyProjectHelp = Projet immobilier (Immeuble ou Lot) regroupant ce bien acheté et ses locations.
+DoliSciPropertyNature = Nature du bien
+DoliSciNatureBuilding = Immeuble entier
+DoliSciNatureApartment = Appartement
+DoliSciNatureHouse = Maison individuelle
+DoliSciNatureCommercial = Local professionnel / commercial
+DoliSciNatureParking = Garage / Parking / Box
+DoliSciNatureCellar = Cave / Débarras
+DoliSciNatureLand = Terrain
+DoliSciLegalRegime = Régime juridique de l'immeuble
+DoliSciRegimeCoOwnership = Copropriété
+DoliSciRegimeSingleOwnership = Mono-propriété
+DoliSciDpeNotApplicable = Non applicable / Vierge
+DoliSciFiscalLot = N° de lot fiscal / Réf. cadastrale
+DoliSciFiscalLotHelp = Numéro du lot de copropriété ou référence cadastrale figurant dans l'acte notarié (ex. Lot 101 - Section AB 124).
+DoliSciTantiemes = Tantièmes de copropriété
+DoliSciTantiemesHelp = Quote-part des parties communes attachée au lot (ex. 125 / 1000).
+DoliSciFloorDoor = Bâtiment / Escalier / Étage / Porte
+DoliSciRooms = Nombre de pièces principales
+DoliSciDpeEnergy = Classe énergie (DPE)
+DoliSciDpeGes = Classe GES (Émissions CO2)
+DoliSciPurchaseDate = Date d'acquisition (Acte notarié)
+DoliSciPurchasePrice = Prix d'acquisition
+
+#
+# Extrafields Service (Locations : Loyer & Provision sur charges)
+#
+DoliSciRentalSection = Location immobilière (DoliSCI)
+DoliSciServiceNature = Nature du service locatif
+DoliSciServiceNatureHelp = Séparez le loyer principal (706100) et la provision sur charges locatives (708800) sur deux services distincts.
+DoliSciServiceNatureRent = Loyer nu / principal (706100)
+DoliSciServiceNatureCharges = Provision sur charges locatives (708800)
+DoliSciServiceNatureChargesRegul = Régularisation annuelle de charges
+DoliSciServiceNatureDeposit = Caution / Dépôt de garantie (165000)
+DoliSciLinkedPropertyProduct = Bien immobilier (Lot fiscal) loué
+DoliSciLinkedPropertyProductHelp = Produit représentant le bien acheté chez le notaire concerné par cette location.
+DoliSciServiceProjectHelp = Projet immobilier rattaché (automatiquement renseigné à partir du bien immobilier lié).
+DoliSciLeaseType = Type de bail
+DoliSciLeaseUnfurnished = Bail d'habitation vide (nu)
+DoliSciLeaseFurnished = Bail d'habitation meublé
+DoliSciLeaseShared = Colocation / Chambre
+DoliSciLeaseCommercial = Bail commercial / professionnel
+DoliSciLeaseParking = Location stationnement / box
+DoliSciDeposit = Dépôt de garantie de référence
+DoliSciIrlRef = Indice de révision de référence (IRL / ILC)
+DoliSciIrlRefHelp = Dernier indice IRL / ILC / ILAT appliqué (ex. T4 2025 - 145,78).
+
+#
+# Actions & Tableaux récapitulatifs sur la fiche Projet / Produit
+#
+DoliSciGenerateRentalServices = Générer Services Loyer + Charges + Caution
+DoliSciRentServiceLabel = Loyer - %s
+DoliSciChargesServiceLabel = Provision mensuelle sur charges locatives - %s
+DoliSciDepositServiceLabel = Caution / Dépôt de garantie - %s
+DoliSciRentalServicesGenerated = Services de location prêts : %s
+DoliSciProjectPropertiesTitle = Biens immobiliers achetés & Lots fiscaux (Produits)
+DoliSciProjectRentalsTitle = Services de location : Loyers, Provisions sur charges & Cautions (Services)
+DoliSciNoPropertyLinked = Aucun produit (bien acheté / lot fiscal) rattaché à ce projet immobilier.
+DoliSciNoRentalServiceLinked = Aucun service de location (loyer / provision sur charges) rattaché à ce projet immobilier.
 
 #
 # Modèle de facture « Quittance »
 #
 DoliSciQuittanceTitle = Quittance
-DoliSciQuittanceDescription = Modèle Sponge titré « Quittance » au lieu de « Facture », pour les quittances de loyer
+DoliSciQuittanceDescription = Modèle ajouté par le module DoliSCI basé sur le modèle Sponge
+
+#
+# Menu & Tableau de bord DoliSCI
+#
+ReadModuleDoliSci = Accéder à l'espace DoliSCI
+DoliSciMenuDashboard = DoliSCI
+DoliSciMenuProjects = Projet Immobilier
+DoliSciMenuNewProject = Nouveau projet immobilier
+DoliSciMenuListProjects = Projets immobiliers
+DoliSciMenuProducts = Bien Immobilier
+DoliSciMenuNewProduct = Nouveau bien immobilier
+DoliSciMenuListProducts = Biens immobiliers
+DoliSciMenuServices = Loyers, Charges & Caution
+DoliSciMenuNewRentService = Nouveau loyer (706100)
+DoliSciMenuNewChargesService = Nouvelles charges (708800)
+DoliSciMenuNewDepositService = Nouvelle caution (165000)
+DoliSciMenuListServices = Loyers, charges & cautions
+DoliSciKpiTotalRentHT = Loyers mensuels HT (706100)
+DoliSciKpiTotalChargesHT = Provisions charges HT (708800)
+DoliSciInitTags = Tags / Catégories d'isolation DoliSCI (Projets, Produits biens, Services loyers, charges & cautions)
+DoliSciTagProjectProperty = Immob.
+DoliSciTagProductProperty = Bien
+DoliSciTagServiceRent = Loyer
+DoliSciTagServiceCharges = Charge
+DoliSciTagServiceDeposit = Caution
+DoliSciServiceProject = Projet immobilier rattaché
+DoliSciPropertiesPresentationTitle = Présentation des biens au %s
+DoliSciAddress = Adresse
+DoliSciDescriptionCol = Descriptif
+DoliSciSurfaceCol = Superficie
+DoliSciTotalSurface = Total surface
+DoliSciPatrimonyMatrixTitle = Synthèse Projets / Biens / Loyers & Charges / Syndic
+DoliSciSyndicAndChargesCol = Syndic / Charges bien
+DoliSciTagCustomerTenant = Locataire
+DoliSciTagContactPropertyAddress = Adresse-Bien
+DoliSciTagContactTenant = Locataire
+DoliSciTagContactGuarantor = Garant
+DoliSciTagContactSyndic = Syndic
+DoliSciTagContactNotary = Notaire
+DoliSciPropertyAddress = Adresse du bien
+DoliSciPropertyAddressHelp = Contact / Adresse isolé par le tag « Adresse-Bien » correspondant à l'adresse postale du bien immobilier
+DoliSciMenuThirdparties = Tiers / Locataire
+DoliSciMenuNewThirdparty = Nouveau tiers / locataire
+DoliSciMenuListThirdparties = Tiers / Locataires
+DoliSciMenuContacts = Contacts/Adresses
+DoliSciMenuNewContact = Nouveau contact
+DoliSciMenuListContactAddresses = Biens
+DoliSciMenuListContactTenants = Locataires
+DoliSciMenuListContactGuarantors = Garants
+DoliSciMenuListContactSyndics = Syndic
+DoliSciMenuListContactNotaries = Notaires
+DoliSciNewThirdpartyTenantSection = Nouveau Tiers / Locataire
+DoliSciContactTenantSection = Contact / Locataire
+DoliSciContactGuarantorSection = Contact / Garant
+DoliSciOptionalSection = Optionnel
+DoliSciTabRentalServices = Loyers, Charges & Caution
+DoliSciRentalServicesAlreadyCreatedTooltip = Les services de loyer, de charges et de caution sont déjà créés pour ce bien.
+DoliSciPropertyRentalServicesListTitle = Services de loyer, charges et caution rattachés à ce bien
+DoliSciNoRentalServiceForProperty = Aucun service de loyer, de charges ou de caution rattaché à ce bien. Utilisez le bouton « Générer Services Loyer + Charges + Caution » pour les créer.
+DoliSciPropertyProduct = Bien immobilier (Lot fiscal) loué
+DoliSciNewPropertyAddressSection = Nouveau Contact / Adresse du bien
+DoliSciOrCreateAddressBelow = Ou créer une nouvelle adresse du bien ci-dessous
+DoliSciDeleteAssociatedServicesLabel = Supprimer également les services associés (%s)
+DoliSciServicesDeleted = Services associés supprimés : %s
+DoliSciErrorDeleteProposeDisableTitle = Suppression impossible — Mettre hors vente / hors achat ?
+DoliSciErrorDeleteProposeDisableConfirm = Une erreur empêche la suppression (%s). Souhaitez-vous mettre le bien et tous ses services associés (%s) <b>Hors vente</b> et <b>Hors achat</b> ?
+DoliSciPropertyAndServicesDisabled = Bien et services mis hors vente / hors achat : %s
+DoliSciTabProjectProperties = Biens & Locations
+DoliSciSimplifiedCards = Activer les fiches simplifiées dans l'environnement DoliSCI (DOLISCI_SIMPLIFIED_CARDS)
+DoliSciSimplifiedCardsHelp = Lorsque vous naviguez dans le menu DoliSCI (variable d'environnement DOLISCI_ENV=1), simplifie automatiquement les fiches de création, d'édition et de consultation (Projet immobilier, Bien immobilier, Loyers/Charges/Caution, Tiers/Locataire, Contact/Adresse).
+DoliSciCreateOrAttachChargesDeposit = Créer / Attacher Charges + Caution
+DoliSciServiceChargesDepositListTitle = Services de charges et caution rattachés à ce loyer
+DoliSciNoChargesDepositForService = Aucun service de charges ou de caution rattaché à ce loyer. Utilisez le bouton « Créer / Attacher Charges + Caution » pour les créer ou les rattacher.
+
+
+

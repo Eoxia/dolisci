@@ -29,12 +29,17 @@ parameters:
     # Liste derivee des include du module et des classes qu ils tirent :
     #   grep -rhoE "DOL_DOCUMENT_ROOT *\. *['\"]/[^'\"]+" --include=*.php .
     scanDirectories:
+        - ../../categories/class/
         - ../../compta/facture/class/
+        - ../../contact/class/
         - ../../core/class/
         - ../../core/db/
         - ../../core/lib/
         - ../../core/modules/
+        - ../../core/triggers/
+        - ../../fourn/class/
         - ../../product/class/
+        - ../../projet/class/
         - ../../societe/class/
         - ../../user/class/
 
@@ -73,3 +78,5 @@ parameters:
         - '#in empty\(\) always exists and is always falsy#'
         - '#in empty\(\) always exists and is not falsy#'
         - '#in isset\(\) is not nullable#'
+        # Dolibarr 23.0.0: le shape PHPDoc de DolibarrModules::$menu omet 'prefix' et rend 'fk_parent'/'positionfull' requis
+        - '#Property DolibarrModules::\$menu .* does not accept#'

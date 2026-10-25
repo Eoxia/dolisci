@@ -1,0 +1,255 @@
+/* Copyright (C) 2026 EVARISK <technique@evarisk.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* DoliSCI module favicon picto before extrafield labels (Saturne / DoliMeet convention) */
+.pictoModule {
+	vertical-align: middle;
+	text-align: left;
+	width: 20px;
+	padding-right: 4px;
+}
+
+/* Keep the full-color DoliSCI logo in the Dolibarr top menu bar */
+div.mainmenu.dolisci {
+	filter: none;
+}
+
+.fiche > .table-fiche-title.nogreyscale tr.toptitle td.col-picto,
+.fiche > .table-fiche-title.nogreyscale tr.toptitle td.col-title {
+	filter: none;
+}
+
+/* KPI summary cards on DoliSCI dashboard */
+.dolisci-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 14px;
+	margin-bottom: 22px;
+}
+
+.dolisci-kpi-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-left: 4px solid #0284c7;
+	border-radius: 6px;
+	padding: 14px 16px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dolisci-kpi-card.kpi-green {
+	border-left-color: #16a34a;
+}
+
+.dolisci-kpi-card.kpi-teal {
+	border-left-color: #0d9488;
+}
+
+.dolisci-kpi-card.kpi-amber {
+	border-left-color: #d97706;
+}
+
+.dolisci-kpi-label {
+	font-size: 0.85em;
+	color: #64748b;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-bottom: 6px;
+}
+
+.dolisci-kpi-value {
+	font-size: 1.55em;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+/* Simplify Project creation/edition form when in DoliSCI:
+ * Keep only Ref, Label, Parent, Usage, Status (Validated), Description, Tags/Categories, and SCI Project Type
+ */
+table:has(.dolisci-simplified-project-form) tr:has(#socid),
+table:has(.dolisci-simplified-project-form) tr.classuseopportunity,
+table:has(.dolisci-simplified-project-form) tr.classuseorganizeevent,
+table:has(.dolisci-simplified-project-form) tr:has(input[name="budget_amount"]),
+table:has(.dolisci-simplified-project-form) tr:has(#projectstart),
+table:has(.dolisci-simplified-project-form) tr:has(#public),
+table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact) {
+	display: none !important;
+}
+
+/* DoliSCI tag icons matching the DoliSCI left menu pictos:
+ * - Projet Immobilier (#0284c7) -> fa-city (\f64f)
+ * - Bien Immobilier (#0d9488) -> fa-key (\f084)
+ * - Loyer 706100 (#16a34a) & Charges 708800 (#d97706) -> fa-file-invoice-dollar (\f571)
+ * - Adresse-Bien (#7c3aed) -> fa-map-marker-alt (\f3c5)
+ * - Locataire (#2563eb) -> fa-user (\f007)
+ * - Garant / Caution (#0891b2) -> fa-user-shield (\f505)
+ * - Syndic (#e11d48) -> fa-building (\f1ad)
+ * - Notaire (#475569) -> fa-gavel (\f0e3)
+ */
+span.fa-tag[style*="#0284c7"]::before,
+span.fa-tag[style*="rgb(2, 132, 199)"]::before,
+.noborderoncategories[style*="#0284c7"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(2, 132, 199)"] span.fa-tag::before {
+	content: "\f64f" !important;
+}
+
+span.fa-tag[style*="#0d9488"]::before,
+span.fa-tag[style*="rgb(13, 148, 136)"]::before,
+.noborderoncategories[style*="#0d9488"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(13, 148, 136)"] span.fa-tag::before {
+	content: "\f084" !important;
+}
+
+span.fa-tag[style*="#16a34a"]::before,
+span.fa-tag[style*="rgb(22, 163, 74)"]::before,
+.noborderoncategories[style*="#16a34a"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(22, 163, 74)"] span.fa-tag::before,
+span.fa-tag[style*="#d97706"]::before,
+span.fa-tag[style*="rgb(217, 119, 6)"]::before,
+.noborderoncategories[style*="#d97706"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(217, 119, 6)"] span.fa-tag::before {
+	content: "\f571" !important;
+}
+
+span.fa-tag[style*="#7c3aed"]::before,
+span.fa-tag[style*="rgb(124, 58, 237)"]::before,
+.noborderoncategories[style*="#7c3aed"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(124, 58, 237)"] span.fa-tag::before {
+	content: "\f3c5" !important;
+}
+
+span.fa-tag[style*="#2563eb"]::before,
+span.fa-tag[style*="rgb(37, 99, 235)"]::before,
+.noborderoncategories[style*="#2563eb"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(37, 99, 235)"] span.fa-tag::before {
+	content: "\f007" !important;
+}
+
+span.fa-tag[style*="#0891b2"]::before,
+span.fa-tag[style*="rgb(8, 145, 178)"]::before,
+.noborderoncategories[style*="#0891b2"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(8, 145, 178)"] span.fa-tag::before {
+	content: "\f505" !important;
+}
+
+span.fa-tag[style*="#e11d48"]::before,
+span.fa-tag[style*="rgb(225, 29, 72)"]::before,
+.noborderoncategories[style*="#e11d48"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(225, 29, 72)"] span.fa-tag::before {
+	content: "\f1ad" !important;
+}
+
+span.fa-tag[style*="#475569"]::before,
+span.fa-tag[style*="rgb(71, 85, 105)"]::before,
+.noborderoncategories[style*="#475569"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(71, 85, 105)"] span.fa-tag::before {
+	content: "\f0e3" !important;
+}
+
+/* Simplified 3-section Thirdparty + Tenant Contact + Guarantor Contact creation form */
+.dolisci-tp-create-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 4px;
+}
+
+.dolisci-tp-contacts-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+	gap: 16px;
+}
+
+.dolisci-form-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-left: 4px solid #2563eb;
+	border-radius: 6px;
+	padding: 14px 18px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dolisci-form-card.card-guarantor {
+	border-left-color: #0891b2;
+}
+
+.dolisci-form-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 1.05em;
+	font-weight: 600;
+	color: #1e293b;
+	padding-bottom: 10px;
+	margin-bottom: 10px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.dolisci-form-card table.noborder tr td {
+	padding: 6px 4px;
+	vertical-align: middle;
+}
+
+.dolisci-inline-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.dolisci-inline-fields input[type="text"],
+.dolisci-inline-fields textarea {
+	margin: 0;
+}
+
+/* Ensure the Generate Rent + Charges + Deposit modal dialog fits all 3 rows without vertical scrollbar */
+div.ui-dialog:has(#dolisci_rent_ref) .ui-dialog-content {
+	height: auto !important;
+	max-height: none !important;
+	overflow: visible !important;
+}
+
+/* Visual grouping of Rental Services by set: Loyer (parent) -> -Charge & -Caution (indented children) */
+tr.dolisci-rental-group-parent td:first-child {
+	font-weight: 600;
+	border-left: 3px solid #16a34a;
+}
+
+tr.dolisci-rental-group-sep td {
+	border-top: 2px solid #cbd5e1 !important;
+}
+
+tr.dolisci-rental-group-child td:first-child {
+	padding-left: 26px !important;
+	border-left: 3px solid #cbd5e1;
+}
+
+td.dolisci-matrix-service-parent {
+	font-weight: 600;
+}
+
+td.dolisci-matrix-service-child {
+	padding-left: 24px !important;
+}
+
+.dolisci-service-child-prefix {
+	display: inline-block;
+	color: #64748b;
+	font-weight: 700;
+	margin-right: 5px;
+}
+
+
+

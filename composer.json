@@ -1,6 +1,6 @@
 {
-    "name": "evarisk/dolisci",
-    "description": "DoliSci module for Dolibarr ERP",
+    "name": "eoxia/dolisci",
+    "description": "Module pour la gestion de SCI simplement",
     "type": "project",
     "license": "GPL-3.0-or-later",
     "require": {
