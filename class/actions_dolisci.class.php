@@ -75,7 +75,7 @@ class ActionsDoliSci extends CommonHookActions
         if ($prodType !== Product::TYPE_PRODUCT) {
             return false;
         }
-        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos(GETPOST('leftmenu', 'aZ09_'), 'dolisci_') === 0) {
+        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos(GETPOST('leftmenu', 'aZ09'), 'dolisci_') === 0) {
             return true;
         }
         if ($object instanceof Product && !empty($object->id)) {
@@ -304,7 +304,7 @@ class ActionsDoliSci extends CommonHookActions
         global $conf, $contextpage, $langs, $search_categ, $search_category_array, $searchCategoryProductList, $searchCategoryProductOperator, $status, $user;
 
         $contexts       = explode(':', $parameters['context'] ?? '');
-        $leftmenu       = GETPOST('leftmenu', 'aZ09_');
+        $leftmenu       = GETPOST('leftmenu', 'aZ09');
         $isRemoveFilter = GETPOST('button_removefilter_x', 'alpha') || GETPOST('button_removefilter.x', 'alpha') || GETPOST('button_removefilter', 'alpha');
 
         // 1. Pre-filter Project list by DoliSCI tag "Bien immobilier" and set default columns when accessed in DoliSCI context
@@ -360,7 +360,7 @@ class ActionsDoliSci extends CommonHookActions
             }
         }
 
-        // 2b. Pre-filter Contact list by DoliSCI contact tags according to leftmenu
+        // 2b. Pre-filter Contact list by DoliSCI contact tags according to leftmenu or dolisci_contact_tag parameter
         if (in_array('contactlist', $contexts, true) && !$isRemoveFilter && empty($search_categ)) {
             $contactMenuTagMap = [
                 'dolisci_contacts_address'   => 'DOLISCI_TAG_CONTACT_ADDRESS',
@@ -370,10 +370,13 @@ class ActionsDoliSci extends CommonHookActions
                 'dolisci_contacts_syndic'    => 'DOLISCI_TAG_CONTACT_SYNDIC',
                 'dolisci_contacts_notary'    => 'DOLISCI_TAG_CONTACT_NOTARY',
             ];
-            if (isset($contactMenuTagMap[$leftmenu])) {
-                $tagContactId = getDolGlobalInt($contactMenuTagMap[$leftmenu]);
+            $tagConst = $contactMenuTagMap[$leftmenu] ?? GETPOST('dolisci_contact_tag', 'aZ09');
+            if (!empty($tagConst) && in_array($tagConst, $contactMenuTagMap, true)) {
+                $tagContactId = getDolGlobalInt($tagConst);
                 if ($tagContactId > 0) {
-                    $search_categ = (string) $tagContactId;
+                    $search_categ          = (string) $tagContactId;
+                    $_GET['search_categ']  = (string) $tagContactId;
+                    $_POST['search_categ'] = (string) $tagContactId;
                 }
             }
         }
