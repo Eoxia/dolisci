@@ -155,3 +155,6 @@ DoliSciSurfaceCol = Surface area
 DoliSciTotalSurface = Total surface area
 DoliSciPatrimonyMatrixTitle = Projects / Properties / Rent & Charges / Syndic Summary
 DoliSciSyndicAndChargesCol = Syndic / Property charges
+DoliSciTagContactPropertyAddress = Property-Address
+DoliSciPropertyAddress = Property address
+DoliSciPropertyAddressHelp = Contact / Address isolated by the "Property-Address" tag corresponding to the postal address of the real estate property

@@ -85,6 +85,17 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
                         $sql = 'UPDATE ' . MAIN_DB_PREFIX . 'projet SET ' . implode(', ', $updates) . ' WHERE rowid = ' . ((int) $object->id);
                         $this->db->query($sql);
                         dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_PROJECT_PROPERTY', 'project');
+
+                        $object->fetch_optionals();
+                        $addressContactId = (int) ($object->array_options['options_dolisci_fk_socpeople'] ?? 0);
+                        if ($addressContactId > 0) {
+                            $object->add_contact($addressContactId, 'DOLISCI_PROPERTY_ADDRESS', 'external');
+                            require_once DOL_DOCUMENT_ROOT . '/contact/class/contact.class.php';
+                            $contact = new Contact($this->db);
+                            if ($contact->fetch($addressContactId) > 0) {
+                                dolisciAssignTag($this->db, $contact, 'DOLISCI_TAG_CONTACT_ADDRESS', 'contact');
+                            }
+                        }
                     }
                 }
                 break;

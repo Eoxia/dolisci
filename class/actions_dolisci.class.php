@@ -64,7 +64,8 @@ class ActionsDoliSci extends CommonHookActions
     }
 
     /**
-     * Disable extrafields on the Project card when in DoliSCI context
+     * Filter extrafields on the Project card when in DoliSCI context:
+     * keep only 'dolisci_fk_socpeople' (Property address) visible and hide all other extrafields.
      * (Preserve keys in 'label' array so third-party hooks like ReedCRM do not trigger Undefined array key warnings)
      *
      * @return void
@@ -75,8 +76,14 @@ class ActionsDoliSci extends CommonHookActions
 
         if (isset($extrafields->attributes['projet']['label']) && is_array($extrafields->attributes['projet']['label'])) {
             foreach (array_keys($extrafields->attributes['projet']['label']) as $efKey) {
-                $extrafields->attributes['projet']['enabled'][$efKey] = '0';
-                $extrafields->attributes['projet']['list'][$efKey]    = '0';
+                $isDoliSciField = ((string) $efKey === 'dolisci_fk_socpeople');
+                $extrafields->attributes['projet']['enabled'][$efKey] = $isDoliSciField ? '1' : '0';
+                $extrafields->attributes['projet']['list'][$efKey]    = $isDoliSciField ? '1' : '0';
+            }
+            $tagContactAddressId = getDolGlobalInt('DOLISCI_TAG_CONTACT_ADDRESS');
+            if ($tagContactAddressId > 0) {
+                $filter = 'socpeople:lastname|address|zip|town:rowid::(rowid:IN:SELECT fk_socpeople FROM ' . MAIN_DB_PREFIX . 'categorie_contact WHERE fk_categorie = ' . $tagContactAddressId . ')';
+                $extrafields->attributes['projet']['param']['dolisci_fk_socpeople']['options'] = [$filter => null];
             }
         }
     }
@@ -92,23 +99,34 @@ class ActionsDoliSci extends CommonHookActions
      */
     public function formObjectOptions($parameters, &$object, &$action, $hookmanager): int
     {
+        global $extrafields;
+
         $contexts = explode(':', $parameters['context'] ?? '');
-        if (in_array('projectcard', $contexts, true) && $this->isDoliSciProjectContext($object)) {
-            $this->filterProjectExtrafieldsForDoliSci();
-            $this->resprints = '<tr class="dolisci-simplified-project-form" style="display:none"><td colspan="2">'
-                . '<style>'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="usage_task"]),'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="usage_opportunity"]),'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(#socid),'
-                . 'table:has(.dolisci-simplified-project-form) tr.classuseopportunity,'
-                . 'table:has(.dolisci-simplified-project-form) tr.classuseorganizeevent,'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="budget_amount"]),'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(#projectstart),'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(#public),'
-                . 'table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact)'
-                . '{ display: none !important; }'
-                . '</style>'
-                . '</td></tr>';
+        if (in_array('projectcard', $contexts, true)) {
+            if ($this->isDoliSciProjectContext($object)) {
+                $this->filterProjectExtrafieldsForDoliSci();
+                $tagContactAddressId = getDolGlobalInt('DOLISCI_TAG_CONTACT_ADDRESS');
+                $addAddressUrl       = DOL_URL_ROOT . '/contact/card.php?action=create'
+                    . ($tagContactAddressId > 0 ? '&contcats[]=' . $tagContactAddressId : '')
+                    . '&backtopage=' . urlencode($_SERVER['REQUEST_URI'] ?? (DOL_URL_ROOT . '/projet/card.php?action=create&mainmenu=dolisci&leftmenu=dolisci_projects'));
+                $this->resprints = '<tr class="dolisci-simplified-project-form" data-add-address-url="' . dolPrintHTMLForAttribute($addAddressUrl) . '" style="display:none"><td colspan="2">'
+                    . '<style>'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="usage_task"]),'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="usage_opportunity"]),'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(#socid),'
+                    . 'table:has(.dolisci-simplified-project-form) tr.classuseopportunity,'
+                    . 'table:has(.dolisci-simplified-project-form) tr.classuseorganizeevent,'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(input[name="budget_amount"]),'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(#projectstart),'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(#public),'
+                    . 'table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact)'
+                    . '{ display: none !important; }'
+                    . '</style>'
+                    . '</td></tr>';
+            } elseif (isset($extrafields->attributes['projet']['enabled']['dolisci_fk_socpeople'])) {
+                $extrafields->attributes['projet']['enabled']['dolisci_fk_socpeople'] = '0';
+                $extrafields->attributes['projet']['list']['dolisci_fk_socpeople']    = '0';
+            }
         }
         return 0;
     }
@@ -125,6 +143,8 @@ class ActionsDoliSci extends CommonHookActions
      */
     public function showOptionals($parameters, &$object, &$action, $hookmanager): int
     {
+        global $extrafields;
+
         $contexts = explode(':', $parameters['context'] ?? '');
         if (in_array('productcard', $contexts, true) && $object instanceof Product) {
             if (GETPOSTISSET('type')) {
@@ -137,6 +157,9 @@ class ActionsDoliSci extends CommonHookActions
         if (in_array('projectcard', $contexts, true) && $object instanceof Project) {
             if ($this->isDoliSciProjectContext($object)) {
                 $this->filterProjectExtrafieldsForDoliSci();
+            } elseif (isset($extrafields->attributes['projet']['enabled']['dolisci_fk_socpeople'])) {
+                $extrafields->attributes['projet']['enabled']['dolisci_fk_socpeople'] = '0';
+                $extrafields->attributes['projet']['list']['dolisci_fk_socpeople']    = '0';
             }
         }
         return 0;
@@ -234,10 +257,11 @@ class ActionsDoliSci extends CommonHookActions
                 }
             }
 
-            // Default columns on DoliSCI project list: Ref, Label, and ReedCRM columns (if ReedCRM enabled)
+            // Default columns on DoliSCI project list: Ref, Label, Property Address, and ReedCRM columns (if ReedCRM enabled)
             $defaultCheckedFields = [
                 'p.ref',
                 'p.title',
+                'ef.dolisci_fk_socpeople',
             ];
             if (isModEnabled('reedcrm')) {
                 $defaultCheckedFields[] = 'ef.commrelaunch';

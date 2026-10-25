@@ -155,3 +155,6 @@ DoliSciSurfaceCol = Superficie
 DoliSciTotalSurface = Total surface
 DoliSciPatrimonyMatrixTitle = Synthèse Projets / Biens / Loyers & Charges / Syndic
 DoliSciSyndicAndChargesCol = Syndic / Charges bien
+DoliSciTagContactPropertyAddress = Adresse-Bien
+DoliSciPropertyAddress = Adresse du bien
+DoliSciPropertyAddressHelp = Contact / Adresse isolé par le tag « Adresse-Bien » correspondant à l'adresse postale du bien immobilier

@@ -81,27 +81,38 @@ $tagRentId     = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
 $tagChargesId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
 $serviceTagIds = array_values(array_filter([$tagRentId, $tagChargesId]));
 
-// 1. Fetch Real Estate Projects (tagged "Immob.")
-$projects = [];
+// 1. Fetch Real Estate Projects (tagged "Immob.") and their linked Property Address (dolisci_fk_socpeople)
+$projects         = [];
+$projectAddresses = [];
 if ($tagProjectId > 0) {
 	$sqlProj = "SELECT p.rowid, p.ref, p.title, p.description, p.fk_statut, p.fk_project, p.public, p.entity,"
-		. " pa.rowid AS parent_id, pa.ref AS parent_ref, pa.title AS parent_title"
+		. " pa.rowid AS parent_id, pa.ref AS parent_ref, pa.title AS parent_title,"
+		. " spa.lastname AS addr_name, spa.address AS addr_street, spa.zip AS addr_zip, spa.town AS addr_town"
 		. " FROM " . MAIN_DB_PREFIX . "projet AS p"
 		. " INNER JOIN " . MAIN_DB_PREFIX . "categorie_project AS cp ON cp.fk_project = p.rowid AND cp.fk_categorie = " . ((int) $tagProjectId)
 		. " LEFT JOIN " . MAIN_DB_PREFIX . "projet AS pa ON pa.rowid = p.fk_project"
+		. " LEFT JOIN " . MAIN_DB_PREFIX . "projet_extrafields AS pef ON pef.fk_object = p.rowid"
+		. " LEFT JOIN " . MAIN_DB_PREFIX . "socpeople AS spa ON spa.rowid = pef.dolisci_fk_socpeople"
 		. " WHERE p.entity IN (" . getEntity('project') . ")"
 		. " ORDER BY p.ref ASC LIMIT 100";
 	$resProj = $db->query($sqlProj);
 	if ($resProj) {
 		while ($obj = $db->fetch_object($resProj)) {
-			$projects[(int) $obj->rowid] = $obj;
+			$pid            = (int) $obj->rowid;
+			$projects[$pid] = $obj;
+			$addrLabel      = trim($obj->addr_street . ' ' . $obj->addr_zip . ' ' . $obj->addr_town);
+			if ($addrLabel === '' && !empty($obj->addr_name)) {
+				$addrLabel = trim((string) $obj->addr_name);
+			}
+			if ($addrLabel !== '') {
+				$projectAddresses[$pid] = $addrLabel;
+			}
 		}
 	}
 }
 
 // Fetch project contacts (DOLISCI_SYNDIC and DOLISCI_PROPERTY_ADDRESS) in a single batch query
-$projectSyndics   = [];
-$projectAddresses = [];
+$projectSyndics = [];
 if (!empty($projects)) {
 	$inProjectIds = implode(',', array_map('intval', array_keys($projects)));
 	$sqlContacts  = "SELECT ec.element_id AS fk_project, tc.code, sp.firstname, sp.lastname, sp.address, sp.zip, sp.town, s.nom AS socname"

@@ -66,10 +66,13 @@ function dolisciAdminPrepareHead(): array
  */
 function dolisciGetExtrafieldDefinitions(): array
 {
-    $moduleNumero     = 436371;
-    $productCondition = "isModEnabled('dolisci') && isModEnabled('product') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 0)";
-    $serviceCondition = "isModEnabled('dolisci') && isModEnabled('service') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 1)";
-    $defaultCss       = ['css' => 'minwidth100 maxwidth300 widthcentpercentminusx'];
+    $moduleNumero         = 436371;
+    $projectCondition     = "isModEnabled('dolisci') && isModEnabled('project')";
+    $productCondition     = "isModEnabled('dolisci') && isModEnabled('product') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 0)";
+    $serviceCondition     = "isModEnabled('dolisci') && isModEnabled('service') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 1)";
+    $defaultCss           = ['css' => 'minwidth100 maxwidth300 widthcentpercentminusx'];
+    $tagContactAddressId  = getDolGlobalInt('DOLISCI_TAG_CONTACT_ADDRESS');
+    $contactAddressFilter = $tagContactAddressId > 0 ? '::(rowid:IN:SELECT fk_socpeople FROM ' . MAIN_DB_PREFIX . 'categorie_contact WHERE fk_categorie = ' . $tagContactAddressId . ')' : '';
 
     $dpeOptions = [
         'options' => [
@@ -85,6 +88,22 @@ function dolisciGetExtrafieldDefinitions(): array
     ];
 
     return [
+        // 0. Project extrafields (Real estate property address linked to Contact/Address tagged "Adresse-Bien")
+        'ef:projet:dolisci_fk_socpeople' => [
+            'group'       => 'project',
+            'attrname'    => 'dolisci_fk_socpeople',
+            'label'       => 'DoliSciPropertyAddress',
+            'type'        => 'sellist',
+            'pos'         => (int) ($moduleNumero . '05'),
+            'size'        => '',
+            'elementtype' => 'projet',
+            'param'       => ['options' => ['socpeople:lastname|address|zip|town:rowid' . $contactAddressFilter => null]],
+            'list'        => '1',
+            'help'        => 'DoliSciPropertyAddressHelp',
+            'enabled'     => $projectCondition,
+            'moreparams'  => $defaultCss,
+        ],
+
         // 1. Product extrafields (type == 0: Purchased property & fiscal lot)
         'ef:product:dolisci_property_sep' => [
             'group'       => 'product',
@@ -472,6 +491,14 @@ function dolisciGetTagDefinitions(): array
             'color'    => 'd97706',
             'icon'     => 'fa-file-invoice-dollar',
             'position' => (int) ($moduleNumero . '40'),
+        ],
+        'tag:DOLISCI_TAG_CONTACT_ADDRESS' => [
+            'const'    => 'DOLISCI_TAG_CONTACT_ADDRESS',
+            'type'     => 'contact',
+            'label'    => 'DoliSciTagContactPropertyAddress',
+            'color'    => '7c3aed',
+            'icon'     => 'fa-map-marker-alt',
+            'position' => (int) ($moduleNumero . '50'),
         ],
     ];
 }

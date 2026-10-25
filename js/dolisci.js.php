@@ -115,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 3. Simplified Project card in DoliSCI: replace "Create draft" button text since status is always Validated
+    //    and append a "+" button next to the Property Address select (#options_dolisci_fk_socpeople)
     var simplifiedProjectForm = document.querySelector('.dolisci-simplified-project-form');
     if (simplifiedProjectForm) {
         var form = simplifiedProjectForm.closest('form');
@@ -124,6 +125,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 submitBtn.value = 'Créer';
             }
         }
+        var addAddressUrl = simplifiedProjectForm.getAttribute('data-add-address-url');
+        var addrSelect = document.getElementById('options_dolisci_fk_socpeople');
+        if (addAddressUrl && addrSelect && addrSelect.parentNode) {
+            var plusLink = document.createElement('a');
+            plusLink.href = addAddressUrl;
+            plusLink.className = 'paddingleft';
+            plusLink.innerHTML = '<span class="fa fa-plus-circle valignmiddle" title="Nouvelle adresse du bien"></span>';
+            addrSelect.parentNode.appendChild(plusLink);
+        }
     }
 
     // 4. Replace fa-tag with DoliSCI menu icons (fa-city, fa-key, fa-file-invoice-dollar) in category <option data-html>
@@ -131,7 +141,8 @@ document.addEventListener('DOMContentLoaded', function () {
         '#0284c7': 'fa-city',
         '#0d9488': 'fa-key',
         '#16a34a': 'fa-file-invoice-dollar',
-        '#d97706': 'fa-file-invoice-dollar'
+        '#d97706': 'fa-file-invoice-dollar',
+        '#7c3aed': 'fa-map-marker-alt'
     };
     var optionsWithHtml = document.querySelectorAll('option[data-html]');
     for (var j = 0; j < optionsWithHtml.length; j++) {

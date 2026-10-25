@@ -345,13 +345,13 @@ class modDoliSci extends DolibarrModules
         // Enable sub-projects natively so buildings (parent projects) can group individual units/lots
         dolibarr_set_const($this->db, 'PROJECT_ENABLE_SUB_PROJECT', 1, 'integer', 0, '', $conf->entity);
 
+        foreach (array_keys(dolisciGetTagDefinitions()) as $itemKey) {
+            dolisciSyncItem($this->db, $itemKey);
+        }
         foreach (array_keys(dolisciGetExtrafieldDefinitions()) as $itemKey) {
             dolisciSyncItem($this->db, $itemKey);
         }
         foreach (array_keys(dolisciGetContactRoleDefinitions()) as $itemKey) {
-            dolisciSyncItem($this->db, $itemKey);
-        }
-        foreach (array_keys(dolisciGetTagDefinitions()) as $itemKey) {
             dolisciSyncItem($this->db, $itemKey);
         }
 
