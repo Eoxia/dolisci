@@ -14,6 +14,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* DoliSCI module favicon picto before extrafield labels (Saturne / DoliMeet convention) */
+.pictoModule {
+	vertical-align: middle;
+	text-align: left;
+	width: 20px;
+	padding-right: 4px;
+}
+
 /* Keep the full-color DoliSCI logo in the Dolibarr top menu bar */
 div.mainmenu.dolisci {
 	filter: none;

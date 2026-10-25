@@ -141,6 +141,41 @@ class ActionsDoliSci extends CommonHookActions
     }
 
     /**
+     * Prefix all DoliSCI extrafield labels (dolisci_*) with the DoliSCI module favicon/picto
+     * following Saturne / DoliMeet convention (img_picto with class 'pictoModule').
+     *
+     * @param  array|null $arrayfields Optional list $arrayfields reference to also prefix list column headers
+     * @return void
+     */
+    protected function prefixDoliSciExtrafieldLabels(&$arrayfields = null): void
+    {
+        global $extrafields, $langs;
+
+        $langs->load('dolisci@dolisci');
+        $pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+        $picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
+
+        foreach (['projet', 'product'] as $tableElement) {
+            if (!empty($extrafields->attributes[$tableElement]['label']) && is_array($extrafields->attributes[$tableElement]['label'])) {
+                foreach ($extrafields->attributes[$tableElement]['label'] as $efKey => $efLabel) {
+                    if (strpos((string) $efKey, 'dolisci_') === 0 && strpos((string) $efLabel, 'dolisci_color.png') === false) {
+                        $extrafields->attributes[$tableElement]['label'][$efKey] = $picto . $langs->transnoentities((string) $efLabel);
+                    }
+                }
+            }
+        }
+
+        if (is_array($arrayfields)) {
+            foreach ($arrayfields as $fieldKey => &$fieldDef) {
+                if (strpos((string) $fieldKey, 'ef.dolisci_') === 0 && isset($fieldDef['label']) && strpos((string) $fieldDef['label'], 'dolisci_color.png') === false) {
+                    $fieldDef['label'] = $picto . $langs->transnoentities((string) $fieldDef['label']);
+                }
+            }
+            unset($fieldDef);
+        }
+    }
+
+    /**
      * Overloading the formObjectOptions function: inject marker row to simplify the Project form in DoliSCI
      *
      * @param  array        $parameters  Hook metadatas (context, etc...)
@@ -152,6 +187,8 @@ class ActionsDoliSci extends CommonHookActions
     public function formObjectOptions($parameters, &$object, &$action, $hookmanager): int
     {
         global $extrafields;
+
+        $this->prefixDoliSciExtrafieldLabels();
 
         $contexts = explode(':', $parameters['context'] ?? '');
         if (in_array('projectcard', $contexts, true)) {
@@ -207,6 +244,8 @@ class ActionsDoliSci extends CommonHookActions
     public function showOptionals($parameters, &$object, &$action, $hookmanager): int
     {
         global $extrafields;
+
+        $this->prefixDoliSciExtrafieldLabels();
 
         $contexts = explode(':', $parameters['context'] ?? '');
         if (in_array('productcard', $contexts, true) && $object instanceof Product) {
@@ -306,6 +345,12 @@ class ActionsDoliSci extends CommonHookActions
         $contexts       = explode(':', $parameters['context'] ?? '');
         $leftmenu       = GETPOST('leftmenu', 'aZ09');
         $isRemoveFilter = GETPOST('button_removefilter_x', 'alpha') || GETPOST('button_removefilter.x', 'alpha') || GETPOST('button_removefilter', 'alpha');
+
+        if (isset($parameters['arrayfields']) && is_array($parameters['arrayfields'])) {
+            $this->prefixDoliSciExtrafieldLabels($parameters['arrayfields']);
+        } else {
+            $this->prefixDoliSciExtrafieldLabels();
+        }
 
         // 1. Isolate DoliSCI Project list (contextpage = dolisciprojectlist) vs general Project list (contextpage = projectlist)
         $isDoliSciProjectList = ($contextpage === 'dolisciprojectlist'
