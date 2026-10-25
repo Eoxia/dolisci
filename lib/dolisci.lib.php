@@ -456,7 +456,7 @@ function dolisciGetContactRoleDefinitions(): array
  * Return all DoliSCI Tag / Category definitions used to isolate Real Estate Projects,
  * Property Products (fiscal lots), Rent Services (706100), and Charges Services (708800).
  *
- * @return array<string,array{const:string,type:string,label:string,color:string,position:int}>
+ * @return array<string,array{const:string,type:string,label:string,color:string,icon:string,position:int}>
  */
 function dolisciGetTagDefinitions(): array
 {
@@ -468,6 +468,7 @@ function dolisciGetTagDefinitions(): array
             'type'     => 'project',
             'label'    => 'DoliSciTagProjectProperty',
             'color'    => '0284c7',
+            'icon'     => 'fa-city',
             'position' => (int) ($moduleNumero . '10'),
         ],
         'tag:DOLISCI_TAG_PRODUCT_PROPERTY' => [
@@ -475,6 +476,7 @@ function dolisciGetTagDefinitions(): array
             'type'     => 'product',
             'label'    => 'DoliSciTagProductProperty',
             'color'    => '0d9488',
+            'icon'     => 'fa-key',
             'position' => (int) ($moduleNumero . '20'),
         ],
         'tag:DOLISCI_TAG_SERVICE_RENT' => [
@@ -482,6 +484,7 @@ function dolisciGetTagDefinitions(): array
             'type'     => 'product',
             'label'    => 'DoliSciTagServiceRent',
             'color'    => '16a34a',
+            'icon'     => 'fa-file-invoice-dollar',
             'position' => (int) ($moduleNumero . '30'),
         ],
         'tag:DOLISCI_TAG_SERVICE_CHARGES' => [
@@ -489,6 +492,7 @@ function dolisciGetTagDefinitions(): array
             'type'     => 'product',
             'label'    => 'DoliSciTagServiceCharges',
             'color'    => 'd97706',
+            'icon'     => 'fa-file-invoice-dollar',
             'position' => (int) ($moduleNumero . '40'),
         ],
     ];

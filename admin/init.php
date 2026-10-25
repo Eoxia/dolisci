@@ -282,9 +282,10 @@ print '</tr>';
 foreach ($tagDefinitions as $itemKey => $def) {
     $isCompliant = isset($existingTags[$itemKey]) && $existingTags[$itemKey]['visible'] === 1;
     $tagLabel    = $langs->trans((string) $def['label']);
+    $iconClass   = (string) ($def['icon'] ?? 'fa-tag');
     print '<tr class="oddeven">';
     print '<td class="center"><input type="checkbox" class="dolisci-init-check" name="init_items[]" value="' . dolPrintHTMLForAttribute($itemKey) . '"' . (!$isCompliant ? ' checked="checked"' : '') . '></td>';
-    print '<td><span class="badge badge-status" style="background-color:#' . dolPrintHTMLForAttribute((string) $def['color']) . ';color:#fff;">' . dolPrintHTML($tagLabel) . '</span></td>';
+    print '<td><span class="badge badge-status" style="background-color:#' . dolPrintHTMLForAttribute((string) $def['color']) . ';color:#fff;"><i class="fas ' . dolPrintHTMLForAttribute($iconClass) . ' pictofixedwidth"></i>' . dolPrintHTML($tagLabel) . '</span></td>';
     print '<td><code>' . dolPrintHTML((string) $def['const']) . '</code></td>';
     print '<td>categorie (' . dolPrintHTML((string) $def['type']) . ')</td>';
     print '<td class="right">' . (int) $def['position'] . '</td>';

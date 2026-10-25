@@ -125,4 +125,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
+
+    // 4. Replace fa-tag with DoliSCI menu icons (fa-city, fa-key, fa-file-invoice-dollar) in category <option data-html>
+    var tagColorIconMap = {
+        '#0284c7': 'fa-city',
+        '#0d9488': 'fa-key',
+        '#16a34a': 'fa-file-invoice-dollar',
+        '#d97706': 'fa-file-invoice-dollar'
+    };
+    var optionsWithHtml = document.querySelectorAll('option[data-html]');
+    for (var j = 0; j < optionsWithHtml.length; j++) {
+        var dataHtml = optionsWithHtml[j].getAttribute('data-html') || '';
+        for (var colorHex in tagColorIconMap) {
+            if (dataHtml.toLowerCase().indexOf(colorHex) !== -1) {
+                optionsWithHtml[j].setAttribute('data-html', dataHtml.replace('fa-tag', tagColorIconMap[colorHex]));
+                break;
+            }
+        }
+    }
 });
