@@ -84,28 +84,68 @@ table:has(.dolisci-simplified-project-form) tr:has(#typeofcontact) {
  * - Projet Immobilier (#0284c7) -> fa-city (\f64f)
  * - Bien Immobilier (#0d9488) -> fa-key (\f084)
  * - Loyer 706100 (#16a34a) & Charges 708800 (#d97706) -> fa-file-invoice-dollar (\f571)
+ * - Adresse-Bien (#7c3aed) -> fa-map-marker-alt (\f3c5)
+ * - Locataire (#2563eb) -> fa-user (\f007)
+ * - Garant / Caution (#0891b2) -> fa-user-shield (\f505)
+ * - Syndic (#e11d48) -> fa-building (\f1ad)
+ * - Notaire (#475569) -> fa-gavel (\f0e3)
  */
 span.fa-tag[style*="#0284c7"]::before,
 span.fa-tag[style*="rgb(2, 132, 199)"]::before,
-li.noborderoncategories[style*="#0284c7"] span.fa-tag::before,
-li.noborderoncategories[style*="rgb(2, 132, 199)"] span.fa-tag::before {
+.noborderoncategories[style*="#0284c7"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(2, 132, 199)"] span.fa-tag::before {
 	content: "\f64f" !important;
 }
 
 span.fa-tag[style*="#0d9488"]::before,
 span.fa-tag[style*="rgb(13, 148, 136)"]::before,
-li.noborderoncategories[style*="#0d9488"] span.fa-tag::before,
-li.noborderoncategories[style*="rgb(13, 148, 136)"] span.fa-tag::before {
+.noborderoncategories[style*="#0d9488"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(13, 148, 136)"] span.fa-tag::before {
 	content: "\f084" !important;
 }
 
 span.fa-tag[style*="#16a34a"]::before,
 span.fa-tag[style*="rgb(22, 163, 74)"]::before,
-li.noborderoncategories[style*="#16a34a"] span.fa-tag::before,
-li.noborderoncategories[style*="rgb(22, 163, 74)"] span.fa-tag::before,
+.noborderoncategories[style*="#16a34a"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(22, 163, 74)"] span.fa-tag::before,
 span.fa-tag[style*="#d97706"]::before,
 span.fa-tag[style*="rgb(217, 119, 6)"]::before,
-li.noborderoncategories[style*="#d97706"] span.fa-tag::before,
-li.noborderoncategories[style*="rgb(217, 119, 6)"] span.fa-tag::before {
+.noborderoncategories[style*="#d97706"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(217, 119, 6)"] span.fa-tag::before {
 	content: "\f571" !important;
+}
+
+span.fa-tag[style*="#7c3aed"]::before,
+span.fa-tag[style*="rgb(124, 58, 237)"]::before,
+.noborderoncategories[style*="#7c3aed"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(124, 58, 237)"] span.fa-tag::before {
+	content: "\f3c5" !important;
+}
+
+span.fa-tag[style*="#2563eb"]::before,
+span.fa-tag[style*="rgb(37, 99, 235)"]::before,
+.noborderoncategories[style*="#2563eb"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(37, 99, 235)"] span.fa-tag::before {
+	content: "\f007" !important;
+}
+
+span.fa-tag[style*="#0891b2"]::before,
+span.fa-tag[style*="rgb(8, 145, 178)"]::before,
+.noborderoncategories[style*="#0891b2"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(8, 145, 178)"] span.fa-tag::before {
+	content: "\f505" !important;
+}
+
+span.fa-tag[style*="#e11d48"]::before,
+span.fa-tag[style*="rgb(225, 29, 72)"]::before,
+.noborderoncategories[style*="#e11d48"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(225, 29, 72)"] span.fa-tag::before {
+	content: "\f1ad" !important;
+}
+
+span.fa-tag[style*="#475569"]::before,
+span.fa-tag[style*="rgb(71, 85, 105)"]::before,
+.noborderoncategories[style*="#475569"] span.fa-tag::before,
+.noborderoncategories[style*="rgb(71, 85, 105)"] span.fa-tag::before {
+	content: "\f0e3" !important;
 }

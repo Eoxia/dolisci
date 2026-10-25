@@ -508,14 +508,6 @@ function dolisciGetTagDefinitions(): array
             'icon'     => 'fa-user',
             'position' => (int) ($moduleNumero . '55'),
         ],
-        'tag:DOLISCI_TAG_CONTACT_COTENANT' => [
-            'const'    => 'DOLISCI_TAG_CONTACT_COTENANT',
-            'type'     => 'contact',
-            'label'    => 'DoliSciTagContactCoTenant',
-            'color'    => '3b82f6',
-            'icon'     => 'fa-user-friends',
-            'position' => (int) ($moduleNumero . '60'),
-        ],
         'tag:DOLISCI_TAG_CONTACT_GUARANTOR' => [
             'const'    => 'DOLISCI_TAG_CONTACT_GUARANTOR',
             'type'     => 'contact',

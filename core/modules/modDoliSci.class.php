@@ -379,22 +379,6 @@ class modDoliSci extends DolibarrModules
         $this->menu[$r++] = [
             'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
             'type'     => 'left',
-            'titre'    => 'DoliSciMenuListContactCoTenants',
-            'prefix'   => '<i class="fas fa-user-friends pictofixedwidth"></i>',
-            'mainmenu' => 'dolisci',
-            'leftmenu' => 'dolisci_contacts_cotenant',
-            'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_cotenant&dolisci_contact_tag=DOLISCI_TAG_CONTACT_COTENANT',
-            'langs'    => 'dolisci@dolisci',
-            'position' => 1000 + $r,
-            'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
-            'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
-            'target'   => '',
-            'user'     => 0,
-        ];
-
-        $this->menu[$r++] = [
-            'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_contacts',
-            'type'     => 'left',
             'titre'    => 'DoliSciMenuListContactGuarantors',
             'prefix'   => '<i class="fas fa-user-shield pictofixedwidth"></i>',
             'mainmenu' => 'dolisci',

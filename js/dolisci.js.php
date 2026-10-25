@@ -150,18 +150,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // 4. Replace fa-tag with DoliSCI menu icons (fa-city, fa-key, fa-file-invoice-dollar) in category <option data-html>
+    // 4. Replace fa-tag with DoliSCI menu icons in category <option data-html> and rendered category badges
     var tagColorIconMap = {
         '#0284c7': 'fa-city',
+        'rgb(2, 132, 199)': 'fa-city',
         '#0d9488': 'fa-key',
+        'rgb(13, 148, 136)': 'fa-key',
         '#16a34a': 'fa-file-invoice-dollar',
+        'rgb(22, 163, 74)': 'fa-file-invoice-dollar',
         '#d97706': 'fa-file-invoice-dollar',
+        'rgb(217, 119, 6)': 'fa-file-invoice-dollar',
         '#7c3aed': 'fa-map-marker-alt',
+        'rgb(124, 58, 237)': 'fa-map-marker-alt',
         '#2563eb': 'fa-user',
-        '#3b82f6': 'fa-user-friends',
+        'rgb(37, 99, 235)': 'fa-user',
         '#0891b2': 'fa-user-shield',
+        'rgb(8, 145, 178)': 'fa-user-shield',
         '#e11d48': 'fa-building',
-        '#475569': 'fa-gavel'
+        'rgb(225, 29, 72)': 'fa-building',
+        '#475569': 'fa-gavel',
+        'rgb(71, 85, 105)': 'fa-gavel'
     };
     var optionsWithHtml = document.querySelectorAll('option[data-html]');
     for (var j = 0; j < optionsWithHtml.length; j++) {
@@ -169,6 +177,20 @@ document.addEventListener('DOMContentLoaded', function () {
         for (var colorHex in tagColorIconMap) {
             if (dataHtml.toLowerCase().indexOf(colorHex) !== -1) {
                 optionsWithHtml[j].setAttribute('data-html', dataHtml.replace('fa-tag', tagColorIconMap[colorHex]));
+                break;
+            }
+        }
+    }
+    var badgeContainers = document.querySelectorAll('.noborderoncategories[style], span.fa-tag[style]');
+    for (var k = 0; k < badgeContainers.length; k++) {
+        var styleStr = (badgeContainers[k].getAttribute('style') || '').toLowerCase();
+        for (var colorKey in tagColorIconMap) {
+            if (styleStr.indexOf(colorKey) !== -1) {
+                var iconEl = badgeContainers[k].classList.contains('fa-tag') ? badgeContainers[k] : badgeContainers[k].querySelector('.fa-tag');
+                if (iconEl) {
+                    iconEl.classList.remove('fa-tag');
+                    iconEl.classList.add(tagColorIconMap[colorKey]);
+                }
                 break;
             }
         }

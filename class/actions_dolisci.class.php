@@ -389,7 +389,6 @@ class ActionsDoliSci extends CommonHookActions
             $contactMenuTagMap = [
                 'dolisci_contacts_address'   => 'DOLISCI_TAG_CONTACT_ADDRESS',
                 'dolisci_contacts_tenant'    => 'DOLISCI_TAG_CONTACT_TENANT',
-                'dolisci_contacts_cotenant'  => 'DOLISCI_TAG_CONTACT_COTENANT',
                 'dolisci_contacts_guarantor' => 'DOLISCI_TAG_CONTACT_GUARANTOR',
                 'dolisci_contacts_syndic'    => 'DOLISCI_TAG_CONTACT_SYNDIC',
                 'dolisci_contacts_notary'    => 'DOLISCI_TAG_CONTACT_NOTARY',
