@@ -64,6 +64,58 @@ class ActionsDoliSci extends CommonHookActions
     }
 
     /**
+     * Check whether the current Product card is a Property Product (type = 0) viewed/created/edited within DoliSCI context
+     *
+     * @param  CommonObject|null $object Current object
+     * @return bool                      True if in DoliSCI Property Product context
+     */
+    protected function isDoliSciPropertyProductContext($object = null): bool
+    {
+        $prodType = GETPOSTISSET('type') ? GETPOSTINT('type') : ($object instanceof Product ? (int) $object->type : -1);
+        if ($prodType !== Product::TYPE_PRODUCT) {
+            return false;
+        }
+        if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos(GETPOST('leftmenu', 'aZ09_'), 'dolisci_') === 0) {
+            return true;
+        }
+        if ($object instanceof Product && !empty($object->id)) {
+            if (empty($object->array_options)) {
+                $object->fetch_optionals();
+            }
+            if (!empty($object->array_options['options_dolisci_fk_project']) || !empty($object->array_options['options_dolisci_property_nature'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Filter extrafields on the Property Product card when in DoliSCI quick creation/edition context:
+     * keep only 'dolisci_fk_project' (Real estate project) visible, make it required, and filter options on DoliSCI projects.
+     *
+     * @return void
+     */
+    protected function filterProductExtrafieldsForDoliSci(): void
+    {
+        global $extrafields;
+
+        if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
+            foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
+                $isDoliSciProjectField = ((string) $efKey === 'dolisci_fk_project');
+                $extrafields->attributes['product']['enabled'][$efKey] = $isDoliSciProjectField ? '1' : '0';
+                $extrafields->attributes['product']['list'][$efKey]    = $isDoliSciProjectField ? '1' : '0';
+            }
+            $extrafields->attributes['product']['required']['dolisci_fk_project'] = 1;
+            $tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+            if ($tagProjectId > 0) {
+                $filter = 'projet:ref|title:rowid::(rowid:IN:SELECT fk_project FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_categorie = ' . $tagProjectId . ')';
+                $extrafields->attributes['product']['type']['dolisci_fk_project']             = 'sellist';
+                $extrafields->attributes['product']['param']['dolisci_fk_project']['options'] = [$filter => null];
+            }
+        }
+    }
+
+    /**
      * Filter extrafields on the Project card when in DoliSCI context:
      * keep only 'dolisci_fk_socpeople' (Property address) visible and hide all other extrafields.
      * (Preserve keys in 'label' array so third-party hooks like ReedCRM do not trigger Undefined array key warnings)
@@ -128,6 +180,17 @@ class ActionsDoliSci extends CommonHookActions
                 $extrafields->attributes['projet']['list']['dolisci_fk_socpeople']    = '0';
             }
         }
+        if (in_array('productcard', $contexts, true) && ($action === 'create' || $action === 'edit') && $this->isDoliSciPropertyProductContext($object)) {
+            $this->filterProductExtrafieldsForDoliSci();
+            $this->resprints = '<tr class="dolisci-simplified-product-form" style="display:none"><td colspan="2">'
+                . '<style>'
+                . 'table:has(.dolisci-simplified-product-form) > tbody > tr:not(:has(input[name="ref"])):not(:has(input[name="label"])):not(:has([name="desc"])):not(:has(input[name="url"])):not(:has([name="options_dolisci_fk_project"])):not(:has(#categories)),'
+                . 'form[name="formprod"]:has(.dolisci-simplified-product-form) tr:has(input[name="price_min"]),'
+                . 'form[name="formprod"]:has(.dolisci-simplified-product-form) table:has([name="accountancy_code_sell"])'
+                . '{ display: none !important; }'
+                . '</style>'
+                . '</td></tr>';
+        }
         return 0;
     }
 
@@ -152,6 +215,9 @@ class ActionsDoliSci extends CommonHookActions
             }
             if ($action === 'create' && GETPOSTISSET('options_dolisci_service_nature')) {
                 $object->array_options['options_dolisci_service_nature'] = GETPOST('options_dolisci_service_nature', 'alphanohtml');
+            }
+            if (($action === 'create' || $action === 'edit') && $this->isDoliSciPropertyProductContext($object)) {
+                $this->filterProductExtrafieldsForDoliSci();
             }
         }
         if (in_array('projectcard', $contexts, true) && $object instanceof Project) {
@@ -331,21 +397,26 @@ class ActionsDoliSci extends CommonHookActions
             }
         }
 
-        // 4. Pre-select DoliSCI tag on Product / Service creation form when in DoliSCI context
-        if (in_array('productcard', $contexts, true) && $action === 'create' && !GETPOSTISARRAY('categories')) {
-            if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos($leftmenu, 'dolisci_') === 0) {
-                $prodType = GETPOSTINT('type');
-                if ($prodType === Product::TYPE_PRODUCT) {
-                    $tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
-                    if ($tagProductId > 0) {
-                        $_POST['categories'] = [$tagProductId];
-                    }
-                } elseif ($prodType === Product::TYPE_SERVICE) {
-                    $servNature = GETPOST('options_dolisci_service_nature', 'alphanohtml');
-                    if ($servNature === 'LOYER' && getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT') > 0) {
-                        $_POST['categories'] = [getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT')];
-                    } elseif ($servNature === 'CHARGES' && getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES') > 0) {
-                        $_POST['categories'] = [getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES')];
+        // 4. Pre-select DoliSCI tag and enforce required Project on Product / Service creation form when in DoliSCI context
+        if (in_array('productcard', $contexts, true)) {
+            if (in_array($action, ['create', 'add', 'edit', 'update'], true) && $this->isDoliSciPropertyProductContext($object)) {
+                $this->filterProductExtrafieldsForDoliSci();
+            }
+            if ($action === 'create' && !GETPOSTISARRAY('categories')) {
+                if (GETPOST('mainmenu', 'aZ09') === 'dolisci' || ($_SESSION['mainmenu'] ?? '') === 'dolisci' || strpos($leftmenu, 'dolisci_') === 0) {
+                    $prodType = GETPOSTINT('type');
+                    if ($prodType === Product::TYPE_PRODUCT) {
+                        $tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
+                        if ($tagProductId > 0) {
+                            $_POST['categories'] = [$tagProductId];
+                        }
+                    } elseif ($prodType === Product::TYPE_SERVICE) {
+                        $servNature = GETPOST('options_dolisci_service_nature', 'alphanohtml');
+                        if ($servNature === 'LOYER' && getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT') > 0) {
+                            $_POST['categories'] = [getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT')];
+                        } elseif ($servNature === 'CHARGES' && getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES') > 0) {
+                            $_POST['categories'] = [getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES')];
+                        }
                     }
                 }
             }

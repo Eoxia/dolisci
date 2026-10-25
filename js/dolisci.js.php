@@ -136,6 +136,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // 3b. Simplified Property Product card in DoliSCI: place "Projet immobilier rattaché" right after "Libellé"
+    var simplifiedProductForm = document.querySelector('.dolisci-simplified-product-form');
+    if (simplifiedProductForm) {
+        var labelInput = document.querySelector('input[name="label"]');
+        var projField = document.querySelector('[name="options_dolisci_fk_project"]');
+        if (labelInput && projField) {
+            var labelRow = labelInput.closest('tr');
+            var projRow = projField.closest('tr');
+            if (labelRow && projRow && labelRow.parentNode === projRow.parentNode) {
+                labelRow.parentNode.insertBefore(projRow, labelRow.nextSibling);
+            }
+        }
+    }
+
     // 4. Replace fa-tag with DoliSCI menu icons (fa-city, fa-key, fa-file-invoice-dollar) in category <option data-html>
     var tagColorIconMap = {
         '#0284c7': 'fa-city',
