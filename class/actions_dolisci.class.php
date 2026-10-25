@@ -639,14 +639,14 @@ class ActionsDoliSci extends CommonHookActions
 
             $servicesToCreate = [
                 [
-                    'ref'      => 'SERV_LOYER_' . $object->ref,
+                    'ref'      => 'Loyer_' . $object->ref,
                     'label'    => $langs->transnoentities('DoliSciRentServiceLabel', $object->label),
                     'nature'   => 'LOYER',
                     'account'  => '706100',
                     'tagConst' => 'DOLISCI_TAG_SERVICE_RENT',
                 ],
                 [
-                    'ref'      => 'SERV_PROV_CHARGES_' . $object->ref,
+                    'ref'      => 'Charge_' . $object->ref,
                     'label'    => $langs->transnoentities('DoliSciChargesServiceLabel', $object->label),
                     'nature'   => 'CHARGES',
                     'account'  => '708800',
