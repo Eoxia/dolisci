@@ -554,18 +554,26 @@ function dolisciGetTagDefinitions(): array
  */
 function dolisciAssignTag(DoliDB $db, CommonObject $object, string $constName, string $categType): int
 {
-    $tagId = getDolGlobalInt($constName);
-    if ($tagId <= 0 || empty($object->id)) {
-        return 0;
-    }
+	$tagId = getDolGlobalInt($constName);
+	if ($tagId <= 0 || empty($object->id)) {
+		return 0;
+	}
 
-    require_once DOL_DOCUMENT_ROOT . '/categories/class/categorie.class.php';
-    $cat = new Categorie($db);
-    if ($cat->fetch($tagId) > 0) {
-        return $cat->add_type($object, $categType) >= 0 ? 1 : -1;
-    }
+	// When cloning an object with "clone_categories" enabled, Dolibarr's CommonObject::cloneCategories()
+	// executes a raw INSERT INTO llx_categorie_* SELECT ... right after create($user) without ignoring
+	// existing rows. Skip inserting the tag during createfromclone so cloneCategories() does not fail
+	// with a PRIMARY KEY duplicate error.
+	if (!empty($object->context['createfromclone']) && GETPOST('clone_categories', 'alphanohtml')) {
+		return 0;
+	}
 
-    return 0;
+	require_once DOL_DOCUMENT_ROOT . '/categories/class/categorie.class.php';
+	$cat = new Categorie($db);
+	if ($cat->fetch($tagId) > 0) {
+		return $cat->add_type($object, $categType) >= 0 ? 1 : -1;
+	}
+
+	return 0;
 }
 
 /**
