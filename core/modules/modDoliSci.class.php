@@ -221,22 +221,6 @@ class modDoliSci extends DolibarrModules
 		$this->menu[$r++] = [
 			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_thirdparties',
 			'type'     => 'left',
-			'titre'    => 'DoliSciMenuListContactAddresses',
-			'prefix'   => '<i class="fas fa-map-marker-alt pictofixedwidth"></i>',
-			'mainmenu' => 'dolisci',
-			'leftmenu' => 'dolisci_contacts_address',
-			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_address&dolisci_contact_tag=DOLISCI_TAG_CONTACT_ADDRESS',
-			'langs'    => 'dolisci@dolisci',
-			'position' => 1000 + $r,
-			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
-			'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
-			'target'   => '',
-			'user'     => 0,
-		];
-
-		$this->menu[$r++] = [
-			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_thirdparties',
-			'type'     => 'left',
 			'titre'    => 'DoliSciMenuListContactTenants',
 			'prefix'   => '<i class="fas fa-user pictofixedwidth"></i>',
 			'mainmenu' => 'dolisci',
@@ -396,6 +380,22 @@ class modDoliSci extends DolibarrModules
 			'user'     => 0,
 		];
 
+		$this->menu[$r++] = [
+			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_products',
+			'type'     => 'left',
+			'titre'    => 'DoliSciMenuListContactAddresses',
+			'prefix'   => '<i class="fas fa-map-marker-alt pictofixedwidth"></i>',
+			'mainmenu' => 'dolisci',
+			'leftmenu' => 'dolisci_contacts_address',
+			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_address&dolisci_contact_tag=DOLISCI_TAG_CONTACT_ADDRESS',
+			'langs'    => 'dolisci@dolisci',
+			'position' => 1000 + $r,
+			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+			'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+			'target'   => '',
+			'user'     => 0,
+		];
+
 		// 5. Services type loyer / charges (Rental Services)
 		$this->menu[$r++] = [
 			'fk_menu'  => 'fk_mainmenu=dolisci',
@@ -409,6 +409,22 @@ class modDoliSci extends DolibarrModules
 			'position' => 1000 + $r,
 			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'service\')',
 			'perms'    => '$user->hasRight(\'service\', \'lire\')',
+			'target'   => '',
+			'user'     => 0,
+		];
+
+		$this->menu[$r++] = [
+			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_services',
+			'type'     => 'left',
+			'titre'    => 'DoliSciMenuNewLeaseService',
+			'prefix'   => '<i class="fas fa-plus-circle pictofixedwidth"></i>',
+			'mainmenu' => 'dolisci',
+			'leftmenu' => 'dolisci_services_new_lease',
+			'url'      => '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=BAIL',
+			'langs'    => 'dolisci@dolisci',
+			'position' => 1000 + $r,
+			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'service\')',
+			'perms'    => '$user->hasRight(\'service\', \'creer\')',
 			'target'   => '',
 			'user'     => 0,
 		];
@@ -453,6 +469,22 @@ class modDoliSci extends DolibarrModules
 			'mainmenu' => 'dolisci',
 			'leftmenu' => 'dolisci_services_new_deposit',
 			'url'      => '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=DEPOT_GARANTIE&accountancy_code_sell=165000',
+			'langs'    => 'dolisci@dolisci',
+			'position' => 1000 + $r,
+			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'service\')',
+			'perms'    => '$user->hasRight(\'service\', \'creer\')',
+			'target'   => '',
+			'user'     => 0,
+		];
+
+		$this->menu[$r++] = [
+			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_services',
+			'type'     => 'left',
+			'titre'    => 'DoliSciMenuNewGuaranteeService',
+			'prefix'   => '<i class="fas fa-plus-circle pictofixedwidth"></i>',
+			'mainmenu' => 'dolisci',
+			'leftmenu' => 'dolisci_services_new_guarantee',
+			'url'      => '/product/card.php?mainmenu=dolisci&leftmenu=dolisci_services&action=create&type=1&options_dolisci_service_nature=ACTE_CAUTIONNEMENT',
 			'langs'    => 'dolisci@dolisci',
 			'position' => 1000 + $r,
 			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'service\')',
@@ -520,6 +552,9 @@ class modDoliSci extends DolibarrModules
 			dolisciSyncItem($this->db, $itemKey);
 		}
 		foreach (array_keys(dolisciGetContactRoleDefinitions()) as $itemKey) {
+			dolisciSyncItem($this->db, $itemKey);
+		}
+		foreach (array_keys(dolisciGetDefaultServiceDefinitions()) as $itemKey) {
 			dolisciSyncItem($this->db, $itemKey);
 		}
 

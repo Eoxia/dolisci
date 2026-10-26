@@ -723,6 +723,68 @@ class ActionsDoliSci extends CommonHookActions
 			print '<tr><td>' . $langs->trans('PublicUrl') . '</td><td>' . dol_print_url($object->url, '_blank', 128) . '</td></tr>';
 		}
 
+		// Default Rental Services (Bail, Loyer, Charge, Dépôt de garantie, Caution) on a Property Product
+		if ((int) $object->type === Product::TYPE_PRODUCT) {
+			$defaultSpecs = dolisciEnsurePropertyDefaultServices($this->db, $object);
+			$pictoPath    = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+			$picto        = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
+			$canEditProd  = $user->hasRight('produit', 'creer');
+			$editingField = ($action === 'edit_dolisci_default_service') ? GETPOST('dolisci_default_field', 'aZ09') : '';
+
+			foreach ($defaultSpecs as $spec) {
+				$fieldKey  = (string) $spec['field'];
+				$labelKey  = (string) $spec['labelKey'];
+				$natureKey = (string) $spec['natureKey'];
+				$selObj    = $spec['selectedObj'];
+				$cands     = $spec['candidates'];
+
+				print '<tr><td class="titlefield">';
+				print '<table class="nobordernopadding centpercent"><tr><td class="nowrap">';
+				print $picto . dolPrintHTML($langs->trans($labelKey));
+				print '</td>';
+				if ($canEditProd && $editingField !== $fieldKey) {
+					$editUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=edit_dolisci_default_service&dolisci_default_field=' . urlencode($fieldKey) . '&token=' . newToken();
+					print '<td class="right"><a class="editfielda" href="' . $editUrl . '">' . img_edit($langs->trans('Modify'), 1) . '</a></td>';
+				}
+				print '</tr></table>';
+				print '</td><td>';
+
+				if ($canEditProd && $editingField === $fieldKey) {
+					print '<form method="post" action="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '">';
+					print '<input type="hidden" name="token" value="' . newToken() . '">';
+					print '<input type="hidden" name="action" value="set_dolisci_default_service">';
+					print '<input type="hidden" name="dolisci_default_field" value="' . dolPrintHTMLForAttribute($fieldKey) . '">';
+					print '<select name="dolisci_default_service_id" class="flat minwidth250 maxwidth400">';
+					print '<option value="0">&mdash; ' . dolPrintHTML($langs->trans('None')) . ' &mdash;</option>';
+					foreach ($cands as $candObj) {
+						$cid      = (int) $candObj->rowid;
+						$selected = ($cid === (int) $spec['selectedId']) ? ' selected' : '';
+						$optText  = $candObj->ref . ' - ' . $candObj->label . ((float) $candObj->price > 0 ? ' (' . price2num($candObj->price) . ' HT)' : '');
+						print '<option value="' . $cid . '"' . $selected . '>' . dolPrintHTML($optText) . '</option>';
+					}
+					print '</select> ';
+					print '<input type="submit" class="button button-save smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '"> ';
+					print '<a class="button button-cancel smallpaddingimp" href="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '">' . dolPrintHTML($langs->trans('Cancel')) . '</a>';
+					print '</form>';
+				} elseif ($selObj instanceof stdClass) {
+					$serv             = new Product($this->db);
+					$serv->id         = (int) $selObj->rowid;
+					$serv->ref        = (string) $selObj->ref;
+					$serv->label      = (string) $selObj->label;
+					$serv->type       = (int) $selObj->fk_product_type;
+					$serv->entity     = (int) $selObj->entity;
+					$serv->status     = (int) $selObj->tosell;
+					$serv->status_buy = (int) $selObj->tobuy;
+					$priceSuffix      = (float) $selObj->price > 0 ? ' <span class="opacitymedium">(' . price($selObj->price, 1, $langs, 1, -1, -1, 'auto') . ' HT)</span>' : '';
+					print dolisciGetObjectNomUrl($serv, $natureKey) . ' - ' . dolPrintHTML($serv->label) . $priceSuffix;
+				} else {
+					print '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
+				}
+
+				print '</td></tr>';
+			}
+		}
+
 		print '</table>';
 		print '</div>';
 
@@ -836,7 +898,7 @@ class ActionsDoliSci extends CommonHookActions
 			$leftmenu = GETPOST('leftmenu', 'alphanohtml');
 			if (strpos($leftmenu, 'dolisci_products') === 0 && getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY') <= 0) {
 				$this->resprints = " AND (ef.dolisci_fk_project > 0 OR (ef.dolisci_property_nature IS NOT NULL AND ef.dolisci_property_nature <> ''))";
-			} elseif (strpos($leftmenu, 'dolisci_services') === 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT') <= 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES') <= 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT') <= 0) {
+			} elseif (strpos($leftmenu, 'dolisci_services') === 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT') <= 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES') <= 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT') <= 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_LEASE') <= 0 && getDolGlobalInt('DOLISCI_TAG_SERVICE_GUARANTEE') <= 0) {
 				$this->resprints = " AND (ef.dolisci_service_fk_project > 0 OR ef.dolisci_fk_property_product > 0 OR (ef.dolisci_service_nature IS NOT NULL AND ef.dolisci_service_nature <> ''))";
 			}
 		}
@@ -904,8 +966,8 @@ class ActionsDoliSci extends CommonHookActions
 					$childServices = dolisciGetServiceChildServices($this->db, $targetObj, $propProduct);
 					$badgeCount    = count($childServices);
 				} else {
-					$rentalData = $propProduct ? dolisciGetPropertyRentalServices($this->db, $propProduct) : ['count' => 0, 'rentCount' => 0];
-					$badgeCount = (int) ($rentalData['rentCount'] ?? 0);
+					$rentalData = $propProduct ? dolisciGetPropertyRentalServices($this->db, $propProduct) : ['count' => 0, 'groupCount' => 0, 'rentCount' => 0];
+					$badgeCount = (int) ($rentalData['groupCount'] ?? ($rentalData['rentCount'] ?? 0));
 				}
 				$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
 				$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
@@ -1041,15 +1103,151 @@ class ActionsDoliSci extends CommonHookActions
 
 		// 3. Contact card in view mode (within DoliSCI simplified environment)
 		if (in_array('contactcard', $contexts, true) && $object instanceof Contact && $this->isDoliSciContactContext($object)) {
+			$contactScript = $this->buildContactLinkedPropertiesScript($object);
 			$this->resprints = '<div class="dolisci-simplified-contact-view" style="display:none"></div>'
 				. '<style>'
-				. '.arearef:has(.dolisci-simplified-contact-view) ~ .fichecenter .fichehalfleft,'
-				. '.arearef:has(.dolisci-simplified-contact-view) ~ .fichecenter .fichehalfright table.tableforfield tr:not(:first-child)'
+				. '.arearef:has(.dolisci-simplified-contact-view) ~ .fichecenter:first-of-type .fichehalfleft table.tableforfield tr:not(.dolisci-contact-linked-row),'
+				. '.arearef:has(.dolisci-simplified-contact-view) ~ .fichecenter:first-of-type .fichehalfright table.tableforfield tr:not(:first-child)'
 				. '{ display: none !important; }'
-				. '</style>';
+				. '</style>'
+				. $contactScript;
 		}
 
 		return 0;
+	}
+
+	/**
+	 * Build the JS/HTML snippet to populate the left column of the Contact card in view mode
+	 * with the Real Estate Projects and Property Products linked to this Contact / Address.
+	 *
+	 * @param  Contact $contact Contact instance
+	 * @return string           Script tag injecting the linked Projects & Properties
+	 */
+	protected function buildContactLinkedPropertiesScript(Contact $contact): string
+	{
+		global $langs;
+
+		$contactId = (int) $contact->id;
+		if ($contactId <= 0) {
+			return '';
+		}
+
+		require_once DOL_DOCUMENT_ROOT . '/projet/class/project.class.php';
+		require_once DOL_DOCUMENT_ROOT . '/product/class/product.class.php';
+		require_once __DIR__ . '/../lib/dolisci.lib.php';
+
+		$langs->loadLangs(['projects', 'products', 'dolisci@dolisci']);
+		$socId = (int) $contact->socid;
+
+		$sqlProj = 'SELECT DISTINCT p.rowid, p.ref, p.title, p.fk_statut'
+			. ' FROM ' . MAIN_DB_PREFIX . 'projet AS p'
+			. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'projet_extrafields AS pef ON pef.fk_object = p.rowid'
+			. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'element_contact AS ec ON ec.element_id = p.rowid'
+			. " LEFT JOIN " . MAIN_DB_PREFIX . "c_type_contact AS tc ON tc.rowid = ec.fk_c_type_contact AND tc.element = 'project' AND tc.source = 'external'"
+			. ' WHERE p.entity IN (' . getEntity('project') . ')'
+			. ' AND (pef.dolisci_fk_socpeople = ' . $contactId
+			. ' OR (ec.fk_socpeople = ' . $contactId . ' AND tc.rowid IS NOT NULL)'
+			. ($socId > 0 ? ' OR p.fk_soc = ' . $socId : '')
+			. ')'
+			. ' ORDER BY p.ref ASC LIMIT 50';
+
+		$projects     = [];
+		$projectLinks = [];
+		$resProj      = $this->db->query($sqlProj);
+		if ($resProj) {
+			while ($objP = $this->db->fetch_object($resProj)) {
+				$proj         = new Project($this->db);
+				$proj->id     = (int) $objP->rowid;
+				$proj->ref    = (string) $objP->ref;
+				$proj->title  = (string) $objP->title;
+				$proj->statut = (int) $objP->fk_statut;
+				$projects[(int) $objP->rowid] = $proj;
+				$projectLinks[] = dolisciGetObjectNomUrl($proj) . ($proj->title !== '' ? ' - ' . dolPrintHTML($proj->title) : '');
+			}
+		}
+
+		$properties   = [];
+		$propLinks    = [];
+		if (!empty($projects)) {
+			$inProjectIds = implode(',', array_map('intval', array_keys($projects)));
+			$sqlProp = 'SELECT pr.rowid, pr.ref, pr.label, pr.fk_product_type, pr.entity, pr.tosell, pr.tobuy, pr.surface, pr.price, ef.dolisci_fk_project'
+				. ' FROM ' . MAIN_DB_PREFIX . 'product AS pr'
+				. ' INNER JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = pr.rowid'
+				. ' WHERE pr.entity IN (' . getEntity('product') . ')'
+				. ' AND pr.fk_product_type = 0'
+				. ' AND ef.dolisci_fk_project IN (' . $inProjectIds . ')'
+				. ' ORDER BY pr.ref ASC LIMIT 50';
+			$resProp = $this->db->query($sqlProp);
+			if ($resProp) {
+				while ($objPr = $this->db->fetch_object($resProp)) {
+					$prod             = new Product($this->db);
+					$prod->id         = (int) $objPr->rowid;
+					$prod->ref        = (string) $objPr->ref;
+					$prod->label      = (string) $objPr->label;
+					$prod->type       = (int) $objPr->fk_product_type;
+					$prod->entity     = (int) $objPr->entity;
+					$prod->status     = (int) $objPr->tosell;
+					$prod->status_buy = (int) $objPr->tobuy;
+					$properties[]     = [
+						'product'    => $prod,
+						'fk_project' => (int) $objPr->dolisci_fk_project,
+						'surface'    => (float) $objPr->surface,
+						'price'      => (float) $objPr->price,
+					];
+					$propLinks[] = dolisciGetObjectNomUrl($prod) . ($prod->label !== '' ? ' - ' . dolPrintHTML($prod->label) : '');
+				}
+			}
+		}
+
+		$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+		$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
+
+		$noneHtml  = '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
+		$topRowsHtml = '<tr class="dolisci-contact-linked-row"><td class="titlefield">' . $picto . dolPrintHTML($langs->trans('DoliSciPropertyProject')) . '</td><td>' . (!empty($projectLinks) ? implode('<br>', $projectLinks) : $noneHtml) . '</td></tr>'
+			. '<tr class="dolisci-contact-linked-row"><td>' . $picto . dolPrintHTML($langs->trans('DoliSciMenuProducts')) . '</td><td>' . (!empty($propLinks) ? implode('<br>', $propLinks) : $noneHtml) . '</td></tr>';
+
+		$bottomBoxHtml = load_fiche_titre($langs->trans('DoliSciContactLinkedPropertiesTitle'), '', 'fa-key')
+			. '<div class="div-table-responsive-no-min"><table class="noborder centpercent">'
+			. '<tr class="liste_titre">'
+			. '<td>' . dolPrintHTML($langs->trans('DoliSciMenuProjects')) . '</td>'
+			. '<td>' . dolPrintHTML($langs->trans('DoliSciMenuProducts')) . '</td>'
+			. '<td class="right">' . dolPrintHTML($langs->trans('Surface')) . '</td>'
+			. '<td class="right">' . dolPrintHTML($langs->trans('SellingPriceHT')) . '</td>'
+			. '</tr>';
+
+		if (!empty($properties)) {
+			foreach ($properties as $item) {
+				$prod    = $item['product'];
+				$projObj = $projects[$item['fk_project']] ?? null;
+				$projCell = $projObj ? (dolisciGetObjectNomUrl($projObj) . ' - ' . dolPrintHTML($projObj->title)) : '-';
+				$prodCell = dolisciGetObjectNomUrl($prod) . ' - ' . dolPrintHTML($prod->label);
+				$surfCell = $item['surface'] > 0 ? price($item['surface']) . ' m²' : '-';
+				$pricCell = $item['price'] > 0 ? price($item['price'], 1, $langs, 1, -1, -1, 'auto') : '-';
+				$bottomBoxHtml .= '<tr class="oddeven">'
+					. '<td class="nowraponall">' . $projCell . '</td>'
+					. '<td class="nowraponall">' . $prodCell . '</td>'
+					. '<td class="right nowraponall">' . $surfCell . '</td>'
+					. '<td class="right nowraponall">' . $pricCell . '</td>'
+					. '</tr>';
+			}
+		} elseif (!empty($projects)) {
+			foreach ($projects as $projObj) {
+				$projCell = dolisciGetObjectNomUrl($projObj) . ' - ' . dolPrintHTML($projObj->title);
+				$bottomBoxHtml .= '<tr class="oddeven">'
+					. '<td class="nowraponall">' . $projCell . '</td>'
+					. '<td colspan="3" class="opacitymedium">' . dolPrintHTML($langs->trans('DoliSciNoPropertyLinked')) . '</td>'
+					. '</tr>';
+			}
+		} else {
+			$bottomBoxHtml .= '<tr class="oddeven"><td colspan="4" class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</td></tr>';
+		}
+		$bottomBoxHtml .= '</table></div>';
+
+		return '<script>document.addEventListener("DOMContentLoaded",function(){'
+			. 'var centers=document.querySelectorAll(".fichecenter");'
+			. 'if(centers.length>0){var topTbl=centers[0].querySelector(".fichehalfleft table.tableforfield tbody")||centers[0].querySelector(".fichehalfleft table.tableforfield");if(topTbl){topTbl.insertAdjacentHTML("beforeend",' . json_encode($topRowsHtml) . ');}}'
+			. 'if(centers.length>1){var botLeft=centers[1].querySelector(".fichehalfleft");if(botLeft){botLeft.innerHTML=' . json_encode($bottomBoxHtml) . ';}}'
+			. '});</script>';
 	}
 
 	/**
@@ -1143,11 +1341,13 @@ class ActionsDoliSci extends CommonHookActions
 					$searchCategoryProductList = [$tagProductId];
 				}
 			} elseif ($contextpage === 'dolisciservicelist' || strpos($leftmenu, 'dolisci_services') === 0) {
-				$contextpage  = 'dolisciservicelist';
-				$tagRentId    = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
-				$tagChargesId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_CHARGES');
-				$tagDepositId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
-				$serviceTags  = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId]));
+				$contextpage    = 'dolisciservicelist';
+				$tagRentId      = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
+				$tagChargesId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_CHARGES');
+				$tagDepositId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
+				$tagLeaseId     = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_LEASE');
+				$tagGuaranteeId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_GUARANTEE');
+				$serviceTags    = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId, $tagLeaseId, $tagGuaranteeId]));
 				if (!empty($serviceTags) && empty($searchCategoryProductList)) {
 					$searchCategoryProductList     = $serviceTags;
 					$searchCategoryProductOperator = 1;
@@ -1252,7 +1452,12 @@ class ActionsDoliSci extends CommonHookActions
 						}
 					} elseif ($prodType === Product::TYPE_SERVICE) {
 						$servNature = GETPOST('options_dolisci_service_nature', 'alphanohtml');
-						if ($servNature === 'LOYER') {
+						if ($servNature === 'BAIL') {
+							$tagLeaseId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_LEASE');
+							if ($tagLeaseId > 0) {
+								$_POST['categories'] = [$tagLeaseId];
+							}
+						} elseif ($servNature === 'LOYER') {
 							$tagRentId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
 							if ($tagRentId > 0) {
 								$_POST['categories'] = [$tagRentId];
@@ -1262,10 +1467,19 @@ class ActionsDoliSci extends CommonHookActions
 							if ($tagChargesId > 0) {
 								$_POST['categories'] = [$tagChargesId];
 							}
-						} elseif ($servNature === 'DEPOT_GARANTIE' || $servNature === 'CAUTION') {
+						} elseif ($servNature === 'DEPOT_GARANTIE') {
 							$tagDepositId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
 							if ($tagDepositId > 0) {
 								$_POST['categories'] = [$tagDepositId];
+							}
+						} elseif ($servNature === 'ACTE_CAUTIONNEMENT' || $servNature === 'CAUTION') {
+							$tagGuaranteeId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_GUARANTEE');
+							if ($tagGuaranteeId > 0) {
+								$_POST['categories'] = [$tagGuaranteeId];
+							}
+							if (!GETPOSTISSET('desc')) {
+								$langs->load('dolisci@dolisci');
+								$_POST['desc'] = dolisciGetGuaranteeActDefaultDescription($langs);
 							}
 						}
 					}
@@ -1298,52 +1512,100 @@ class ActionsDoliSci extends CommonHookActions
 			$projectId    = (int) ($propProduct->array_options['options_dolisci_fk_project'] ?? ($object->array_options['options_dolisci_service_fk_project'] ?? 0));
 			$createdLinks = [];
 
-			$isOnService   = ((int) $object->type === Product::TYPE_SERVICE);
-			$targetGrpIdx  = $isOnService ? dolisciGetServiceGroupIndexFromRef((string) $object->ref) : 1;
-			$rentRef       = trim(GETPOST('dolisci_rent_ref', 'alphanohtml')) ?: ('Loyer-' . $targetGrpIdx . '_' . $propProduct->ref);
-			$rentAmount    = (float) price2num(GETPOST('dolisci_rent_amount', 'alphanohtml'));
-			$rentVatRaw    = (string) GETPOST('dolisci_rent_tva', 'alphanohtml');
-			$rentVat       = $rentVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $rentVatRaw)) : 0.0;
-			$chargesRef    = trim(GETPOST('dolisci_charges_ref', 'alphanohtml')) ?: ('Charge-' . $targetGrpIdx . '_' . $propProduct->ref);
-			$chargesAmount = (float) price2num(GETPOST('dolisci_charges_amount', 'alphanohtml'));
-			$chargesVatRaw = (string) GETPOST('dolisci_charges_tva', 'alphanohtml');
-			$chargesVat    = $chargesVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $chargesVatRaw)) : 0.0;
-			$depositRef    = trim(GETPOST('dolisci_deposit_ref', 'alphanohtml')) ?: ('Caution-' . $targetGrpIdx . '_' . $propProduct->ref);
-			$depositAmount = (float) price2num(GETPOST('dolisci_deposit_amount', 'alphanohtml'));
-			$depositVatRaw = (string) GETPOST('dolisci_deposit_tva', 'alphanohtml');
-			$depositVat    = $depositVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $depositVatRaw)) : 0.0;
+			$isOnService     = ((int) $object->type === Product::TYPE_SERVICE);
+			$targetGrpIdx    = $isOnService ? dolisciGetServiceGroupIndexFromRef((string) $object->ref) : 1;
+			$leaseRef        = trim(GETPOST('dolisci_lease_ref', 'alphanohtml')) ?: ('Bail-' . $targetGrpIdx . '_' . $propProduct->ref);
+			$leaseAmount     = (float) price2num(GETPOST('dolisci_lease_amount', 'alphanohtml'));
+			$leaseVatRaw     = (string) GETPOST('dolisci_lease_tva', 'alphanohtml');
+			$leaseVat        = $leaseVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $leaseVatRaw)) : 0.0;
+			$rentRef         = trim(GETPOST('dolisci_rent_ref', 'alphanohtml')) ?: ('Loyer-' . $targetGrpIdx . '_' . $propProduct->ref);
+			$rentAmount      = (float) price2num(GETPOST('dolisci_rent_amount', 'alphanohtml'));
+			$rentVatRaw      = (string) GETPOST('dolisci_rent_tva', 'alphanohtml');
+			$rentVat         = $rentVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $rentVatRaw)) : 0.0;
+			$chargesRef      = trim(GETPOST('dolisci_charges_ref', 'alphanohtml')) ?: ('Charge-' . $targetGrpIdx . '_' . $propProduct->ref);
+			$chargesAmount   = (float) price2num(GETPOST('dolisci_charges_amount', 'alphanohtml'));
+			$chargesVatRaw   = (string) GETPOST('dolisci_charges_tva', 'alphanohtml');
+			$chargesVat      = $chargesVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $chargesVatRaw)) : 0.0;
+			$depositRef      = trim(GETPOST('dolisci_deposit_ref', 'alphanohtml')) ?: ('Depot-' . $targetGrpIdx . '_' . $propProduct->ref);
+			$depositAmount   = (float) price2num(GETPOST('dolisci_deposit_amount', 'alphanohtml'));
+			$depositVatRaw   = (string) GETPOST('dolisci_deposit_tva', 'alphanohtml');
+			$depositVat      = $depositVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $depositVatRaw)) : 0.0;
+			$guaranteeRef    = trim(GETPOST('dolisci_guarantee_ref', 'alphanohtml')) ?: ('Caution-' . $targetGrpIdx . '_' . $propProduct->ref);
+			$guaranteeAmount = (float) price2num(GETPOST('dolisci_guarantee_amount', 'alphanohtml'));
+			$guaranteeVatRaw = (string) GETPOST('dolisci_guarantee_tva', 'alphanohtml');
+			$guaranteeVat    = $guaranteeVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $guaranteeVatRaw)) : 0.0;
 
 			$servicesToCreate = [];
 			if (!$isOnService) {
+				$leaseLabelStr = $langs->transnoentities('DoliSciLeaseServiceLabel', $propProduct->label);
+				$leaseTypeVal  = '';
+				$defLeaseId    = (int) ($propProduct->array_options['options_dolisci_fk_default_lease'] ?? 0);
+				if ($defLeaseId > 0) {
+					$defLeaseServ = new Product($this->db);
+					if ($defLeaseServ->fetch($defLeaseId) > 0) {
+						$defLeaseServ->fetch_optionals();
+						$leaseTypeVal = (string) ($defLeaseServ->array_options['options_dolisci_lease_type'] ?? '');
+						$baseLbl      = trim(preg_replace('/\s*-\s*' . preg_quote((string) $propProduct->label, '/') . '$/i', '', (string) $defLeaseServ->label));
+						if ($baseLbl !== '') {
+							$leaseLabelStr = $baseLbl . ' - ' . $propProduct->label;
+						}
+					}
+				}
 				$servicesToCreate[] = [
-					'ref'      => $rentRef,
-					'label'    => $langs->transnoentities('DoliSciRentServiceLabel', $propProduct->label),
-					'nature'   => 'LOYER',
-					'account'  => '706100',
-					'tagConst' => 'DOLISCI_TAG_SERVICE_RENT',
-					'amount'   => $rentAmount,
-					'tva_tx'   => $rentVat,
+					'ref'          => $leaseRef,
+					'label'        => $leaseLabelStr,
+					'nature'       => 'BAIL',
+					'leaseType'    => $leaseTypeVal,
+					'defaultField' => 'dolisci_fk_default_lease',
+					'account'      => '',
+					'tagConst'     => 'DOLISCI_TAG_SERVICE_LEASE',
+					'amount'       => $leaseAmount,
+					'tva_tx'       => $leaseVat,
 				];
 			}
 			$servicesToCreate[] = [
-				'ref'      => $chargesRef,
-				'label'    => $langs->transnoentities('DoliSciChargesServiceLabel', $propProduct->label),
-				'nature'   => 'CHARGES',
-				'account'  => '708800',
-				'tagConst' => 'DOLISCI_TAG_SERVICE_CHARGES',
-				'amount'   => $chargesAmount,
-				'tva_tx'   => $chargesVat,
+				'ref'          => $rentRef,
+				'label'        => $langs->transnoentities('DoliSciRentServiceLabel', $propProduct->label),
+				'nature'       => 'LOYER',
+				'defaultField' => 'dolisci_fk_default_rent',
+				'account'      => '706100',
+				'tagConst'     => 'DOLISCI_TAG_SERVICE_RENT',
+				'amount'       => $rentAmount,
+				'tva_tx'       => $rentVat,
 			];
 			$servicesToCreate[] = [
-				'ref'      => $depositRef,
-				'label'    => $langs->transnoentities('DoliSciDepositServiceLabel', $propProduct->label),
-				'nature'   => 'DEPOT_GARANTIE',
-				'account'  => '165000',
-				'tagConst' => 'DOLISCI_TAG_SERVICE_DEPOSIT',
-				'amount'   => $depositAmount,
-				'tva_tx'   => $depositVat,
+				'ref'          => $chargesRef,
+				'label'        => $langs->transnoentities('DoliSciChargesServiceLabel', $propProduct->label),
+				'nature'       => 'CHARGES',
+				'defaultField' => 'dolisci_fk_default_charges',
+				'account'      => '708800',
+				'tagConst'     => 'DOLISCI_TAG_SERVICE_CHARGES',
+				'amount'       => $chargesAmount,
+				'tva_tx'       => $chargesVat,
+			];
+			$servicesToCreate[] = [
+				'ref'          => $depositRef,
+				'label'        => $langs->transnoentities('DoliSciDepositServiceLabel', $propProduct->label),
+				'nature'       => 'DEPOT_GARANTIE',
+				'defaultField' => 'dolisci_fk_default_deposit',
+				'account'      => '165000',
+				'tagConst'     => 'DOLISCI_TAG_SERVICE_DEPOSIT',
+				'amount'       => $depositAmount,
+				'tva_tx'       => $depositVat,
+			];
+			$servicesToCreate[] = [
+				'ref'          => $guaranteeRef,
+				'label'        => $langs->transnoentities('DoliSciGuaranteeServiceLabel', $propProduct->label),
+				'description'  => dolisciGetGuaranteeActDefaultDescription($langs),
+				'nature'       => 'ACTE_CAUTIONNEMENT',
+				'defaultField' => 'dolisci_fk_default_guarantee',
+				'account'      => '',
+				'tagConst'     => 'DOLISCI_TAG_SERVICE_GUARANTEE',
+				'amount'       => $guaranteeAmount,
+				'tva_tx'       => $guaranteeVat,
 			];
 
+			$defaultFieldsUpdated = false;
 			foreach ($servicesToCreate as $spec) {
 				$service  = new Product($this->db);
 				$existing = $service->fetch(0, $spec['ref']);
@@ -1355,14 +1617,24 @@ class ActionsDoliSci extends CommonHookActions
 						$service->array_options['options_dolisci_service_fk_project'] = $projectId;
 					}
 					$service->insertExtraFields();
+					if (!empty($spec['description']) && trim((string) $service->description) === '') {
+						$service->description = (string) $spec['description'];
+						$sqlDesc = "UPDATE " . MAIN_DB_PREFIX . "product SET description = '" . $this->db->escape($service->description) . "' WHERE rowid = " . ((int) $service->id);
+						$this->db->query($sqlDesc);
+					}
 					$service->updatePrice($spec['amount'], 'HT', $user, $spec['tva_tx']);
 					dolisciAssignTag($this->db, $service, $spec['tagConst'], 'product');
+					if (!empty($spec['defaultField'])) {
+						$propProduct->array_options['options_' . $spec['defaultField']] = (int) $service->id;
+						$defaultFieldsUpdated = true;
+					}
 					$createdLinks[] = $service->getNomUrl(1);
 					continue;
 				}
 
 				$service->ref                   = $spec['ref'];
 				$service->label                 = $spec['label'];
+				$service->description           = (string) ($spec['description'] ?? '');
 				$service->type                  = Product::TYPE_SERVICE;
 				$service->status                = 1;
 				$service->status_buy            = 0;
@@ -1375,19 +1647,57 @@ class ActionsDoliSci extends CommonHookActions
 					'options_dolisci_fk_property_product' => (int) $propProduct->id,
 					'options_dolisci_service_fk_project'  => $projectId,
 				];
+				if (!empty($spec['leaseType'])) {
+					$service->array_options['options_dolisci_lease_type'] = (string) $spec['leaseType'];
+				}
 
 				$res = $service->create($user);
 				if ($res > 0) {
 					$service->updatePrice($spec['amount'], 'HT', $user, $spec['tva_tx']);
 					dolisciAssignTag($this->db, $service, $spec['tagConst'], 'product');
+					if (!empty($spec['defaultField'])) {
+						$propProduct->array_options['options_' . $spec['defaultField']] = (int) $service->id;
+						$defaultFieldsUpdated = true;
+					}
 					$createdLinks[] = $service->getNomUrl(1);
 				} else {
 					setEventMessages($service->error, $service->errors, 'errors');
 				}
 			}
 
+			if ($defaultFieldsUpdated) {
+				$propProduct->insertExtraFields();
+				if ((int) $object->id === (int) $propProduct->id) {
+					$object->array_options = $propProduct->array_options;
+				}
+			}
+
 			if (!empty($createdLinks)) {
 				setEventMessages($langs->trans('DoliSciRentalServicesGenerated', implode(', ', $createdLinks)), null);
+			}
+			$action = '';
+		}
+
+		// 4b. Handle inline update of default rental service (Bail, Loyer, Charge, Dépôt de garantie, Caution) on a Property Product
+		if (in_array('productcard', $contexts, true) && $action === 'set_dolisci_default_service' && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
+			if (!$user->hasRight('produit', 'creer')) {
+				accessforbidden();
+			}
+			$allowedDefaultFields = [
+				'dolisci_fk_default_lease',
+				'dolisci_fk_default_rent',
+				'dolisci_fk_default_charges',
+				'dolisci_fk_default_deposit',
+				'dolisci_fk_default_guarantee',
+			];
+			$fieldKey = GETPOST('dolisci_default_field', 'aZ09');
+			$servId   = GETPOSTINT('dolisci_default_service_id');
+			if (in_array($fieldKey, $allowedDefaultFields, true)) {
+				if (empty($object->array_options)) {
+					$object->fetch_optionals();
+				}
+				$object->array_options['options_' . $fieldKey] = $servId > 0 ? $servId : 0;
+				$object->insertExtraFields();
 			}
 			$action = '';
 		}
@@ -1608,8 +1918,8 @@ class ActionsDoliSci extends CommonHookActions
 		}
 
 		// 3. Modal popup:
-		//    - On a Property Product (type = 0): generate Rent + Charges + Deposit services (Loyer-N_<ref>, Charge-N_<ref>, Caution-N_<ref>)
-		//    - On a Rental Service (type = 1): create or attach only the Charges + Deposit services for THIS service's group (Charge-N_<ref>, Caution-N_<ref>)
+		//    - On a Property Product (type = 0): generate Lease + Rent + Charges + Deposit + Guarantee Act services (Bail-N_<ref>, Loyer-N_<ref>, Charge-N_<ref>, Depot-N_<ref>, Caution-N_<ref>)
+		//    - On a Rental Service (type = 1): create or attach the 4 child services for THIS service's group (Loyer-N_<ref>, Charge-N_<ref>, Depot-N_<ref>, Caution-N_<ref>)
 		if ($user->hasRight('service', 'creer')) {
 			$isOnService  = ((int) $object->type === Product::TYPE_SERVICE);
 			$existingRefs = [];
@@ -1617,12 +1927,12 @@ class ActionsDoliSci extends CommonHookActions
 			foreach ($services as $sObj) {
 				$sRef = (string) $sObj->ref;
 				$existingRefs[strtolower($sRef)] = true;
-				if (preg_match('/^(?:Loyer|Charges?|Caution)-([0-9]+)_/i', $sRef, $m)) {
+				if (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Dépôt|Caution)-([0-9]+)_/iu', $sRef, $m)) {
 					$idx = (int) $m[1];
 					if ($idx > $maxIndex) {
 						$maxIndex = $idx;
 					}
-				} elseif (preg_match('/^(?:Loyer|Charges?|Caution)_(.+?)(?:_([0-9]+))?$/i', $sRef, $m)) {
+				} elseif (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Dépôt|Caution)_(.+?)(?:_([0-9]+))?$/iu', $sRef, $m)) {
 					$idx = !empty($m[2]) ? (int) $m[2] : 1;
 					if ($idx > $maxIndex) {
 						$maxIndex = $idx;
@@ -1633,11 +1943,13 @@ class ActionsDoliSci extends CommonHookActions
 			if ($isOnService) {
 				$setIndex = dolisciGetServiceGroupIndexFromRef((string) $object->ref);
 			} else {
-				// Always start at 1 (Loyer-1_<ref>) and increment from the highest existing index (Loyer-2_<ref>, Loyer-3_<ref>, ...)
+				// Always start at 1 (Bail-1_<ref>) and increment from the highest existing index (Bail-2_<ref>, Bail-3_<ref>, ...)
 				$setIndex = $maxIndex + 1;
 				while (
-					isset($existingRefs[strtolower('Loyer-' . $setIndex . '_' . $propProduct->ref)])
+					isset($existingRefs[strtolower('Bail-' . $setIndex . '_' . $propProduct->ref)])
+					|| isset($existingRefs[strtolower('Loyer-' . $setIndex . '_' . $propProduct->ref)])
 					|| isset($existingRefs[strtolower('Charge-' . $setIndex . '_' . $propProduct->ref)])
+					|| isset($existingRefs[strtolower('Depot-' . $setIndex . '_' . $propProduct->ref)])
 					|| isset($existingRefs[strtolower('Caution-' . $setIndex . '_' . $propProduct->ref)])
 				) {
 					$setIndex++;
@@ -1649,22 +1961,33 @@ class ActionsDoliSci extends CommonHookActions
 			$companyDefaultVat = !empty($mysoc->tva_assuj) ? (float) price2num(get_default_tva($mysoc, $mysoc)) : 0.0;
 			$baseVat           = (float) $propProduct->tva_tx > 0 ? (float) $propProduct->tva_tx : $companyDefaultVat;
 
-			$rentRef       = 'Loyer' . $numPrefix . '_' . $propProduct->ref;
-			$chargesRef    = 'Charge' . $numPrefix . '_' . $propProduct->ref;
-			$depositRef    = 'Caution' . $numPrefix . '_' . $propProduct->ref;
-			$rentAmount    = (float) $propProduct->price > 0 ? price2num($propProduct->price) : '0';
-			$rentVat       = $baseVat;
-			$chargesAmount = '0';
-			$chargesVat    = $baseVat;
-			$depositAmount = '0';
-			$depositVat    = $baseVat;
+			$leaseRef        = 'Bail' . $numPrefix . '_' . $propProduct->ref;
+			$rentRef         = 'Loyer' . $numPrefix . '_' . $propProduct->ref;
+			$chargesRef      = 'Charge' . $numPrefix . '_' . $propProduct->ref;
+			$depositRef      = 'Depot' . $numPrefix . '_' . $propProduct->ref;
+			$guaranteeRef    = 'Caution' . $numPrefix . '_' . $propProduct->ref;
+			$leaseAmount     = '0';
+			$leaseVat        = $baseVat;
+			$rentAmount      = (float) $propProduct->price > 0 ? price2num($propProduct->price) : '0';
+			$rentVat         = $baseVat;
+			$chargesAmount   = '0';
+			$chargesVat      = $baseVat;
+			$depositAmount   = '0';
+			$depositVat      = $baseVat;
+			$guaranteeAmount = '0';
+			$guaranteeVat    = $baseVat;
 
-			// If previous rental/charges/deposit services exist for this property, inherit their price & VAT rate
+			// If previous lease/rental/charges/deposit/guarantee services exist for this property, inherit their price & VAT rate
 			foreach ($services as $sObj) {
 				$sNature = (string) ($sObj->dolisci_service_nature ?? '');
 				$sRef    = (string) ($sObj->ref ?? '');
 				$sAcc    = (string) ($sObj->accountancy_code_sell ?? '');
-				if ($sNature === 'LOYER' || stripos($sRef, 'Loyer_') === 0 || stripos($sRef, 'Loyer-') === 0 || $sAcc === '706100') {
+				if ($sNature === 'BAIL' || stripos($sRef, 'Bail_') === 0 || stripos($sRef, 'Bail-') === 0) {
+					if ((float) $sObj->price > 0) {
+						$leaseAmount = price2num($sObj->price);
+					}
+					$leaseVat = (float) $sObj->tva_tx;
+				} elseif ($sNature === 'LOYER' || stripos($sRef, 'Loyer_') === 0 || stripos($sRef, 'Loyer-') === 0 || $sAcc === '706100') {
 					if ((float) $sObj->price > 0) {
 						$rentAmount = price2num($sObj->price);
 					}
@@ -1674,36 +1997,78 @@ class ActionsDoliSci extends CommonHookActions
 						$chargesAmount = price2num($sObj->price);
 					}
 					$chargesVat = (float) $sObj->tva_tx;
-				} elseif ($sNature === 'DEPOT_GARANTIE' || $sNature === 'CAUTION' || stripos($sRef, 'Caution_') === 0 || stripos($sRef, 'Caution-') === 0 || $sAcc === '165000') {
+				} elseif ($sNature === 'DEPOT_GARANTIE' || stripos($sRef, 'Depot_') === 0 || stripos($sRef, 'Depot-') === 0 || $sAcc === '165000') {
 					if ((float) $sObj->price > 0) {
 						$depositAmount = price2num($sObj->price);
 					}
 					$depositVat = (float) $sObj->tva_tx;
+				} elseif ($sNature === 'ACTE_CAUTIONNEMENT' || $sNature === 'CAUTION' || stripos($sRef, 'Caution_') === 0 || stripos($sRef, 'Caution-') === 0) {
+					if ((float) $sObj->price > 0) {
+						$guaranteeAmount = price2num($sObj->price);
+					}
+					$guaranteeVat = (float) $sObj->tva_tx;
 				}
 			}
 
-			// If viewed directly from a specific Rental Service card, prioritize that service's VAT rate and its existing child services
+			// Prioritize the Property Product's selected default services if defined
+			$defaultSpecs = dolisciEnsurePropertyDefaultServices($this->db, $propProduct, $rentalData);
+			if (!empty($defaultSpecs[1]['selectedObj'])) {
+				$leaseAmount = price2num($defaultSpecs[1]['selectedObj']->price);
+				$leaseVat    = (float) $defaultSpecs[1]['selectedObj']->tva_tx;
+			}
+			if (!empty($defaultSpecs[2]['selectedObj'])) {
+				$rentAmount = price2num($defaultSpecs[2]['selectedObj']->price);
+				$rentVat    = (float) $defaultSpecs[2]['selectedObj']->tva_tx;
+			}
+			if (!empty($defaultSpecs[3]['selectedObj'])) {
+				$chargesAmount = price2num($defaultSpecs[3]['selectedObj']->price);
+				$chargesVat    = (float) $defaultSpecs[3]['selectedObj']->tva_tx;
+			}
+			if (!empty($defaultSpecs[4]['selectedObj'])) {
+				$depositAmount = price2num($defaultSpecs[4]['selectedObj']->price);
+				$depositVat    = (float) $defaultSpecs[4]['selectedObj']->tva_tx;
+			}
+			if (!empty($defaultSpecs[5]['selectedObj'])) {
+				$guaranteeAmount = price2num($defaultSpecs[5]['selectedObj']->price);
+				$guaranteeVat    = (float) $defaultSpecs[5]['selectedObj']->tva_tx;
+			}
+
+			// If viewed directly from a specific Rental Service card (e.g. Bail), prioritize that service's VAT rate and its existing child services
 			if ($isOnService) {
-				$objVat     = (float) $object->tva_tx;
-				$rentVat    = $objVat;
-				$chargesVat = $objVat;
-				$depositVat = $objVat;
+				$objVat       = (float) $object->tva_tx;
+				$rentVat      = $objVat;
+				$chargesVat   = $objVat;
+				$depositVat   = $objVat;
+				$guaranteeVat = $objVat;
 
 				$childServices = dolisciGetServiceChildServices($this->db, $object, $propProduct);
 				foreach ($childServices as $cObj) {
-					$cRank = (int) ($cObj->dolisci_nature_rank ?? 4);
+					$cRank = (int) ($cObj->dolisci_nature_rank ?? 6);
 					if ($cRank === 2) {
+						$rentRef    = (string) $cObj->ref;
+						$rentAmount = price2num($cObj->price);
+						$rentVat    = (float) $cObj->tva_tx;
+					} elseif ($cRank === 3) {
 						$chargesRef    = (string) $cObj->ref;
 						$chargesAmount = price2num($cObj->price);
 						$chargesVat    = (float) $cObj->tva_tx;
-					} elseif ($cRank === 3) {
+					} elseif ($cRank === 4) {
 						$depositRef    = (string) $cObj->ref;
 						$depositAmount = price2num($cObj->price);
 						$depositVat    = (float) $cObj->tva_tx;
+					} elseif ($cRank === 5) {
+						$guaranteeRef    = (string) $cObj->ref;
+						$guaranteeAmount = price2num($cObj->price);
+						$guaranteeVat    = (float) $cObj->tva_tx;
 					}
 				}
 			}
 
+			$existingLease = new Product($this->db);
+			if ($existingLease->fetch(0, $leaseRef) > 0) {
+				$leaseAmount = price2num($existingLease->price);
+				$leaseVat    = (float) $existingLease->tva_tx;
+			}
 			$existingRent = new Product($this->db);
 			if ($existingRent->fetch(0, $rentRef) > 0) {
 				$rentAmount = price2num($existingRent->price);
@@ -1719,10 +2084,17 @@ class ActionsDoliSci extends CommonHookActions
 				$depositAmount = price2num($existingDeposit->price);
 				$depositVat    = (float) $existingDeposit->tva_tx;
 			}
+			$existingGuarantee = new Product($this->db);
+			if ($existingGuarantee->fetch(0, $guaranteeRef) > 0) {
+				$guaranteeAmount = price2num($existingGuarantee->price);
+				$guaranteeVat    = (float) $existingGuarantee->tva_tx;
+			}
 
-			$rentVatSelect    = $form->load_tva('dolisci_rent_tva', $rentVat, $mysoc, null, 0, 0, '', false);
-			$chargesVatSelect = $form->load_tva('dolisci_charges_tva', $chargesVat, $mysoc, null, 0, 0, '', false);
-			$depositVatSelect = $form->load_tva('dolisci_deposit_tva', $depositVat, $mysoc, null, 0, 0, '', false);
+			$leaseVatSelect     = $form->load_tva('dolisci_lease_tva', $leaseVat, $mysoc, null, 0, 0, '', false);
+			$rentVatSelect      = $form->load_tva('dolisci_rent_tva', $rentVat, $mysoc, null, 0, 0, '', false);
+			$chargesVatSelect   = $form->load_tva('dolisci_charges_tva', $chargesVat, $mysoc, null, 0, 0, '', false);
+			$depositVatSelect   = $form->load_tva('dolisci_deposit_tva', $depositVat, $mysoc, null, 0, 0, '', false);
+			$guaranteeVatSelect = $form->load_tva('dolisci_guarantee_tva', $guaranteeVat, $mysoc, null, 0, 0, '', false);
 
 			$tableHtml = '<table class="noborder centpercent">'
 				. '<tr class="liste_titre">'
@@ -1732,12 +2104,17 @@ class ActionsDoliSci extends CommonHookActions
 				. '</tr>';
 			if (!$isOnService) {
 				$tableHtml .= '<tr class="oddeven">'
-					. '<td><input type="text" id="dolisci_rent_ref" name="dolisci_rent_ref" class="flat minwidth300" value="' . dolPrintHTMLForAttribute($rentRef) . '"></td>'
-					. '<td class="right nowraponall"><input type="text" id="dolisci_rent_amount" name="dolisci_rent_amount" class="flat width75 right" value="' . dolPrintHTMLForAttribute((string) $rentAmount) . '"></td>'
-					. '<td class="right nowraponall">' . $rentVatSelect . '</td>'
+					. '<td><input type="text" id="dolisci_lease_ref" name="dolisci_lease_ref" class="flat minwidth300" value="' . dolPrintHTMLForAttribute($leaseRef) . '"></td>'
+					. '<td class="right nowraponall"><input type="text" id="dolisci_lease_amount" name="dolisci_lease_amount" class="flat width75 right" value="' . dolPrintHTMLForAttribute((string) $leaseAmount) . '"></td>'
+					. '<td class="right nowraponall">' . $leaseVatSelect . '</td>'
 					. '</tr>';
 			}
 			$tableHtml .= '<tr class="oddeven">'
+				. '<td><input type="text" id="dolisci_rent_ref" name="dolisci_rent_ref" class="flat minwidth300" value="' . dolPrintHTMLForAttribute($rentRef) . '"></td>'
+				. '<td class="right nowraponall"><input type="text" id="dolisci_rent_amount" name="dolisci_rent_amount" class="flat width75 right" value="' . dolPrintHTMLForAttribute((string) $rentAmount) . '"></td>'
+				. '<td class="right nowraponall">' . $rentVatSelect . '</td>'
+				. '</tr>'
+				. '<tr class="oddeven">'
 				. '<td><input type="text" id="dolisci_charges_ref" name="dolisci_charges_ref" class="flat minwidth300" value="' . dolPrintHTMLForAttribute($chargesRef) . '"></td>'
 				. '<td class="right nowraponall"><input type="text" id="dolisci_charges_amount" name="dolisci_charges_amount" class="flat width75 right" value="' . dolPrintHTMLForAttribute((string) $chargesAmount) . '"></td>'
 				. '<td class="right nowraponall">' . $chargesVatSelect . '</td>'
@@ -1747,11 +2124,16 @@ class ActionsDoliSci extends CommonHookActions
 				. '<td class="right nowraponall"><input type="text" id="dolisci_deposit_amount" name="dolisci_deposit_amount" class="flat width75 right" value="' . dolPrintHTMLForAttribute((string) $depositAmount) . '"></td>'
 				. '<td class="right nowraponall">' . $depositVatSelect . '</td>'
 				. '</tr>'
+				. '<tr class="oddeven">'
+				. '<td><input type="text" id="dolisci_guarantee_ref" name="dolisci_guarantee_ref" class="flat minwidth300" value="' . dolPrintHTMLForAttribute($guaranteeRef) . '"></td>'
+				. '<td class="right nowraponall"><input type="text" id="dolisci_guarantee_amount" name="dolisci_guarantee_amount" class="flat width75 right" value="' . dolPrintHTMLForAttribute((string) $guaranteeAmount) . '"></td>'
+				. '<td class="right nowraponall">' . $guaranteeVatSelect . '</td>'
+				. '</tr>'
 				. '</table>';
 
 			$fieldNames = $isOnService
-				? 'dolisci_charges_ref,dolisci_charges_amount,dolisci_charges_tva,dolisci_deposit_ref,dolisci_deposit_amount,dolisci_deposit_tva'
-				: 'dolisci_rent_ref,dolisci_rent_amount,dolisci_rent_tva,dolisci_charges_ref,dolisci_charges_amount,dolisci_charges_tva,dolisci_deposit_ref,dolisci_deposit_amount,dolisci_deposit_tva';
+				? 'dolisci_rent_ref,dolisci_rent_amount,dolisci_rent_tva,dolisci_charges_ref,dolisci_charges_amount,dolisci_charges_tva,dolisci_deposit_ref,dolisci_deposit_amount,dolisci_deposit_tva,dolisci_guarantee_ref,dolisci_guarantee_amount,dolisci_guarantee_tva'
+				: 'dolisci_lease_ref,dolisci_lease_amount,dolisci_lease_tva,dolisci_rent_ref,dolisci_rent_amount,dolisci_rent_tva,dolisci_charges_ref,dolisci_charges_amount,dolisci_charges_tva,dolisci_deposit_ref,dolisci_deposit_amount,dolisci_deposit_tva,dolisci_guarantee_ref,dolisci_guarantee_amount,dolisci_guarantee_tva';
 			$formquestion = [
 				[
 					'type'  => 'onecolumn',
@@ -1770,8 +2152,8 @@ class ActionsDoliSci extends CommonHookActions
 				$formquestion,
 				'yes',
 				$useAjax,
-				380,
-				640
+				450,
+				660
 			);
 		}
 
@@ -1951,10 +2333,12 @@ class ActionsDoliSci extends CommonHookActions
 			. ' AND p.fk_product_type = 1'
 			. ' AND ef.dolisci_service_fk_project IN (' . $inProjectIds . ')'
 			. " ORDER BY CASE"
-			. " WHEN ef.dolisci_service_nature = 'LOYER' OR p.ref LIKE 'Loyer\\_%' OR p.ref LIKE 'Loyer-%\\_%' OR p.accountancy_code_sell = '706100' THEN 1"
-			. " WHEN ef.dolisci_service_nature = 'CHARGES' OR p.ref LIKE 'Charge\\_%' OR p.ref LIKE 'Charge-%\\_%' OR p.ref LIKE 'Charges\\_%' OR p.ref LIKE 'Charges-%\\_%' OR p.accountancy_code_sell = '708800' THEN 2"
-			. " WHEN ef.dolisci_service_nature IN ('DEPOT_GARANTIE', 'CAUTION') OR p.ref LIKE 'Caution\\_%' OR p.ref LIKE 'Caution-%\\_%' OR p.accountancy_code_sell = '165000' THEN 3"
-			. " ELSE 4 END ASC, p.ref ASC LIMIT 100";
+			. " WHEN ef.dolisci_service_nature = 'BAIL' OR p.ref LIKE 'Bail\\_%' OR p.ref LIKE 'Bail-%\\_%' THEN 1"
+			. " WHEN ef.dolisci_service_nature = 'LOYER' OR p.ref LIKE 'Loyer\\_%' OR p.ref LIKE 'Loyer-%\\_%' OR p.accountancy_code_sell = '706100' THEN 2"
+			. " WHEN ef.dolisci_service_nature = 'CHARGES' OR p.ref LIKE 'Charge\\_%' OR p.ref LIKE 'Charge-%\\_%' OR p.ref LIKE 'Charges\\_%' OR p.ref LIKE 'Charges-%\\_%' OR p.accountancy_code_sell = '708800' THEN 3"
+			. " WHEN ef.dolisci_service_nature = 'DEPOT_GARANTIE' OR p.ref LIKE 'Depot\\_%' OR p.ref LIKE 'Depot-%\\_%' OR p.accountancy_code_sell = '165000' THEN 4"
+			. " WHEN ef.dolisci_service_nature IN ('ACTE_CAUTIONNEMENT', 'CAUTION') OR p.ref LIKE 'Caution\\_%' OR p.ref LIKE 'Caution-%\\_%' THEN 5"
+			. " ELSE 6 END ASC, p.ref ASC LIMIT 100";
 
 		$resServ = $this->db->query($sqlServ);
 

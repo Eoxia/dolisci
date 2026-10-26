@@ -223,10 +223,22 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
 					$propertyProductId = (int) ($object->array_options['options_dolisci_fk_property_product'] ?? 0);
 					$serviceProjectId  = (int) ($object->array_options['options_dolisci_service_fk_project'] ?? 0);
 
-					if ($serviceNature === 'LOYER') {
+					if ($serviceNature === 'BAIL') {
+						dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_SERVICE_LEASE', 'product');
+					} elseif ($serviceNature === 'LOYER') {
 						dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_SERVICE_RENT', 'product');
 					} elseif ($serviceNature === 'CHARGES') {
 						dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_SERVICE_CHARGES', 'product');
+					} elseif ($serviceNature === 'DEPOT_GARANTIE') {
+						dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_SERVICE_DEPOSIT', 'product');
+					} elseif ($serviceNature === 'ACTE_CAUTIONNEMENT' || $serviceNature === 'CAUTION') {
+						dolisciAssignTag($this->db, $object, 'DOLISCI_TAG_SERVICE_GUARANTEE', 'product');
+						if (trim((string) $object->description) === '') {
+							$defaultDesc         = dolisciGetGuaranteeActDefaultDescription($langs);
+							$object->description = $defaultDesc;
+							$sqlDesc             = "UPDATE " . MAIN_DB_PREFIX . "product SET description = '" . $this->db->escape($defaultDesc) . "' WHERE rowid = " . ((int) $object->id);
+							$this->db->query($sqlDesc);
+						}
 					}
 
 					// Auto-populate the SCI project on the rental service from the linked property product
@@ -243,14 +255,16 @@ class InterfaceDoliSciTriggers extends DolibarrTriggers
 					}
 
 					// Auto-assign the accounting code on the Service according to its rental nature:
-					// LOYER -> 706100, CHARGES -> 708800
+					// LOYER -> 706100, CHARGES -> 708800, DEPOT_GARANTIE -> 165000
 					$genericServiceAccount = getDolGlobalString('ACCOUNTING_SERVICE_SOLD_ACCOUNT');
-					if (empty($object->accountancy_code_sell) || $object->accountancy_code_sell === $genericServiceAccount || in_array($object->accountancy_code_sell, ['706100', '708800'], true)) {
+					if (empty($object->accountancy_code_sell) || $object->accountancy_code_sell === $genericServiceAccount || in_array($object->accountancy_code_sell, ['706100', '708800', '165000'], true)) {
 						$defaultAccount = '';
 						if ($serviceNature === 'LOYER') {
 							$defaultAccount = '706100';
 						} elseif ($serviceNature === 'CHARGES') {
 							$defaultAccount = '708800';
+						} elseif ($serviceNature === 'DEPOT_GARANTIE') {
+							$defaultAccount = '165000';
 						}
 						if ($defaultAccount !== '' && $object->accountancy_code_sell !== $defaultAccount) {
 							$sql = "UPDATE " . MAIN_DB_PREFIX . "product SET accountancy_code_sell = '" . $this->db->escape($defaultAccount) . "' WHERE rowid = " . ((int) $object->id);

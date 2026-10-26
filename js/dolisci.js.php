@@ -86,9 +86,10 @@ document.addEventListener('DOMContentLoaded', function () {
 		});
 	}
 
-	// 2. Service card (create/edit): auto-fill accountancy_code_sell according to dolisci_service_nature
+	// 2. Service card (create/edit): auto-fill accountancy_code_sell and default guarantee act text according to dolisci_service_nature
 	var natureSelect = document.getElementById('options_dolisci_service_nature');
 	if (natureSelect) {
+		var guaranteeStandardText = "<b>ACTE DE CAUTIONNEMENT SOLIDAIRE</b><br><br>Le/La soussigné(e), intervenant en qualité de caution et signataire du présent acte, déclare expressément se porter caution personnelle et solidaire du locataire désigné au contrat (débiteur principal), avec renonciation aux bénéfices de discussion et de division, pour l'ensemble des obligations résultant du bail consenti par le bailleur désigné en tête des présentes.<br><br>L'engagement garantit le paiement des loyers, charges récupérables, indemnités d'occupation, réparations locatives et frais éventuels de procédure pour le logement mentionné au présent contrat, à compter de la date d'effet indiquée.<br><br>Le montant du loyer mensuel garanti correspond au montant principal stipulé au contrat, révisable annuellement selon l'Indice de Référence des Loyers (IRL) publié par l'INSEE.<br><br>Conformément à l'article 22-1 de la loi du 6 juillet 1989 :<br>« Lorsque le cautionnement d'obligations résultant d'un contrat de location conclu en application du présent titre ne comporte aucune indication de durée ou lorsque la durée du cautionnement est stipulée indéterminée, la caution peut le résilier unilatéralement. La résiliation prend effet au terme du contrat de location, qu'il s'agisse du contrat initial ou d'un contrat reconduit ou renouvelé, au cours duquel le bailleur reçoit notification de la résiliation. »";
 		var applyNatureAccount = function () {
 			var val = natureSelect.value;
 			var code = '';
@@ -96,8 +97,20 @@ document.addEventListener('DOMContentLoaded', function () {
 				code = '706100';
 			} else if (val === 'CHARGES') {
 				code = '708800';
-			} else if (val === 'DEPOT_GARANTIE' || val === 'CAUTION') {
+			} else if (val === 'DEPOT_GARANTIE') {
 				code = '165000';
+			}
+			if (val === 'ACTE_CAUTIONNEMENT' || val === 'CAUTION') {
+				var descField = document.getElementById('desc') || document.querySelector('[name="desc"]');
+				if (descField && descField.value.trim() === '') {
+					descField.value = guaranteeStandardText;
+				}
+				if (window.CKEDITOR && window.CKEDITOR.instances && window.CKEDITOR.instances.desc) {
+					var currentData = window.CKEDITOR.instances.desc.getData().replace(/<[^>]*>/g, '').trim();
+					if (currentData === '') {
+						window.CKEDITOR.instances.desc.setData(guaranteeStandardText);
+					}
+				}
 			}
 			if (!code) {
 				return;

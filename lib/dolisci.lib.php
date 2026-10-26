@@ -334,6 +334,76 @@ function dolisciGetExtrafieldDefinitions(): array
 			'enabled'     => $productCondition,
 			'moreparams'  => $defaultCss,
 		],
+		'ef:product:dolisci_fk_default_lease' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_fk_default_lease',
+			'label'       => 'DoliSciDefaultServiceLease',
+			'type'        => 'int',
+			'pos'         => (int) ($moduleNumero . '61'),
+			'size'        => '10',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_fk_default_rent' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_fk_default_rent',
+			'label'       => 'DoliSciDefaultServiceRent',
+			'type'        => 'int',
+			'pos'         => (int) ($moduleNumero . '62'),
+			'size'        => '10',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_fk_default_charges' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_fk_default_charges',
+			'label'       => 'DoliSciDefaultServiceCharges',
+			'type'        => 'int',
+			'pos'         => (int) ($moduleNumero . '63'),
+			'size'        => '10',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_fk_default_deposit' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_fk_default_deposit',
+			'label'       => 'DoliSciDefaultServiceDeposit',
+			'type'        => 'int',
+			'pos'         => (int) ($moduleNumero . '64'),
+			'size'        => '10',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_fk_default_guarantee' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_fk_default_guarantee',
+			'label'       => 'DoliSciDefaultServiceGuarantee',
+			'type'        => 'int',
+			'pos'         => (int) ($moduleNumero . '645'),
+			'size'        => '10',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
 
 		// 3. Service extrafields (type == 1: Rental services - Rent & Charges provision)
 		'ef:product:dolisci_rental_sep' => [
@@ -360,10 +430,12 @@ function dolisciGetExtrafieldDefinitions(): array
 			'elementtype' => 'product',
 			'param'       => [
 				'options' => [
-					'LOYER'          => 'DoliSciServiceNatureRent',
-					'CHARGES'        => 'DoliSciServiceNatureCharges',
-					'REGUL_CHARGES'  => 'DoliSciServiceNatureChargesRegul',
-					'DEPOT_GARANTIE' => 'DoliSciServiceNatureDeposit',
+					'BAIL'               => 'DoliSciServiceNatureLease',
+					'LOYER'              => 'DoliSciServiceNatureRent',
+					'CHARGES'            => 'DoliSciServiceNatureCharges',
+					'REGUL_CHARGES'      => 'DoliSciServiceNatureChargesRegul',
+					'DEPOT_GARANTIE'     => 'DoliSciServiceNatureDeposit',
+					'ACTE_CAUTIONNEMENT' => 'DoliSciServiceNatureGuaranteeAct',
 				],
 			],
 			'list'        => '1',
@@ -522,6 +594,14 @@ function dolisciGetTagDefinitions(): array
 			'icon'     => 'fa-key',
 			'position' => (int) ($moduleNumero . '20'),
 		],
+		'tag:DOLISCI_TAG_SERVICE_LEASE' => [
+			'const'    => 'DOLISCI_TAG_SERVICE_LEASE',
+			'type'     => 'product',
+			'label'    => 'DoliSciTagServiceLease',
+			'color'    => '7c3aed',
+			'icon'     => 'fa-file-contract',
+			'position' => (int) ($moduleNumero . '25'),
+		],
 		'tag:DOLISCI_TAG_SERVICE_RENT' => [
 			'const'    => 'DOLISCI_TAG_SERVICE_RENT',
 			'type'     => 'product',
@@ -545,6 +625,14 @@ function dolisciGetTagDefinitions(): array
 			'color'    => '0891b2',
 			'icon'     => 'fa-file-invoice-dollar',
 			'position' => (int) ($moduleNumero . '42'),
+		],
+		'tag:DOLISCI_TAG_SERVICE_GUARANTEE' => [
+			'const'    => 'DOLISCI_TAG_SERVICE_GUARANTEE',
+			'type'     => 'product',
+			'label'    => 'DoliSciTagServiceGuarantee',
+			'color'    => '0284c7',
+			'icon'     => 'fa-file-signature',
+			'position' => (int) ($moduleNumero . '44'),
 		],
 		'tag:DOLISCI_TAG_CUSTOMER_TENANT' => [
 			'const'    => 'DOLISCI_TAG_CUSTOMER_TENANT',
@@ -593,6 +681,101 @@ function dolisciGetTagDefinitions(): array
 			'color'    => '475569',
 			'icon'     => 'fa-gavel',
 			'position' => (int) ($moduleNumero . '75'),
+		],
+	];
+}
+
+/**
+ * Return the global DoliSCI Default Rental Service definitions:
+ * - 3 Lease services (Bail d'habitation non meublée, Bail d'habitation meublée, Bail commercial / professionnel)
+ * - Rent (Loyer), Charges, Security Deposit (Dépôt de garantie), Guarantee Act (Acte de cautionnement)
+ *
+ * @return array<string,array{const:string,ref:string,label:string,settingLabel:string,nature:string,leaseType?:string,account:string,tagConst:string,icon:string,position:int}>
+ */
+function dolisciGetDefaultServiceDefinitions(): array
+{
+	$moduleNumero = '436371';
+
+	return [
+		'srv:DOLISCI_DEFAULT_SERVICE_LEASE_UNFURNISHED' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_LEASE_UNFURNISHED',
+			'ref'          => 'Bail_Habitation_Non_Meublee',
+			'label'        => 'DoliSciDefaultServiceLeaseUnfurnishedObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceLeaseUnfurnished',
+			'nature'       => 'BAIL',
+			'leaseType'    => 'HABITATION_VIDE',
+			'account'      => '',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_LEASE',
+			'icon'         => 'fa-file-contract',
+			'position'     => (int) ($moduleNumero . '80'),
+		],
+		'srv:DOLISCI_DEFAULT_SERVICE_LEASE_FURNISHED' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_LEASE_FURNISHED',
+			'ref'          => 'Bail_Habitation_Meublee',
+			'label'        => 'DoliSciDefaultServiceLeaseFurnishedObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceLeaseFurnished',
+			'nature'       => 'BAIL',
+			'leaseType'    => 'HABITATION_MEUBLE',
+			'account'      => '',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_LEASE',
+			'icon'         => 'fa-file-contract',
+			'position'     => (int) ($moduleNumero . '81'),
+		],
+		'srv:DOLISCI_DEFAULT_SERVICE_LEASE_COMMERCIAL' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_LEASE_COMMERCIAL',
+			'ref'          => 'Bail_Commercial_Professionnel',
+			'label'        => 'DoliSciDefaultServiceLeaseCommercialObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceLeaseCommercial',
+			'nature'       => 'BAIL',
+			'leaseType'    => 'COMMERCIAL_PRO',
+			'account'      => '',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_LEASE',
+			'icon'         => 'fa-file-contract',
+			'position'     => (int) ($moduleNumero . '82'),
+		],
+		'srv:DOLISCI_DEFAULT_SERVICE_RENT' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_RENT',
+			'ref'          => 'Loyer_Defaut',
+			'label'        => 'DoliSciDefaultServiceRentObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceRent',
+			'nature'       => 'LOYER',
+			'account'      => '706100',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_RENT',
+			'icon'         => 'fa-file-invoice-dollar',
+			'position'     => (int) ($moduleNumero . '84'),
+		],
+		'srv:DOLISCI_DEFAULT_SERVICE_CHARGES' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_CHARGES',
+			'ref'          => 'Charge_Defaut',
+			'label'        => 'DoliSciDefaultServiceChargesObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceCharges',
+			'nature'       => 'CHARGES',
+			'account'      => '708800',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_CHARGES',
+			'icon'         => 'fa-coins',
+			'position'     => (int) ($moduleNumero . '86'),
+		],
+		'srv:DOLISCI_DEFAULT_SERVICE_DEPOSIT' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_DEPOSIT',
+			'ref'          => 'Depot_Defaut',
+			'label'        => 'DoliSciDefaultServiceDepositObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceDeposit',
+			'nature'       => 'DEPOT_GARANTIE',
+			'account'      => '165000',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_DEPOSIT',
+			'icon'         => 'fa-shield-alt',
+			'position'     => (int) ($moduleNumero . '88'),
+		],
+		'srv:DOLISCI_DEFAULT_SERVICE_GUARANTEE' => [
+			'const'        => 'DOLISCI_DEFAULT_SERVICE_GUARANTEE',
+			'ref'          => 'Caution_Defaut',
+			'label'        => 'DoliSciDefaultServiceGuaranteeObjLabel',
+			'settingLabel' => 'DoliSciSetupDefaultServiceGuarantee',
+			'nature'       => 'ACTE_CAUTIONNEMENT',
+			'account'      => '',
+			'tagConst'     => 'DOLISCI_TAG_SERVICE_GUARANTEE',
+			'icon'         => 'fa-file-signature',
+			'position'     => (int) ($moduleNumero . '90'),
 		],
 	];
 }
@@ -724,14 +907,16 @@ function dolisciIsRentalService(DoliDB $db, Product $service): bool
 	) {
 		return true;
 	}
-	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-[0-9]+)?_/i', (string) $service->ref)) {
+	if (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Caution)(?:-[0-9]+)?_/i', (string) $service->ref)) {
 		return true;
 	}
 
 	$serviceTags = array_values(array_filter([
+		getDolGlobalInt('DOLISCI_TAG_SERVICE_LEASE'),
 		getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT'),
 		getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES'),
 		getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT'),
+		getDolGlobalInt('DOLISCI_TAG_SERVICE_GUARANTEE'),
 	]));
 	if (!empty($serviceTags)) {
 		$sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_product = ' . ((int) $service->id)
@@ -777,7 +962,7 @@ function dolisciGetPropertyFromService(DoliDB $db, Product $product): ?Product
 		}
 	}
 
-	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-[0-9]+)?_(.+?)(?:_[0-9]+)?$/i', (string) $product->ref, $matches)) {
+	if (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Caution)(?:-[0-9]+)?_(.+?)(?:_[0-9]+)?$/i', (string) $product->ref, $matches)) {
 		$propRef = trim($matches[1]);
 		if ($propRef !== '') {
 			$prop = new Product($db);
@@ -787,7 +972,7 @@ function dolisciGetPropertyFromService(DoliDB $db, Product $product): ?Product
 			}
 		}
 	}
-	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-[0-9]+)?_(.+)$/i', (string) $product->ref, $matches)) {
+	if (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Caution)(?:-[0-9]+)?_(.+)$/i', (string) $product->ref, $matches)) {
 		$propRef = trim($matches[1]);
 		if ($propRef !== '') {
 			$prop = new Product($db);
@@ -802,14 +987,14 @@ function dolisciGetPropertyFromService(DoliDB $db, Product $product): ?Product
 }
 
 /**
- * Extract the rental group index (1, 2, 3...) from a Rental Service reference (e.g. Loyer-1_<ref> -> 1, Loyer-2_<ref> -> 2)
+ * Extract the rental group index (1, 2, 3...) from a Rental Service reference (e.g. Bail-1_<ref> -> 1, Loyer-2_<ref> -> 2)
  *
  * @param  string $ref Service reference
  * @return int         Group index (>= 1)
  */
 function dolisciGetServiceGroupIndexFromRef(string $ref): int
 {
-	if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-([0-9]+))?_(.+?)(?:_([0-9]+))?$/i', $ref, $m)) {
+	if (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Caution)(?:-([0-9]+))?_(.+?)(?:_([0-9]+))?$/i', $ref, $m)) {
 		if (!empty($m[1])) {
 			return (int) $m[1];
 		}
@@ -821,12 +1006,24 @@ function dolisciGetServiceGroupIndexFromRef(string $ref): int
 }
 
 /**
- * Return only the Charges and Deposit (Caution) services attached to the same rental group as the given Service
+ * Return the standard legal text for a Joint and Several Guarantee Act ("Acte de cautionnement solidaire")
+ *
+ * @param  Translate $langs Translate instance
+ * @return string           HTML formatted standard guarantee act text
+ */
+function dolisciGetGuaranteeActDefaultDescription(Translate $langs): string
+{
+	$langs->load('dolisci@dolisci');
+	return $langs->transnoentities('DoliSciGuaranteeActStandardText');
+}
+
+/**
+ * Return the child services (Loyer, Charges, Dépôt de garantie, Acte de cautionnement) attached to the same rental group as the given Service
  *
  * @param  DoliDB       $db          Database handler
- * @param  Product      $service     Rental service instance (type = 1, e.g. Loyer-1_<ref>)
+ * @param  Product      $service     Rental service instance (type = 1, e.g. Bail-1_<ref>)
  * @param  Product|null $propProduct Optional resolved Property Product instance (type = 0)
- * @return array<int,stdClass>       List of child services (Charge & Caution) for this service's group
+ * @return array<int,stdClass>       List of child services for this service's group
  */
 function dolisciGetServiceChildServices(DoliDB $db, Product $service, ?Product $propProduct = null): array
 {
@@ -847,7 +1044,7 @@ function dolisciGetServiceChildServices(DoliDB $db, Product $service, ?Product $
 
 	foreach ($allServices as $obj) {
 		$grpIdx     = (int) ($obj->dolisci_group_index ?? 1);
-		$natureRank = (int) ($obj->dolisci_nature_rank ?? 4);
+		$natureRank = (int) ($obj->dolisci_nature_rank ?? 6);
 		if ($grpIdx === $targetGroup && $natureRank > 1 && (int) $obj->rowid !== (int) $service->id) {
 			$childServices[] = $obj;
 		}
@@ -858,10 +1055,10 @@ function dolisciGetServiceChildServices(DoliDB $db, Product $service, ?Product $
 
 /**
  * Return a link to a Project, Property Product (type = 0) or Rental Service (type = 1)
- * using the DoliSCI pictos (fa-city for Project, fa-key for Property, fa-file-invoice-dollar for Service).
+ * using the DoliSCI pictos (fa-city for Project, fa-key for Property, fa-file-contract/fa-file-invoice-dollar for Service).
  *
  * @param  CommonObject $object        Project or Product/Service instance
- * @param  string       $serviceNature Optional service nature ('LOYER', 'CHARGES', 'DEPOT_GARANTIE')
+ * @param  string       $serviceNature Optional service nature ('BAIL', 'LOYER', 'CHARGES', 'DEPOT_GARANTIE', 'ACTE_CAUTIONNEMENT')
  * @return string                      HTML link with DoliSCI picto
  */
 function dolisciGetObjectNomUrl(CommonObject $object, string $serviceNature = ''): string
@@ -875,18 +1072,26 @@ function dolisciGetObjectNomUrl(CommonObject $object, string $serviceNature = ''
 		}
 		$ref   = (string) ($object->ref ?? '');
 		$color = '#16a34a';
-		if ($serviceNature === 'CHARGES' || $serviceNature === 'CHARGES_REGUL' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0) {
+		$icon  = 'fa-file-invoice-dollar';
+		if ($serviceNature === 'BAIL' || stripos($ref, 'Bail_') === 0 || stripos($ref, 'Bail-') === 0) {
+			$color = '#7c3aed';
+			$icon  = 'fa-file-contract';
+		} elseif ($serviceNature === 'CHARGES' || $serviceNature === 'CHARGES_REGUL' || $serviceNature === 'REGUL_CHARGES' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0) {
 			$color = '#d97706';
-		} elseif ($serviceNature === 'DEPOT_GARANTIE' || $serviceNature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0) {
+		} elseif ($serviceNature === 'DEPOT_GARANTIE' || stripos($ref, 'Depot_') === 0 || stripos($ref, 'Depot-') === 0) {
+			$color = '#0891b2';
+		} elseif ($serviceNature === 'ACTE_CAUTIONNEMENT' || $serviceNature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0) {
 			$color = '#0284c7';
+			$icon  = 'fa-file-signature';
 		}
-		return '<i class="fas fa-file-invoice-dollar pictofixedwidth" style="color: ' . $color . ';"></i>' . $object->getNomUrl(0);
+		return '<i class="fas ' . $icon . ' pictofixedwidth" style="color: ' . $color . ';"></i>' . $object->getNomUrl(0);
 	}
 	return method_exists($object, 'getNomUrl') ? $object->getNomUrl(1) : '';
 }
 
 /**
- * Sort and annotate rental services by rental group (1, 2, 3...) and by nature within each group (1: Loyer, 2: Charge, 3: Caution)
+ * Sort and annotate rental services by rental group (1, 2, 3...) and by nature within each group:
+ * 1: Bail (parent), 2: Loyer, 3: Charge, 4: Dépôt de garantie, 5: Acte de cautionnement
  *
  * @param  array<int,stdClass> $services List of service rows (modified in-place)
  * @return void
@@ -898,18 +1103,22 @@ function dolisciSortAndGroupRentalServices(array &$services): void
 		$ref    = (string) ($obj->ref ?? '');
 		$acc    = (string) ($obj->accountancy_code_sell ?? '');
 
-		$natureRank = 4;
-		if ($nature === 'LOYER' || stripos($ref, 'Loyer_') === 0 || stripos($ref, 'Loyer-') === 0 || $acc === '706100') {
+		$natureRank = 6;
+		if ($nature === 'BAIL' || stripos($ref, 'Bail_') === 0 || stripos($ref, 'Bail-') === 0) {
 			$natureRank = 1;
-		} elseif ($nature === 'CHARGES' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0 || $acc === '708800') {
+		} elseif ($nature === 'LOYER' || stripos($ref, 'Loyer_') === 0 || stripos($ref, 'Loyer-') === 0 || $acc === '706100') {
 			$natureRank = 2;
-		} elseif ($nature === 'DEPOT_GARANTIE' || $nature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0 || $acc === '165000') {
+		} elseif ($nature === 'CHARGES' || $nature === 'REGUL_CHARGES' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0 || $acc === '708800') {
 			$natureRank = 3;
+		} elseif ($nature === 'DEPOT_GARANTIE' || stripos($ref, 'Depot_') === 0 || stripos($ref, 'Depot-') === 0 || ($acc === '165000' && stripos($ref, 'Caution') !== 0)) {
+			$natureRank = 4;
+		} elseif ($nature === 'ACTE_CAUTIONNEMENT' || $nature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0) {
+			$natureRank = 5;
 		}
 
 		$groupIndex = 1;
 		$propKey    = '';
-		if (preg_match('/^(?:Loyer|Charges?|Caution)(?:-([0-9]+))?_(.+?)(?:_([0-9]+))?$/i', $ref, $m)) {
+		if (preg_match('/^(?:Bail|Loyer|Charges?|Depot|Caution)(?:-([0-9]+))?_(.+?)(?:_([0-9]+))?$/i', $ref, $m)) {
 			if (!empty($m[1])) {
 				$groupIndex = (int) $m[1];
 			} elseif (!empty($m[3])) {
@@ -934,7 +1143,7 @@ function dolisciSortAndGroupRentalServices(array &$services): void
 		if ($grpCmp !== 0) {
 			return $grpCmp;
 		}
-		$rankCmp = ((int) ($a->dolisci_nature_rank ?? 4)) <=> ((int) ($b->dolisci_nature_rank ?? 4));
+		$rankCmp = ((int) ($a->dolisci_nature_rank ?? 6)) <=> ((int) ($b->dolisci_nature_rank ?? 6));
 		if ($rankCmp !== 0) {
 			return $rankCmp;
 		}
@@ -943,34 +1152,40 @@ function dolisciSortAndGroupRentalServices(array &$services): void
 }
 
 /**
- * Fetch linked rental, charges & deposit services for a given Property Product
+ * Fetch linked lease, rental, charges, deposit & guarantee act services for a given Property Product
  *
  * @param  DoliDB  $db              Database handler
  * @param  Product $propertyProduct Property product instance (type = 0)
- * @return array{count:int,rentCount:int,hasRent:bool,hasCharges:bool,hasDeposit:bool,hasAll:bool,hasBoth:bool,services:array<int,stdClass>}
+ * @return array{count:int,leaseCount:int,rentCount:int,groupCount:int,hasLease:bool,hasRent:bool,hasCharges:bool,hasDeposit:bool,hasGuarantee:bool,hasAll:bool,hasBoth:bool,services:array<int,stdClass>}
  */
 function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct): array
 {
 	$result = [
-		'count'      => 0,
-		'rentCount'  => 0,
-		'hasRent'    => false,
-		'hasCharges' => false,
-		'hasDeposit' => false,
-		'hasAll'     => false,
-		'hasBoth'    => false,
-		'services'   => [],
+		'count'        => 0,
+		'leaseCount'   => 0,
+		'rentCount'    => 0,
+		'groupCount'   => 0,
+		'hasLease'     => false,
+		'hasRent'      => false,
+		'hasCharges'   => false,
+		'hasDeposit'   => false,
+		'hasGuarantee' => false,
+		'hasAll'       => false,
+		'hasBoth'      => false,
+		'services'     => [],
 	];
 
 	if (empty($propertyProduct->id) || (int) $propertyProduct->type !== Product::TYPE_PRODUCT) {
 		return $result;
 	}
 
-	$escapedPropRef = $db->escape($propertyProduct->ref);
-	$rentPrefix     = 'Loyer_' . $escapedPropRef;
-	$chargesPrefix  = 'Charge_' . $escapedPropRef;
-	$charges2Prefix = 'Charges_' . $escapedPropRef;
-	$depositPrefix  = 'Caution_' . $escapedPropRef;
+	$escapedPropRef  = $db->escape($propertyProduct->ref);
+	$leasePrefix     = 'Bail_' . $escapedPropRef;
+	$rentPrefix      = 'Loyer_' . $escapedPropRef;
+	$chargesPrefix   = 'Charge_' . $escapedPropRef;
+	$charges2Prefix  = 'Charges_' . $escapedPropRef;
+	$depositPrefix   = 'Depot_' . $escapedPropRef;
+	$guaranteePrefix = 'Caution_' . $escapedPropRef;
 
 	$sql = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
 		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_service_fk_project,'
@@ -981,10 +1196,12 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 		. ' WHERE p.entity IN (' . getEntity('product') . ')'
 		. ' AND p.fk_product_type = 1'
 		. ' AND (ef.dolisci_fk_property_product = ' . ((int) $propertyProduct->id)
+		. " OR p.ref = '" . $leasePrefix . "' OR p.ref LIKE '" . $leasePrefix . "\\_%' OR p.ref LIKE 'Bail-%\\_" . $escapedPropRef . "'"
 		. " OR p.ref = '" . $rentPrefix . "' OR p.ref LIKE '" . $rentPrefix . "\\_%' OR p.ref LIKE 'Loyer-%\\_" . $escapedPropRef . "'"
 		. " OR p.ref = '" . $chargesPrefix . "' OR p.ref LIKE '" . $chargesPrefix . "\\_%' OR p.ref LIKE 'Charge-%\\_" . $escapedPropRef . "'"
 		. " OR p.ref = '" . $charges2Prefix . "' OR p.ref LIKE '" . $charges2Prefix . "\\_%' OR p.ref LIKE 'Charges-%\\_" . $escapedPropRef . "'"
-		. " OR p.ref = '" . $depositPrefix . "' OR p.ref LIKE '" . $depositPrefix . "\\_%' OR p.ref LIKE 'Caution-%\\_" . $escapedPropRef . "')"
+		. " OR p.ref = '" . $depositPrefix . "' OR p.ref LIKE '" . $depositPrefix . "\\_%' OR p.ref LIKE 'Depot-%\\_" . $escapedPropRef . "'"
+		. " OR p.ref = '" . $guaranteePrefix . "' OR p.ref LIKE '" . $guaranteePrefix . "\\_%' OR p.ref LIKE 'Caution-%\\_" . $escapedPropRef . "')"
 		. " ORDER BY p.ref ASC LIMIT 100";
 
 	$res = $db->query($sql);
@@ -995,6 +1212,10 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 			$ref    = (string) ($obj->ref ?? '');
 			$acc    = (string) ($obj->accountancy_code_sell ?? '');
 
+			if ($nature === 'BAIL' || stripos($ref, 'Bail_') === 0 || stripos($ref, 'Bail-') === 0) {
+				$result['hasLease'] = true;
+				$result['leaseCount']++;
+			}
 			if ($nature === 'LOYER' || stripos($ref, 'Loyer_') === 0 || stripos($ref, 'Loyer-') === 0 || $acc === '706100') {
 				$result['hasRent'] = true;
 				$result['rentCount']++;
@@ -1002,19 +1223,188 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 			if ($nature === 'CHARGES' || stripos($ref, 'Charge_') === 0 || stripos($ref, 'Charge-') === 0 || stripos($ref, 'Charges_') === 0 || stripos($ref, 'Charges-') === 0 || $acc === '708800') {
 				$result['hasCharges'] = true;
 			}
-			if ($nature === 'DEPOT_GARANTIE' || $nature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0 || $acc === '165000') {
+			if ($nature === 'DEPOT_GARANTIE' || stripos($ref, 'Depot_') === 0 || stripos($ref, 'Depot-') === 0 || ($acc === '165000' && stripos($ref, 'Caution') !== 0)) {
 				$result['hasDeposit'] = true;
+			}
+			if ($nature === 'ACTE_CAUTIONNEMENT' || $nature === 'CAUTION' || stripos($ref, 'Caution_') === 0 || stripos($ref, 'Caution-') === 0) {
+				$result['hasGuarantee'] = true;
 			}
 		}
 	}
 
 	dolisciSortAndGroupRentalServices($result['services']);
 
-	$result['count']   = count($result['services']);
-	$result['hasAll']  = ($result['hasRent'] && $result['hasCharges'] && $result['hasDeposit']);
-	$result['hasBoth'] = $result['hasAll'];
+	$distinctGroups = [];
+	foreach ($result['services'] as $sObj) {
+		$distinctGroups[(int) ($sObj->dolisci_group_index ?? 1)] = true;
+	}
+	$result['groupCount'] = count($distinctGroups);
+	$result['count']      = count($result['services']);
+	$result['hasAll']     = ($result['hasLease'] && $result['hasRent'] && $result['hasCharges'] && $result['hasDeposit'] && $result['hasGuarantee']);
+	$result['hasBoth']    = $result['hasAll'];
 
 	return $result;
+}
+
+/**
+ * Resolve and auto-populate (if empty) the 5 default rental services (Bail, Loyer, Charge, Dépôt, Caution)
+ * on a Property Product (type = 0), defaulting to the latest lot created for each component.
+ *
+ * @param  DoliDB                   $db          Database handler
+ * @param  Product                  $propProduct Property Product instance (type = 0)
+ * @param  array<string,mixed>|null $rentalData  Optional pre-fetched result of dolisciGetPropertyRentalServices()
+ * @return array<int,array{field:string,labelKey:string,natureKey:string,selectedId:int,selectedObj:stdClass|null,candidates:array<int,stdClass>}>
+ */
+function dolisciEnsurePropertyDefaultServices(DoliDB $db, Product $propProduct, ?array $rentalData = null): array
+{
+	if ((int) $propProduct->type !== Product::TYPE_PRODUCT || empty($propProduct->id)) {
+		return [];
+	}
+	if (empty($propProduct->array_options)) {
+		$propProduct->fetch_optionals();
+	}
+
+	$rentalData = $rentalData ?? dolisciGetPropertyRentalServices($db, $propProduct);
+	$services   = $rentalData['services'] ?? [];
+
+	$propNature     = (string) ($propProduct->array_options['options_dolisci_property_nature'] ?? '');
+	$defaultLeaseConst = ($propNature === 'LOCAL_PRO') ? 'DOLISCI_DEFAULT_SERVICE_LEASE_COMMERCIAL' : 'DOLISCI_DEFAULT_SERVICE_LEASE_UNFURNISHED';
+
+	$specs = [
+		1 => [
+			'field'        => 'dolisci_fk_default_lease',
+			'globalConst'  => $defaultLeaseConst,
+			'globalConsts' => [
+				'DOLISCI_DEFAULT_SERVICE_LEASE_UNFURNISHED',
+				'DOLISCI_DEFAULT_SERVICE_LEASE_FURNISHED',
+				'DOLISCI_DEFAULT_SERVICE_LEASE_COMMERCIAL',
+			],
+			'labelKey'     => 'DoliSciDefaultServiceLease',
+			'natureKey'    => 'BAIL',
+		],
+		2 => [
+			'field'        => 'dolisci_fk_default_rent',
+			'globalConst'  => 'DOLISCI_DEFAULT_SERVICE_RENT',
+			'globalConsts' => ['DOLISCI_DEFAULT_SERVICE_RENT'],
+			'labelKey'     => 'DoliSciDefaultServiceRent',
+			'natureKey'    => 'LOYER',
+		],
+		3 => [
+			'field'        => 'dolisci_fk_default_charges',
+			'globalConst'  => 'DOLISCI_DEFAULT_SERVICE_CHARGES',
+			'globalConsts' => ['DOLISCI_DEFAULT_SERVICE_CHARGES'],
+			'labelKey'     => 'DoliSciDefaultServiceCharges',
+			'natureKey'    => 'CHARGES',
+		],
+		4 => [
+			'field'        => 'dolisci_fk_default_deposit',
+			'globalConst'  => 'DOLISCI_DEFAULT_SERVICE_DEPOSIT',
+			'globalConsts' => ['DOLISCI_DEFAULT_SERVICE_DEPOSIT'],
+			'labelKey'     => 'DoliSciDefaultServiceDeposit',
+			'natureKey'    => 'DEPOT_GARANTIE',
+		],
+		5 => [
+			'field'        => 'dolisci_fk_default_guarantee',
+			'globalConst'  => 'DOLISCI_DEFAULT_SERVICE_GUARANTEE',
+			'globalConsts' => ['DOLISCI_DEFAULT_SERVICE_GUARANTEE'],
+			'labelKey'     => 'DoliSciDefaultServiceGuarantee',
+			'natureKey'    => 'ACTE_CAUTIONNEMENT',
+		],
+	];
+
+	$allById    = [];
+	$byRank     = [1 => [], 2 => [], 3 => [], 4 => [], 5 => []];
+	foreach ($services as $sObj) {
+		$sid           = (int) $sObj->rowid;
+		$allById[$sid] = $sObj;
+		$rank          = (int) ($sObj->dolisci_nature_rank ?? 0);
+		if (isset($byRank[$rank])) {
+			$byRank[$rank][$sid] = $sObj;
+		}
+	}
+
+	// Also fetch global default services (configured in module setup) so they can act as fallback or selectable options
+	$globalIdsByRank = [1 => [], 2 => [], 3 => [], 4 => [], 5 => []];
+	$allGlobalIds    = [];
+	foreach ($specs as $rank => $spec) {
+		foreach ($spec['globalConsts'] as $gConst) {
+			$gid = getDolGlobalInt($gConst);
+			if ($gid > 0) {
+				$globalIdsByRank[$rank][$gid] = $gid;
+				$allGlobalIds[$gid]           = $gid;
+			}
+		}
+	}
+	if (!empty($allGlobalIds)) {
+		$sqlGlob = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell, ef.dolisci_service_nature, ef.dolisci_lease_type'
+			. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
+			. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
+			. ' WHERE p.rowid IN (' . implode(',', array_map('intval', $allGlobalIds)) . ')';
+		$resGlob = $db->query($sqlGlob);
+		if ($resGlob) {
+			while ($gObj = $db->fetch_object($resGlob)) {
+				$gid           = (int) $gObj->rowid;
+				$allById[$gid] = $gObj;
+				foreach ($globalIdsByRank as $r => $rankGids) {
+					if (isset($rankGids[$gid]) && !isset($byRank[$r][$gid])) {
+						$byRank[$r][$gid] = $gObj;
+					}
+				}
+			}
+		}
+	}
+
+	$needsSave = false;
+	$resolved  = [];
+	foreach ($specs as $rank => $spec) {
+		$optKey     = 'options_' . $spec['field'];
+		$currentId  = (int) ($propProduct->array_options[$optKey] ?? 0);
+		$candidates = !empty($byRank[$rank]) ? $byRank[$rank] : $allById;
+
+		if ($currentId <= 0 || !isset($allById[$currentId])) {
+			if (!empty($byRank[$rank])) {
+				// Pick the last property-specific service if any exists; otherwise fall back to the preferred global default service
+				$propSpecific = [];
+				foreach ($byRank[$rank] as $cid => $cObj) {
+					if (!isset($globalIdsByRank[$rank][$cid])) {
+						$propSpecific[$cid] = $cObj;
+					}
+				}
+				$preferredGlobalId = getDolGlobalInt($spec['globalConst']);
+				if (!empty($propSpecific)) {
+					$lastObj = end($propSpecific);
+				} elseif ($preferredGlobalId > 0 && isset($byRank[$rank][$preferredGlobalId])) {
+					$lastObj = $byRank[$rank][$preferredGlobalId];
+				} else {
+					$lastObj = reset($byRank[$rank]);
+				}
+				if ($lastObj) {
+					$currentId                          = (int) $lastObj->rowid;
+					$propProduct->array_options[$optKey] = $currentId;
+					$needsSave                          = true;
+				}
+			} elseif ($currentId > 0) {
+				$currentId                          = 0;
+				$propProduct->array_options[$optKey] = 0;
+				$needsSave                          = true;
+			}
+		}
+
+		$resolved[$rank] = [
+			'field'       => $spec['field'],
+			'labelKey'    => $spec['labelKey'],
+			'natureKey'   => $spec['natureKey'],
+			'selectedId'  => $currentId,
+			'selectedObj' => $currentId > 0 && isset($allById[$currentId]) ? $allById[$currentId] : null,
+			'candidates'  => $candidates,
+		];
+	}
+
+	if ($needsSave) {
+		$propProduct->insertExtraFields();
+	}
+
+	return $resolved;
 }
 
 /**
@@ -1191,6 +1581,79 @@ function dolisciSyncItem(DoliDB $db, string $itemKey): int
 		$catId             = $category->create($user);
 		if ($catId > 0) {
 			dolibarr_set_const($db, $def['const'], $catId, 'integer', 0, '', $conf->entity);
+			return 1;
+		}
+
+		return -1;
+	}
+
+	$srvDefs = dolisciGetDefaultServiceDefinitions();
+	if (isset($srvDefs[$itemKey])) {
+		require_once DOL_DOCUMENT_ROOT . '/product/class/product.class.php';
+		$srvLangs = new Translate('', $conf);
+		$srvLangs->setDefaultLang('fr_FR');
+		$srvLangs->load('dolisci@dolisci');
+
+		$def        = $srvDefs[$itemKey];
+		$srvLabel   = $srvLangs->transnoentities((string) $def['label']);
+		$srvDesc    = ($def['nature'] === 'ACTE_CAUTIONNEMENT') ? dolisciGetGuaranteeActDefaultDescription($srvLangs) : '';
+		$leaseType  = (string) ($def['leaseType'] ?? '');
+		$existingId = getDolGlobalInt($def['const']);
+		$service    = new Product($db);
+
+		// 1. Check if stored constant ID still exists in llx_product
+		if ($existingId > 0 && $service->fetch($existingId) > 0) {
+			$service->fetch_optionals();
+			$service->array_options['options_dolisci_service_nature'] = $def['nature'];
+			if ($leaseType !== '') {
+				$service->array_options['options_dolisci_lease_type'] = $leaseType;
+			}
+			$service->insertExtraFields();
+			if ($srvDesc !== '' && trim((string) $service->description) === '') {
+				$sqlDesc = "UPDATE " . MAIN_DB_PREFIX . "product SET description = '" . $db->escape($srvDesc) . "' WHERE rowid = " . ((int) $service->id);
+				$db->query($sqlDesc);
+			}
+			dolisciAssignTag($db, $service, $def['tagConst'], 'product');
+			return 1;
+		}
+
+		// 2. Check if a service with this ref already exists
+		if ($service->fetch(0, $def['ref']) > 0) {
+			$service->fetch_optionals();
+			$service->array_options['options_dolisci_service_nature'] = $def['nature'];
+			if ($leaseType !== '') {
+				$service->array_options['options_dolisci_lease_type'] = $leaseType;
+			}
+			$service->insertExtraFields();
+			if ($srvDesc !== '' && trim((string) $service->description) === '') {
+				$sqlDesc = "UPDATE " . MAIN_DB_PREFIX . "product SET description = '" . $db->escape($srvDesc) . "' WHERE rowid = " . ((int) $service->id);
+				$db->query($sqlDesc);
+			}
+			dolisciAssignTag($db, $service, $def['tagConst'], 'product');
+			dolibarr_set_const($db, $def['const'], (int) $service->id, 'integer', 0, '', $conf->entity);
+			return 1;
+		}
+
+		// 3. Create new default service and store its ID in llx_const
+		$service->ref                   = $def['ref'];
+		$service->label                 = $srvLabel;
+		$service->description           = $srvDesc;
+		$service->type                  = Product::TYPE_SERVICE;
+		$service->status                = 1;
+		$service->status_buy            = 0;
+		$service->price                 = 0;
+		$service->price_base_type       = 'HT';
+		$service->accountancy_code_sell = $def['account'];
+		$service->array_options         = [
+			'options_dolisci_service_nature' => $def['nature'],
+		];
+		if ($leaseType !== '') {
+			$service->array_options['options_dolisci_lease_type'] = $leaseType;
+		}
+		$srvId = $service->create($user);
+		if ($srvId > 0) {
+			dolisciAssignTag($db, $service, $def['tagConst'], 'product');
+			dolibarr_set_const($db, $def['const'], (int) $srvId, 'integer', 0, '', $conf->entity);
 			return 1;
 		}
 

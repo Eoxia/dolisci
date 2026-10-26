@@ -75,12 +75,14 @@ if ($user->hasRight('service', 'creer')) {
 
 print load_fiche_titre($title . ' ' . $modDoliSci->version, $moreHtmlRight, 'dolisci_color.png@dolisci', 0, '', 'nogreyscale');
 
-$tagProjectId  = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
-$tagProductId  = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
-$tagRentId     = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
-$tagChargesId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
-$tagDepositId  = getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT');
-$serviceTagIds = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId]));
+$tagProjectId   = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+$tagProductId   = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
+$tagRentId      = getDolGlobalInt('DOLISCI_TAG_SERVICE_RENT');
+$tagChargesId   = getDolGlobalInt('DOLISCI_TAG_SERVICE_CHARGES');
+$tagDepositId   = getDolGlobalInt('DOLISCI_TAG_SERVICE_DEPOSIT');
+$tagLeaseId     = getDolGlobalInt('DOLISCI_TAG_SERVICE_LEASE');
+$tagGuaranteeId = getDolGlobalInt('DOLISCI_TAG_SERVICE_GUARANTEE');
+$serviceTagIds  = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId, $tagLeaseId, $tagGuaranteeId]));
 
 // 1. Fetch Real Estate Projects (tagged "Immob.") and their linked Property Address (dolisci_fk_socpeople)
 $projects         = [];
@@ -183,10 +185,12 @@ $sqlServ = "SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosel
 	. (!empty($serviceTagIds) ? " OR EXISTS (SELECT 1 FROM " . MAIN_DB_PREFIX . "categorie_product AS cp WHERE cp.fk_product = p.rowid AND cp.fk_categorie IN (" . implode(',', array_map('intval', $serviceTagIds)) . "))" : "")
 	. ")"
 	. " ORDER BY CASE"
-	. " WHEN ef.dolisci_service_nature = 'LOYER' OR p.ref LIKE 'Loyer\\_%' OR p.ref LIKE 'Loyer-%\\_%' OR p.accountancy_code_sell = '706100' THEN 1"
-	. " WHEN ef.dolisci_service_nature = 'CHARGES' OR p.ref LIKE 'Charge\\_%' OR p.ref LIKE 'Charge-%\\_%' OR p.ref LIKE 'Charges\\_%' OR p.ref LIKE 'Charges-%\\_%' OR p.accountancy_code_sell = '708800' THEN 2"
-	. " WHEN ef.dolisci_service_nature IN ('DEPOT_GARANTIE', 'CAUTION') OR p.ref LIKE 'Caution\\_%' OR p.ref LIKE 'Caution-%\\_%' OR p.accountancy_code_sell = '165000' THEN 3"
-	. " ELSE 4 END ASC, p.ref ASC LIMIT 100";
+	. " WHEN ef.dolisci_service_nature = 'BAIL' OR p.ref LIKE 'Bail\\_%' OR p.ref LIKE 'Bail-%\\_%' THEN 1"
+	. " WHEN ef.dolisci_service_nature = 'LOYER' OR p.ref LIKE 'Loyer\\_%' OR p.ref LIKE 'Loyer-%\\_%' OR p.accountancy_code_sell = '706100' THEN 2"
+	. " WHEN ef.dolisci_service_nature = 'CHARGES' OR p.ref LIKE 'Charge\\_%' OR p.ref LIKE 'Charge-%\\_%' OR p.ref LIKE 'Charges\\_%' OR p.ref LIKE 'Charges-%\\_%' OR p.accountancy_code_sell = '708800' THEN 3"
+	. " WHEN ef.dolisci_service_nature = 'DEPOT_GARANTIE' OR p.ref LIKE 'Depot\\_%' OR p.ref LIKE 'Depot-%\\_%' OR p.accountancy_code_sell = '165000' THEN 4"
+	. " WHEN ef.dolisci_service_nature IN ('ACTE_CAUTIONNEMENT', 'CAUTION') OR p.ref LIKE 'Caution\\_%' OR p.ref LIKE 'Caution-%\\_%' THEN 5"
+	. " ELSE 6 END ASC, p.ref ASC LIMIT 100";
 $resServ = $db->query($sqlServ);
 if ($resServ) {
 	while ($obj = $db->fetch_object($resServ)) {
