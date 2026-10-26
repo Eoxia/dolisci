@@ -111,6 +111,30 @@ if ($action === 'set_auto_link_invoice' && $user->admin) {
 	exit;
 }
 
+if ($action === 'save_default_services' && $user->admin) {
+	$srvDefs = dolisciGetDefaultServiceDefinitions();
+	foreach ($srvDefs as $def) {
+		$constName = $def['const'];
+		if (GETPOSTISSET($constName)) {
+			$srvId = GETPOSTINT($constName);
+			dolibarr_set_const($db, $constName, $srvId, 'integer', 0, '', $conf->entity);
+		}
+	}
+	setEventMessages($langs->trans('SetupSaved'), null);
+	header('Location: ' . $_SERVER['PHP_SELF']);
+	exit;
+}
+
+if ($action === 'init_default_services' && $user->admin) {
+	$srvDefs = dolisciGetDefaultServiceDefinitions();
+	foreach (array_keys($srvDefs) as $itemKey) {
+		dolisciSyncItem($db, $itemKey);
+	}
+	setEventMessages($langs->trans('SetupSaved'), null);
+	header('Location: ' . $_SERVER['PHP_SELF']);
+	exit;
+}
+
 /*
  * View
  */
@@ -133,6 +157,116 @@ print '<span class="opacitymedium">' . $langs->trans('DoliSciSetupPage') . '</sp
 if (!empty($formSetup->items)) {
 	print $formSetup->generateOutput();
 }
+
+// Default Rental Services section (Bail, Loyer, Charge, Dépôt de garantie, Caution)
+require_once DOL_DOCUMENT_ROOT . '/product/class/product.class.php';
+$srvDefs = dolisciGetDefaultServiceDefinitions();
+
+// Auto-initialize default services if none are configured yet
+foreach ($srvDefs as $itemKey => $def) {
+	if (getDolGlobalInt($def['const']) <= 0) {
+		dolisciSyncItem($db, $itemKey);
+	}
+}
+
+$allServices   = [];
+$byNature      = [];
+$sqlAllServ    = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.accountancy_code_sell, ef.dolisci_service_nature'
+	. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
+	. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
+	. ' WHERE p.entity IN (' . getEntity('product') . ')'
+	. ' AND p.fk_product_type = 1'
+	. ' ORDER BY p.ref ASC LIMIT 200';
+$resAllServ = $db->query($sqlAllServ);
+if ($resAllServ) {
+	while ($objS = $db->fetch_object($resAllServ)) {
+		$sid               = (int) $objS->rowid;
+		$allServices[$sid] = $objS;
+		$nat               = (string) ($objS->dolisci_service_nature ?? '');
+		$sRef              = (string) $objS->ref;
+		$sAcc              = (string) $objS->accountancy_code_sell;
+		if ($nat === '') {
+			if (stripos($sRef, 'Bail') === 0) {
+				$nat = 'BAIL';
+			} elseif (stripos($sRef, 'Loyer') === 0 || $sAcc === '706100') {
+				$nat = 'LOYER';
+			} elseif (stripos($sRef, 'Charge') === 0 || $sAcc === '708800') {
+				$nat = 'CHARGES';
+			} elseif (stripos($sRef, 'Depot') === 0 || $sAcc === '165000') {
+				$nat = 'DEPOT_GARANTIE';
+			} elseif (stripos($sRef, 'Caution') === 0) {
+				$nat = 'ACTE_CAUTIONNEMENT';
+			}
+		}
+		if ($nat !== '') {
+			$byNature[$nat][$sid] = $objS;
+		}
+	}
+}
+
+$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
+
+print '<br>';
+print '<form method="POST" action="' . dolPrintHTMLForAttributeUrl($_SERVER['PHP_SELF']) . '">';
+print '<input type="hidden" name="token" value="' . newToken() . '">';
+print '<input type="hidden" name="action" value="save_default_services">';
+print '<div class="div-table-responsive-no-min">';
+print '<table class="noborder centpercent">';
+print '<tr class="liste_titre">';
+print '<td>' . dolPrintHTML($langs->trans('DoliSciSetupDefaultServicesSection')) . '</td>';
+print '<td>' . dolPrintHTML($langs->trans('Service')) . '</td>';
+print '<td class="right">' . dolPrintHTML($langs->trans('Value')) . '</td>';
+print '</tr>';
+
+foreach ($srvDefs as $def) {
+	$constName = $def['const'];
+	$natureKey = $def['nature'];
+	$currentId = getDolGlobalInt($constName);
+	$cands     = !empty($byNature[$natureKey]) ? $byNature[$natureKey] : $allServices;
+	if ($currentId > 0 && isset($allServices[$currentId]) && !isset($cands[$currentId])) {
+		$cands[$currentId] = $allServices[$currentId];
+	}
+
+	$currentLink = '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
+	if ($currentId > 0 && isset($allServices[$currentId])) {
+		$sObj             = $allServices[$currentId];
+		$serv             = new Product($db);
+		$serv->id         = (int) $sObj->rowid;
+		$serv->ref        = (string) $sObj->ref;
+		$serv->label      = (string) $sObj->label;
+		$serv->type       = (int) $sObj->fk_product_type;
+		$serv->entity     = (int) $sObj->entity;
+		$serv->status     = (int) $sObj->tosell;
+		$serv->status_buy = (int) $sObj->tobuy;
+		$currentLink      = dolisciGetObjectNomUrl($serv, $natureKey) . ' - ' . dolPrintHTML($serv->label);
+	}
+
+	print '<tr class="oddeven">';
+	print '<td>' . $picto . dolPrintHTML($langs->trans($def['settingLabel'])) . ' <span class="opacitymedium">(' . dolPrintHTML($constName) . ')</span></td>';
+	print '<td class="nowraponall">' . $currentLink . '</td>';
+	print '<td class="right nowraponall">';
+	print '<select name="' . dolPrintHTMLForAttribute($constName) . '" class="flat minwidth300 maxwidth400" onchange="this.form.submit()">';
+	print '<option value="0">&mdash; ' . dolPrintHTML($langs->trans('None')) . ' &mdash;</option>';
+	foreach ($cands as $candObj) {
+		$cid      = (int) $candObj->rowid;
+		$selected = ($cid === $currentId) ? ' selected' : '';
+		$optLabel = $candObj->ref . ' - ' . $candObj->label . ((float) $candObj->price > 0 ? ' (' . price2num($candObj->price) . ' HT)' : '');
+		print '<option value="' . $cid . '"' . $selected . '>' . dolPrintHTML($optLabel) . '</option>';
+	}
+	print '</select>';
+	print '</td>';
+	print '</tr>';
+}
+
+print '</table>';
+print '</div>';
+if ($user->admin) {
+	print '<div class="tabsAction">';
+	print '<input type="submit" class="butAction" value="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '">';
+	print '</div>';
+}
+print '</form>';
 
 // Page end
 print dol_get_fiche_end();

@@ -143,6 +143,32 @@ if ($resCt) {
 $efDefinitions  = dolisciGetExtrafieldDefinitions();
 $ctDefinitions  = dolisciGetContactRoleDefinitions();
 $tagDefinitions = dolisciGetTagDefinitions();
+$srvDefinitions = dolisciGetDefaultServiceDefinitions();
+
+$existingSrvs = [];
+$srvIds       = [];
+foreach ($srvDefinitions as $itemKey => $def) {
+    $sid = getDolGlobalInt($def['const']);
+    if ($sid > 0) {
+        $srvIds[$sid] = $itemKey;
+    }
+}
+if (!empty($srvIds)) {
+    $sqlSrv = 'SELECT rowid, ref, label FROM ' . MAIN_DB_PREFIX . 'product WHERE rowid IN (' . implode(',', array_map('intval', array_keys($srvIds))) . ') LIMIT 100';
+    $resSrv = $db->query($sqlSrv);
+    if ($resSrv) {
+        while ($obj = $db->fetch_object($resSrv)) {
+            $itemKey = $srvIds[(int) $obj->rowid] ?? '';
+            if ($itemKey !== '') {
+                $existingSrvs[$itemKey] = [
+                    'id'    => (int) $obj->rowid,
+                    'ref'   => (string) $obj->ref,
+                    'label' => (string) $obj->label,
+                ];
+            }
+        }
+    }
+}
 
 $existingTags = [];
 $tagIds       = [];
@@ -288,6 +314,38 @@ foreach ($tagDefinitions as $itemKey => $def) {
     print '<td><span class="badge badge-status" style="background-color:#' . dolPrintHTMLForAttribute((string) $def['color']) . ';color:#fff;"><i class="fas ' . dolPrintHTMLForAttribute($iconClass) . ' pictofixedwidth"></i>' . dolPrintHTML($tagLabel) . '</span></td>';
     print '<td><code>' . dolPrintHTML((string) $def['const']) . '</code></td>';
     print '<td>categorie (' . dolPrintHTML((string) $def['type']) . ')</td>';
+    print '<td class="right">' . (int) $def['position'] . '</td>';
+    print '<td class="center">';
+    if ($isCompliant) {
+        print dolGetBadge($langs->trans('DoliSciStatusPresentAndCompliant'), '', 'status4');
+    } else {
+        print dolGetBadge($langs->trans('DoliSciStatusMissingOrNonCompliant'), '', 'status8');
+    }
+    print '</td>';
+    print '<td class="center">';
+    if ($user->admin) {
+        $btnLabel = $isCompliant ? $langs->trans('DoliSciSynchronizeBtn') : $langs->trans('DoliSciInitializeBtn');
+        $btnClass = $isCompliant ? 'button smallpaddingimp reposition' : 'butAction smallpaddingimp reposition';
+        print '<button type="submit" class="' . $btnClass . '" name="init_single" value="' . dolPrintHTMLForAttribute($itemKey) . '">' . dolPrintHTML($btnLabel) . '</button>';
+    }
+    print '</td>';
+    print '</tr>';
+}
+
+// Default Rental Services section
+print '<tr class="liste_titre">';
+print '<td colspan="7">' . img_picto('', 'service', 'class="pictofixedwidth"') . '<strong>' . dolPrintHTML($langs->trans('DoliSciSetupDefaultServicesSection')) . '</strong></td>';
+print '</tr>';
+
+foreach ($srvDefinitions as $itemKey => $def) {
+    $isCompliant = isset($existingSrvs[$itemKey]);
+    $srvLabel    = $langs->trans((string) $def['settingLabel']);
+    $iconClass   = (string) ($def['icon'] ?? 'fa-concierge-bell');
+    print '<tr class="oddeven">';
+    print '<td class="center"><input type="checkbox" class="dolisci-init-check" name="init_items[]" value="' . dolPrintHTMLForAttribute($itemKey) . '"' . (!$isCompliant ? ' checked="checked"' : '') . '></td>';
+    print '<td><i class="fas ' . dolPrintHTMLForAttribute($iconClass) . ' pictofixedwidth"></i>' . dolPrintHTML($srvLabel) . ' (<code>' . dolPrintHTML($def['ref']) . '</code>)</td>';
+    print '<td><code>' . dolPrintHTML((string) $def['const']) . '</code></td>';
+    print '<td>product (service : ' . dolPrintHTML((string) $def['nature']) . ')</td>';
     print '<td class="right">' . (int) $def['position'] . '</td>';
     print '<td class="center">';
     if ($isCompliant) {

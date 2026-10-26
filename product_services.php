@@ -195,12 +195,16 @@ if ($object->id > 0) {
 			$serv->status_buy = (int) $obj->tobuy;
 
 			$servNatureKey = (string) ($obj->dolisci_service_nature ?? '');
-			if ($servNatureKey === '' && (stripos($serv->ref, 'Loyer_') === 0 || stripos($serv->ref, 'Loyer-') === 0)) {
+			if ($servNatureKey === '' && (stripos($serv->ref, 'Bail_') === 0 || stripos($serv->ref, 'Bail-') === 0)) {
+				$servNatureKey = 'BAIL';
+			} elseif ($servNatureKey === '' && (stripos($serv->ref, 'Loyer_') === 0 || stripos($serv->ref, 'Loyer-') === 0)) {
 				$servNatureKey = 'LOYER';
 			} elseif ($servNatureKey === '' && (stripos($serv->ref, 'Charge_') === 0 || stripos($serv->ref, 'Charge-') === 0)) {
 				$servNatureKey = 'CHARGES';
-			} elseif ($servNatureKey === '' && (stripos($serv->ref, 'Caution_') === 0 || stripos($serv->ref, 'Caution-') === 0)) {
+			} elseif ($servNatureKey === '' && (stripos($serv->ref, 'Depot_') === 0 || stripos($serv->ref, 'Depot-') === 0)) {
 				$servNatureKey = 'DEPOT_GARANTIE';
+			} elseif ($servNatureKey === '' && (stripos($serv->ref, 'Caution_') === 0 || stripos($serv->ref, 'Caution-') === 0)) {
+				$servNatureKey = 'ACTE_CAUTIONNEMENT';
 			}
 			$servNatureLabel = isset($servNatureOpts[$servNatureKey]) ? $langs->trans((string) $servNatureOpts[$servNatureKey]) : $servNatureKey;
 
@@ -214,7 +218,7 @@ if ($object->id > 0) {
 				$servProjHtml     = dolisciGetObjectNomUrl($servProj) . ' - ' . dolPrintHTML($servProj->title);
 			}
 
-			$isChild      = !empty($obj->dolisci_is_child) || $servNatureKey !== 'LOYER';
+			$isChild      = !empty($obj->dolisci_is_child);
 			$currGroupKey = (string) ($obj->dolisci_prop_key ?? '') . ':' . ((int) ($obj->dolisci_group_index ?? 1));
 			$isNewGroup   = ($prevGroupKey !== null && $prevGroupKey !== $currGroupKey);
 			$prevGroupKey = $currGroupKey;
