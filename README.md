@@ -41,9 +41,15 @@ Ces tags sont pré-sélectionnés à la création depuis l'espace DoliSCI, affec
 
 ### 5. Modèle de facture « Quittance »
 
-Le modèle `quittance` est le modèle **Sponge** du cœur, dont seul le titre change : « Quittance »
-au lieu de « Facture » (« Rent receipt » en anglais). Les avoirs, factures de remplacement,
-d'acompte et proforma gardent leur titre habituel.
+Le modèle `quittance` est le modèle **Sponge** du cœur, titré « Quittance » au lieu de
+« Facture » (« Rent receipt » en anglais). Les avoirs, factures de remplacement, d'acompte et
+proforma gardent leur titre habituel.
+
+Il affiche aussi la **période louée** en tête, sous les dates de la facture : « Période : Du
+01/10/2026 au 31/10/2026 », de la plus petite date de début à la plus grande date de fin des
+lignes. Ces dates viennent des lignes de la facture : sur une facture modèle récurrente, cocher
+« Définir la date de début » et « Définir la date de fin » sur chaque ligne de loyer et de
+charges, sinon les factures générées n'ont pas de période et la ligne n'apparaît pas.
 
 Il est activé pour l'entité courante en même temps que le module, puis se choisit comme les
 autres modèles dans **Configuration → Modules → Factures**, ou sur chaque facture.

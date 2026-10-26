@@ -76,6 +76,7 @@ class modDoliSci extends DolibarrModules
 				'doliscicontactlist',
 				'invoicecard',
 				'invoicereccard',
+				'pdfgeneration',
 				'main',
 			],
 		];
