@@ -28,7 +28,7 @@ require_once DOL_DOCUMENT_ROOT . '/core/modules/facture/doc/pdf_sponge.modules.p
  *
  * Until 2026 this template was a full copy of pdf_sponge (Dolibarr 15.0.2) dropped into the core
  * folder, with only its name and title changed. Extending the core template instead keeps every
- * fix of Sponge and changes nothing but the title.
+ * fix of Sponge and changes only the title and the rent period shown in the header.
  *
  * The name stays "quittance": it is the value stored in llx_facture.model_pdf and
  * llx_document_model, so existing invoices keep regenerating with it.
@@ -82,6 +82,13 @@ class pdf_quittance extends pdf_sponge
         $invoiceTitle = $outputlangs->tab_translate['PdfInvoiceTitle'] ?? null;
         $outputlangs->tab_translate['PdfInvoiceTitle'] = $outputlangs->transnoentitiesnoconv('DoliSciQuittanceTitle');
 
+        // Sponge has no slot for it in its header: ActionsDoliSci::pdf_getLinkedObjects() prints it
+        // as a linked object line, so that Sponge moves the address frames down by itself
+        $rentPeriod = $this->getRentPeriod($object, $outputlangs);
+        if ($rentPeriod !== '') {
+            $object->context['dolisci_rent_period'] = $rentPeriod;
+        }
+
         try {
             return parent::write_file($object, $outputlangs, $srctemplatepath, $hidedetails, $hidedesc, $hideref);
         } finally {
@@ -90,6 +97,44 @@ class pdf_quittance extends pdf_sponge
             } else {
                 $outputlangs->tab_translate['PdfInvoiceTitle'] = $invoiceTitle;
             }
+            unset($object->context['dolisci_rent_period']);
         }
+    }
+
+    /**
+     * Rent period covered by the invoice: from the earliest start date to the latest end date of
+     * its lines (service dates, filled automatically by recurring invoices whose lines have
+     * "Set start date" / "Set end date" checked)
+     *
+     * @param  Facture   $object      Invoice
+     * @param  Translate $outputlangs Lang output object
+     * @return string                 "From 01/10/2026 to 31/10/2026", '' when no line has a date
+     */
+    public function getRentPeriod($object, $outputlangs): string
+    {
+        $dateStart = 0;
+        $dateEnd   = 0;
+        foreach ($object->lines as $line) {
+            $lineStart = (int) $line->date_start;
+            $lineEnd   = (int) $line->date_end;
+            if ($lineStart > 0 && ($dateStart === 0 || $lineStart < $dateStart)) {
+                $dateStart = $lineStart;
+            }
+            if ($lineEnd > 0 && $lineEnd > $dateEnd) {
+                $dateEnd = $lineEnd;
+            }
+        }
+
+        // Same wording and date format as the period Sponge writes under each line
+        if ($dateStart > 0 && $dateEnd > 0) {
+            return $outputlangs->transnoentitiesnoconv('DateFromTo', dol_print_date($dateStart, 'day', false, $outputlangs), dol_print_date($dateEnd, 'day', false, $outputlangs));
+        }
+        if ($dateStart > 0) {
+            return $outputlangs->transnoentitiesnoconv('DateFrom', dol_print_date($dateStart, 'day', false, $outputlangs));
+        }
+        if ($dateEnd > 0) {
+            return $outputlangs->transnoentitiesnoconv('DateUntil', dol_print_date($dateEnd, 'day', false, $outputlangs));
+        }
+        return '';
     }
 }

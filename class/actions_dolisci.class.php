@@ -843,6 +843,30 @@ class ActionsDoliSci extends CommonHookActions
 		return 0;
 	}
 
+	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
+	/**
+	 * Overloading the pdf_getLinkedObjects function: show the rent period in the header of the "Quittance" invoice template
+	 *
+	 * The period is computed by pdf_quittance::write_file() and handed over in $object->context, so the other templates are left untouched
+	 *
+	 * @param  array        $parameters  Hook metadatas (context, outputlangs, etc...)
+	 * @param  CommonObject $object      The object to process
+	 * @param  string       $action      Current action
+	 * @param  HookManager  $hookmanager Hook manager propagated to allow calling another hook
+	 * @return int                       0
+	 */
+	public function pdf_getLinkedObjects($parameters, &$object, &$action, $hookmanager): int
+	{
+		// phpcs:enable
+		if (!empty($object->context['dolisci_rent_period'])) {
+			$this->results['dolisci_rent_period'] = [
+				'ref_title' => $parameters['outputlangs']->transnoentities('Period'),
+				'ref_value' => $object->context['dolisci_rent_period'],
+			];
+		}
+		return 0;
+	}
+
 	/**
 	 * Overloading the completeTabsHead function:
 	 * - Add the DoliSCI "Loyers & Charges" tab with service counter on Property Products (type == 0)
