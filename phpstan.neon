@@ -22,6 +22,11 @@ parameters:
     scanFiles:
         # llxHeader()/llxFooter()/top_httphead() vivent dans main.inc.php
         - ../../main.inc.php
+        # pdf_getInstance() rend un TCPDF ou un TCPDI (TCPDI -> FPDF_TPL -> FPDF -> TCPDF),
+        # dessines par le modele quittanceloyer
+        - ../../includes/tecnickcom/tcpdf/tcpdf.php
+        - ../../includes/tcpdi/fpdf_tpl.php
+        - ../../includes/tcpdi/tcpdi.php
 
     # Scanne, sans les analyser, les classes du coeur Dolibarr que le module utilise.
     # dolisci ne depend pas de Saturne : son modele de facture etend pdf_sponge du coeur.

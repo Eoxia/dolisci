@@ -1691,3 +1691,141 @@ function dolisciDisableItem(DoliDB $db, string $itemKey): int
 
 	return 0;
 }
+
+/**
+ * Period covered by an invoice: from the earliest start date to the latest end date of its lines
+ * (service dates, filled automatically by recurring invoices whose lines have "Set start date" /
+ * "Set end date" checked)
+ *
+ * @param  CommonInvoice $invoice Invoice, lines loaded
+ * @return array{0:int,1:int}     Start and end timestamps, 0 when no line has one
+ */
+function dolisciGetInvoicePeriod(CommonInvoice $invoice): array
+{
+	$dateStart = 0;
+	$dateEnd   = 0;
+	foreach ($invoice->lines as $line) {
+		$lineStart = (int) $line->date_start;
+		$lineEnd   = (int) $line->date_end;
+		if ($lineStart > 0 && ($dateStart === 0 || $lineStart < $dateStart)) {
+			$dateStart = $lineStart;
+		}
+		if ($lineEnd > 0 && $lineEnd > $dateEnd) {
+			$dateEnd = $lineEnd;
+		}
+	}
+
+	return [$dateStart, $dateEnd];
+}
+
+/**
+ * Amount in words, as written on a rent receipt: "sept cent trente euros et cinquante centimes"
+ *
+ * Only French amounts in euros are written. dol_convertToWord() of the core gets French wrong up
+ * to Dolibarr 23 ("sept cents trente", "vingt un", "un mille", 0.05 read as "cinquante centimes";
+ * fixed in 24.0 by Dolibarr#38945, which still writes "EUR" for "euros"), and English as well
+ * ("seven hundreds thirty").
+ *
+ * @param  float     $amount      Amount
+ * @param  Translate $outputlangs Output language
+ * @param  string    $currency    Currency code
+ * @return string                 Amount in words, '' for another language or currency
+ */
+function dolisciAmountToWords(float $amount, Translate $outputlangs, string $currency): string
+{
+	if (strpos((string) $outputlangs->defaultlang, 'fr_') !== 0 || $currency !== 'EUR') {
+		return '';
+	}
+
+	$cents = (int) round(abs($amount) * 100);
+	$units = intdiv($cents, 100);
+	$cents %= 100;
+
+	$words = [];
+	if ($units > 0 || $cents === 0) {
+		$unitWords = dolisciNumberToFrenchWords($units);
+		// "un million d'euros", but "un million deux cents euros"
+		$words[] = $unitWords . (preg_match('/(million|milliard)s?$/', $unitWords) ? " d'euros" : ($units > 1 ? ' euros' : ' euro'));
+	}
+	if ($cents > 0) {
+		$words[] = dolisciNumberToFrenchWords($cents) . ($cents > 1 ? ' centimes' : ' centime');
+	}
+
+	return implode(' et ', $words);
+}
+
+/**
+ * Whole number in French words, traditional spelling as on cheques: "deux cents", "deux cent
+ * trente", "quatre-vingts", "quatre-vingt-un", "soixante et onze", "mille", "deux cent mille"
+ *
+ * @param  int    $number Number, >= 0
+ * @return string         Number in words
+ */
+function dolisciNumberToFrenchWords(int $number): string
+{
+	if ($number <= 0) {
+		return 'zéro';
+	}
+
+	$words = [];
+	foreach ([1000000000 => 'milliard', 1000000 => 'million'] as $scale => $scaleName) {
+		$count   = intdiv($number, $scale);
+		$number %= $scale;
+		if ($count > 0) {
+			// Million and milliard are nouns: the number before them ends as a whole number does
+			$words[] = dolisciNumberToFrenchWords($count) . ' ' . $scaleName . ($count > 1 ? 's' : '');
+		}
+	}
+
+	$thousands = intdiv($number, 1000);
+	$number   %= 1000;
+	if ($thousands > 0) {
+		// "Mille" is invariable and never preceded by "un"
+		$words[] = $thousands === 1 ? 'mille' : dolisciFrenchWordsBelowThousand($thousands, false) . ' mille';
+	}
+	if ($number > 0) {
+		$words[] = dolisciFrenchWordsBelowThousand($number, true);
+	}
+
+	return implode(' ', $words);
+}
+
+/**
+ * French words of a number from 1 to 999
+ *
+ * @param  int    $number Number, 1 to 999
+ * @param  bool   $last   False when "mille" follows: "vingt" and "cent" then take no s
+ * @return string         Number in words
+ */
+function dolisciFrenchWordsBelowThousand(int $number, bool $last): string
+{
+	$units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+	$tens  = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+
+	$words    = [];
+	$hundreds = intdiv($number, 100);
+	$rest     = $number % 100;
+	if ($hundreds > 0) {
+		$words[] = ($hundreds > 1 ? $units[$hundreds] . ' ' : '') . 'cent' . ($hundreds > 1 && $rest === 0 && $last ? 's' : '');
+	}
+
+	if ($rest >= 20) {
+		$ten  = intdiv($rest, 10);
+		$unit = $rest % 10;
+		// 70 to 79 and 90 to 99 count on from "soixante" and "quatre-vingt": soixante-douze
+		if ($ten === 7 || $ten === 9) {
+			$unit += 10;
+		}
+		if ($unit === 0) {
+			$words[] = $tens[$ten] . ($ten === 8 && $last ? 's' : '');
+		} elseif (($unit === 1 || $unit === 11) && $ten < 8) {
+			$words[] = $tens[$ten] . ' et ' . $units[$unit];
+		} else {
+			$words[] = $tens[$ten] . '-' . $units[$unit];
+		}
+	} elseif ($rest > 0) {
+		$words[] = $units[$rest];
+	}
+
+	return implode(' ', $words);
+}

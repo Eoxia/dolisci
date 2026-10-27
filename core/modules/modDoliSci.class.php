@@ -558,12 +558,13 @@ class modDoliSci extends DolibarrModules
 			dolisciSyncItem($this->db, $itemKey);
 		}
 
-		// Same as modFacture with its default template: the rent receipt template is enabled
+		// Same as modFacture with its default template: the rent receipt templates are enabled
 		// for the current entity along with the module
-		$sql = [
-			"DELETE FROM " . MAIN_DB_PREFIX . "document_model WHERE nom = 'quittance' AND type = 'invoice' AND entity = " . ((int) $conf->entity),
-			"INSERT INTO " . MAIN_DB_PREFIX . "document_model (nom, type, entity) VALUES ('quittance', 'invoice', " . ((int) $conf->entity) . ")",
-		];
+		$sql = [];
+		foreach (['quittance', 'quittanceloyer'] as $templateName) {
+			$sql[] = "DELETE FROM " . MAIN_DB_PREFIX . "document_model WHERE nom = '" . $templateName . "' AND type = 'invoice' AND entity = " . ((int) $conf->entity);
+			$sql[] = "INSERT INTO " . MAIN_DB_PREFIX . "document_model (nom, type, entity) VALUES ('" . $templateName . "', 'invoice', " . ((int) $conf->entity) . ")";
+		}
 
 		return $this->_init($sql, $options);
 	}

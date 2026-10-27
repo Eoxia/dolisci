@@ -81,7 +81,8 @@ jobs:
             # dolisci ne depend pas de Saturne : seul le coeur Dolibarr est necessaire a la
             # resolution des classes (scanDirectories). Epingle sur la derniere version
             # stable pour que le verdict soit reproductible.
-            # A garder en phase avec les scanDirectories de phpstan.neon.
+            # A garder en phase avec les scanDirectories et scanFiles de phpstan.neon. TCPDF :
+            # tcpdf.php et ses classes include/ seulement, pas ses dizaines de Mo de polices.
             - name: Checkout Dolibarr core (sparse)
               uses: actions/checkout@v4
               with:
@@ -99,6 +100,9 @@ jobs:
                       htdocs/core/tpl
                       htdocs/core/triggers
                       htdocs/fourn/class
+                      htdocs/includes/tcpdi
+                      htdocs/includes/tecnickcom/tcpdf/include
+                      htdocs/includes/tecnickcom/tcpdf/tcpdf.php
                       htdocs/main.inc.php
                       htdocs/product/class
                       htdocs/projet/class

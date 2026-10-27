@@ -1,6 +1,6 @@
 # DoliSCI sur [DOLIBARR ERP CRM](https://dolibarr.org)
 
-Module pour la gestion de SCI simplement : projets immobiliers (immeubles et lots), produits biens achetés avec lot fiscal, services de location distincts (loyer principal `706100` et provision sur charges `708800`), isolation par tags/catégories dédiés et modèle PDF de facture « Quittance ».
+Module pour la gestion de SCI simplement : projets immobiliers (immeubles et lots), produits biens achetés avec lot fiscal, services de location distincts (loyer principal `706100` et provision sur charges `708800`), isolation par tags/catégories dédiés et modèles PDF de facture « Quittance » et « Quittance de loyer » (modèle de l'ANIL).
 
 ## Informations
 
@@ -55,6 +55,39 @@ Il est activé pour l'entité courante en même temps que le module, puis se cho
 autres modèles dans **Configuration → Modules → Factures**, ou sur chaque facture.
 
 Comme il hérite de Sponge, il profite de toutes les corrections du cœur sans recopie.
+
+### 6. Modèle de facture « Quittance de loyer » (modèle de l'ANIL)
+
+Le modèle `quittanceloyer` reprend la mise en page du modèle de quittance de l'ANIL (location
+vide ou meublée à titre de résidence principale) et remplit chaque rubrique avec la facture :
+
+| Rubrique | Source |
+|---|---|
+| Quittance de loyer du mois de … | période des lignes (date de début et de fin) ; « du … au … » si elle couvre plusieurs mois |
+| Bailleur | la société ; le signataire est le ou les dirigeants de la société s'ils sont renseignés (Configuration → Société) |
+| Locataire | le tiers de la facture, ou son contact de facturation s'il en a un |
+| Adresse de la location | le contact « Adresse du bien » du projet de la facture, sinon de son projet parent (immeuble) ; à défaut, l'adresse du locataire. Le bien loué (libellé, étage / porte) s'ajoute quand le service de loyer y est rattaché |
+| Somme reçue | paiements, avoirs et acomptes imputés, en lettres et en chiffres |
+| Période de location | dates des lignes ; à défaut, la référence et la date de la facture |
+| Détail du règlement | une ligne par nature de service DoliSCI (loyer, provision pour charges, régularisation, dépôt de garantie), ou par compte `706100` / `708800`, sinon par produit |
+| Date du paiement, Fait à … le … | dates des paiements ; ville de la société, date du dernier paiement |
+
+Une quittance prouve un paiement : le document suit donc l'état de la facture.
+
+- **Réglée** : quittance, avec la mention de bas de page de l'ANIL (loi du 6 juillet 1989, art. 7-1).
+- **Réglée en partie** : « Reçu de paiement partiel », avec le montant reçu et le reste dû (art. 21).
+- **Rien de réglé** : « Avis d'échéance », avec la date limite de règlement.
+
+Après avoir saisi le paiement, régénérer le PDF pour obtenir la quittance.
+
+Les avoirs, acomptes, proformas et factures de situation sont édités avec le modèle `quittance`.
+Le montant en lettres est écrit par le module, en français et en euros seulement : la fonction du
+cœur se trompe jusqu'en Dolibarr 23 (« sept cents trente », « vingt un ») et écrit « EUR » au
+lieu d'« euros » depuis la 24 ; en anglais, elle écrit « seven hundreds ». Dans les autres
+langues, le montant figure en chiffres.
+
+Le modèle est activé avec le module ; sur une instance où le module est déjà actif, l'activer dans
+**Configuration → Modules → Factures**.
 
 ## Installation sur une instance qui avait l'ancien modèle
 
