@@ -1721,8 +1721,9 @@ function dolisciGetInvoicePeriod(CommonInvoice $invoice): array
 /**
  * Amount in words, as written on a rent receipt: "sept cent trente euros et cinquante centimes"
  *
- * Only French amounts in euros are written: dol_convertToWord() of the core gets them wrong ("sept
- * cents trente", "vingt un", "un mille", 0.05 read as "cinquante centimes"), and English as well
+ * Only French amounts in euros are written. dol_convertToWord() of the core gets French wrong up
+ * to Dolibarr 23 ("sept cents trente", "vingt un", "un mille", 0.05 read as "cinquante centimes";
+ * fixed in 24.0 by Dolibarr#38945, which still writes "EUR" for "euros"), and English as well
  * ("seven hundreds thirty").
  *
  * @param  float     $amount      Amount

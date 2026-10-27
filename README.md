@@ -81,8 +81,10 @@ Une quittance prouve un paiement : le document suit donc l'état de la facture.
 Après avoir saisi le paiement, régénérer le PDF pour obtenir la quittance.
 
 Les avoirs, acomptes, proformas et factures de situation sont édités avec le modèle `quittance`.
-Le montant en lettres n'est écrit qu'en français et en euros, la fonction du cœur se trompant
-(« sept cents trente », « vingt un ») ; dans les autres cas, le montant figure en chiffres.
+Le montant en lettres est écrit par le module, en français et en euros seulement : la fonction du
+cœur se trompe jusqu'en Dolibarr 23 (« sept cents trente », « vingt un ») et écrit « EUR » au
+lieu d'« euros » depuis la 24 ; en anglais, elle écrit « seven hundreds ». Dans les autres
+langues, le montant figure en chiffres.
 
 Le modèle est activé avec le module ; sur une instance où le module est déjà actif, l'activer dans
 **Configuration → Modules → Factures**.
