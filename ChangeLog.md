@@ -7,3 +7,6 @@
   sous le même nom `quittance` (#1).
 - Quittance : période louée (« Période : Du … au … ») en tête du document, tirée des dates des
   lignes. Demande de désactiver puis réactiver le module, pour le hook `pdfgeneration` (#6).
+- Modèle PDF de facture « Quittance de loyer » (`quittanceloyer`) au format du modèle de l'ANIL,
+  rempli avec la facture ; avis d'échéance tant qu'elle n'est pas réglée, reçu si elle l'est en
+  partie (#12).

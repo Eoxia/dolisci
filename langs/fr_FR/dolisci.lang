@@ -131,6 +131,41 @@ DoliSciQuittanceTitle = Quittance
 DoliSciQuittanceDescription = Modèle ajouté par le module DoliSCI basé sur le modèle Sponge
 
 #
+# Modèle de facture « Quittance de loyer » (modèle de l'ANIL)
+#
+DoliSciRentReceiptDescription = Quittance de loyer au format du modèle de l'ANIL, remplie avec la facture : avis d'échéance tant qu'elle n'est pas réglée, reçu si elle l'est en partie
+DoliSciRentReceiptTitle = Quittance de loyer
+DoliSciRentPartialReceiptTitle = Reçu de paiement partiel
+DoliSciRentNoticeTitle = Avis d'échéance
+DoliSciRentTitleMonth = %s du mois de %s
+DoliSciRentTitleMonthElided = %s du mois d'%s
+DoliSciRentTitlePeriod = %s du %s au %s
+DoliSciRentInvoiceRef = Facture %s du %s
+DoliSciRentDoneAtOn = Fait à %s, le %s
+DoliSciRentDoneOn = Fait le %s
+DoliSciRentPropertyAddress = Adresse de la location :
+DoliSciRentLandlordOnBehalf = %s, pour le compte de %s
+DoliSciRentForPeriod = pour la période de location du %s au %s
+DoliSciRentForInvoice = de la facture %s du %s
+DoliSciRentReceiptStatement = Je soussigné(e) %s, propriétaire du logement désigné ci-dessus, déclare avoir reçu de %s la somme de %s, au titre du paiement du loyer et des charges %s et lui en donne quittance, sous réserve de tous mes droits.
+DoliSciRentPartialStatement = Je soussigné(e) %s, propriétaire du logement désigné ci-dessus, déclare avoir reçu de %s la somme de %s, en paiement partiel du loyer et des charges %s, dont le montant total s'élève à %s. Ce reçu ne vaut pas quittance.
+DoliSciRentNoticeStatement = Le loyer et les charges %s s'élèvent à la somme de %s, à régler au plus tard le %s.
+DoliSciRentPaymentDetail = Détail du règlement :
+DoliSciRentNoticeDetail = Détail de l'échéance :
+DoliSciRentLineRent = Loyer
+DoliSciRentLineCharges = Provision pour charges
+DoliSciRentLineChargesRegul = Régularisation de charges
+DoliSciRentLineDeposit = Dépôt de garantie
+DoliSciRentTotal = Total
+DoliSciRentAlreadyPaid = Montant reçu
+DoliSciRentRemainToPay = Reste dû
+DoliSciRentPaymentDate = Date du paiement : le %s
+DoliSciRentPaymentDates = Dates des paiements : %s
+DoliSciRentDueDate = Date d'échéance : le %s
+DoliSciRentLandlord = Le bailleur
+DoliSciRentReceiptLegalNotice = Cette quittance annule tous les reçus qui auraient pu être établis précédemment en cas de paiement partiel du montant du présent terme. Elle est à conserver pendant trois ans par le locataire (loi n° 89-462 du 6 juillet 1989 : art. 7-1).
+
+#
 # Menu & Tableau de bord DoliSCI
 #
 ReadModuleDoliSci = Accéder à l'espace DoliSCI

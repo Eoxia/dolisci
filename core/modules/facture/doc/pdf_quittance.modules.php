@@ -22,6 +22,7 @@
  */
 
 require_once DOL_DOCUMENT_ROOT . '/core/modules/facture/doc/pdf_sponge.modules.php';
+require_once __DIR__ . '/../../../../lib/dolisci.lib.php';
 
 /**
  * Rent receipt invoice template.
@@ -112,18 +113,7 @@ class pdf_quittance extends pdf_sponge
      */
     public function getRentPeriod($object, $outputlangs): string
     {
-        $dateStart = 0;
-        $dateEnd   = 0;
-        foreach ($object->lines as $line) {
-            $lineStart = (int) $line->date_start;
-            $lineEnd   = (int) $line->date_end;
-            if ($lineStart > 0 && ($dateStart === 0 || $lineStart < $dateStart)) {
-                $dateStart = $lineStart;
-            }
-            if ($lineEnd > 0 && $lineEnd > $dateEnd) {
-                $dateEnd = $lineEnd;
-            }
-        }
+        [$dateStart, $dateEnd] = dolisciGetInvoicePeriod($object);
 
         // Same wording and date format as the period Sponge writes under each line
         if ($dateStart > 0 && $dateEnd > 0) {

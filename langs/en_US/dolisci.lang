@@ -131,6 +131,41 @@ DoliSciQuittanceTitle = Rent receipt
 DoliSciQuittanceDescription = Template added by the DoliSCI module based on the Sponge template
 
 #
+# "Rent receipt" invoice template (ANIL model)
+#
+DoliSciRentReceiptDescription = Rent receipt laid out as the ANIL model, filled from the invoice: rent due notice while unpaid, receipt when partially paid
+DoliSciRentReceiptTitle = Rent receipt
+DoliSciRentPartialReceiptTitle = Partial payment receipt
+DoliSciRentNoticeTitle = Rent due notice
+DoliSciRentTitleMonth = %s for %s
+DoliSciRentTitleMonthElided = %s for %s
+DoliSciRentTitlePeriod = %s from %s to %s
+DoliSciRentInvoiceRef = Invoice %s of %s
+DoliSciRentDoneAtOn = Done at %s, on %s
+DoliSciRentDoneOn = Done on %s
+DoliSciRentPropertyAddress = Address of the rented property:
+DoliSciRentLandlordOnBehalf = %s, on behalf of %s
+DoliSciRentForPeriod = for the rental period from %s to %s
+DoliSciRentForInvoice = of invoice %s of %s
+DoliSciRentReceiptStatement = I, the undersigned %s, owner of the dwelling described above, acknowledge receipt from %s of the sum of %s, in payment of the rent and charges %s, and hereby give receipt for it, without prejudice to all my rights.
+DoliSciRentPartialStatement = I, the undersigned %s, owner of the dwelling described above, acknowledge receipt from %s of the sum of %s, as partial payment of the rent and charges %s, whose total amount is %s. This receipt is not a full rent receipt.
+DoliSciRentNoticeStatement = The rent and charges %s amount to %s, payable no later than %s.
+DoliSciRentPaymentDetail = Payment detail:
+DoliSciRentNoticeDetail = Amount due:
+DoliSciRentLineRent = Rent
+DoliSciRentLineCharges = Charges provision
+DoliSciRentLineChargesRegul = Charges reconciliation
+DoliSciRentLineDeposit = Security deposit
+DoliSciRentTotal = Total
+DoliSciRentAlreadyPaid = Amount received
+DoliSciRentRemainToPay = Remaining due
+DoliSciRentPaymentDate = Payment date: %s
+DoliSciRentPaymentDates = Payment dates: %s
+DoliSciRentDueDate = Due date: %s
+DoliSciRentLandlord = The landlord
+DoliSciRentReceiptLegalNotice = This receipt cancels any receipt that may have been issued previously for a partial payment of this term. The tenant must keep it for three years (French law no. 89-462 of 6 July 1989, art. 7-1).
+
+#
 # DoliSCI Menu & Dashboard
 #
 ReadModuleDoliSci = Access the DoliSCI workspace
