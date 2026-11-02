@@ -41,7 +41,7 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
             - uses: shivammathur/setup-php@v2
               with:
@@ -85,7 +85,7 @@ jobs:
 
         steps:
             - name: Checkout dolisci
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
               with:
                   path: htdocs/custom/dolisci
 
@@ -95,7 +95,7 @@ jobs:
             # A garder en phase avec les scanDirectories et scanFiles de phpstan.neon. TCPDF :
             # tcpdf.php et ses classes include/ seulement, pas ses dizaines de Mo de polices.
             - name: Checkout Dolibarr core (sparse)
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
               with:
                   repository: Dolibarr/dolibarr
                   ref: '23.0.0'
@@ -133,7 +133,7 @@ jobs:
                   coverage: none
 
             - name: Cache Composer packages
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: htdocs/custom/dolisci/vendor
                   key: composer-8.1-${{ hashFiles('htdocs/custom/dolisci/composer.lock') }}
