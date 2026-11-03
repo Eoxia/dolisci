@@ -10,3 +10,8 @@
 - Modèle PDF de facture « Quittance de loyer » (`quittanceloyer`) au format du modèle de l'ANIL,
   rempli avec la facture ; avis d'échéance tant qu'elle n'est pas réglée, reçu si elle l'est en
   partie (#12).
+- Quittance de loyer : le PDF de la facture est toujours l'avis d'échéance. La quittance (ou le
+  reçu d'un paiement partiel) est un document à part, `Quittance_FA….pdf` (`Recu_FA….pdf`),
+  écrit dès que la facture est réglée. Il est joint par défaut à l'envoi par email. Signature au
+  nom de la société bailleresse ; locataire placé sous le bloc du bailleur, sans son nom en double ;
+  « Échéance acquittée le … » sur l'avis d'une facture réglée (#18).

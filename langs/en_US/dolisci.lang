@@ -133,20 +133,22 @@ DoliSciQuittanceDescription = Template added by the DoliSCI module based on the 
 #
 # "Rent receipt" invoice template (ANIL model)
 #
-DoliSciRentReceiptDescription = Rent receipt laid out as the ANIL model, filled from the invoice: rent due notice while unpaid, receipt when partially paid
+DoliSciRentReceiptDescription = Rent due notice laid out as the ANIL rent receipt model, filled from the invoice; once the invoice is paid, rent receipt in a document of its own (receipt for the sum received when partially paid)
 DoliSciRentReceiptTitle = Rent receipt
 DoliSciRentPartialReceiptTitle = Partial payment receipt
 DoliSciRentNoticeTitle = Rent due notice
 DoliSciRentTitleMonth = %s for %s
 DoliSciRentTitleMonthElided = %s for %s
 DoliSciRentTitlePeriod = %s from %s to %s
-DoliSciRentInvoiceRef = Invoice %s of %s
+DoliSciRentNoticeRef = No. %s of %s
+DoliSciRentNoticeRefOf = Rent due notice no. %s of %s
 DoliSciRentDoneAtOn = Done at %s, on %s
 DoliSciRentDoneOn = Done on %s
 DoliSciRentPropertyAddress = Address of the rented property:
 DoliSciRentLandlordOnBehalf = %s, on behalf of %s
 DoliSciRentForPeriod = for the rental period from %s to %s
-DoliSciRentForInvoice = of invoice %s of %s
+DoliSciRentForNotice = of rent due notice no. %s of %s
+DoliSciRentForThisNotice = of this term
 DoliSciRentReceiptStatement = I, the undersigned %s, owner of the dwelling described above, acknowledge receipt from %s of the sum of %s, in payment of the rent and charges %s, and hereby give receipt for it, without prejudice to all my rights.
 DoliSciRentPartialStatement = I, the undersigned %s, owner of the dwelling described above, acknowledge receipt from %s of the sum of %s, as partial payment of the rent and charges %s, whose total amount is %s. This receipt is not a full rent receipt.
 DoliSciRentNoticeStatement = The rent and charges %s amount to %s, payable no later than %s.
@@ -162,6 +164,8 @@ DoliSciRentRemainToPay = Remaining due
 DoliSciRentPaymentDate = Payment date: %s
 DoliSciRentPaymentDates = Payment dates: %s
 DoliSciRentDueDate = Due date: %s
+DoliSciRentNoticeSettledOn = Term paid on %s.
+DoliSciRentNoticeSettled = Term paid.
 DoliSciRentLandlord = The landlord
 DoliSciRentReceiptLegalNotice = This receipt cancels any receipt that may have been issued previously for a partial payment of this term. The tenant must keep it for three years (French law no. 89-462 of 6 July 1989, art. 7-1).
 
