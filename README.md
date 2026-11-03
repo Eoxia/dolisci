@@ -64,21 +64,34 @@ vide ou meublée à titre de résidence principale) et remplit chaque rubrique a
 | Rubrique | Source |
 |---|---|
 | Quittance de loyer du mois de … | période des lignes (date de début et de fin) ; « du … au … » si elle couvre plusieurs mois |
-| Bailleur | la société ; le signataire est le ou les dirigeants de la société s'ils sont renseignés (Configuration → Société) |
+| Bailleur | la société, qui signe ; la déclaration de la quittance nomme le ou les dirigeants de la société s'ils sont renseignés (Configuration → Société) |
 | Locataire | le tiers de la facture, ou son contact de facturation s'il en a un |
 | Adresse de la location | le contact « Adresse du bien » du projet de la facture, sinon de son projet parent (immeuble) ; à défaut, l'adresse du locataire. Le bien loué (libellé, étage / porte) s'ajoute quand le service de loyer y est rattaché |
 | Somme reçue | paiements, avoirs et acomptes imputés, en lettres et en chiffres |
-| Période de location | dates des lignes ; à défaut, la référence et la date de la facture |
+| Période de location | dates des lignes ; à défaut, la référence et la date de l'avis d'échéance |
 | Détail du règlement | une ligne par nature de service DoliSCI (loyer, provision pour charges, régularisation, dépôt de garantie), ou par compte `706100` / `708800`, sinon par produit |
 | Date du paiement, Fait à … le … | dates des paiements ; ville de la société, date du dernier paiement |
 
-Une quittance prouve un paiement : le document suit donc l'état de la facture.
+Une location nue d'habitation n'est pas soumise à la TVA : le locataire ne reçoit pas de facture.
+L'avis d'échéance annonce la somme du terme, la quittance prouve le paiement. Le modèle produit
+donc deux documents.
 
-- **Réglée** : quittance, avec la mention de bas de page de l'ANIL (loi du 6 juillet 1989, art. 7-1).
-- **Réglée en partie** : « Reçu de paiement partiel », avec le montant reçu et le reste dû (art. 21).
-- **Rien de réglé** : « Avis d'échéance », avec la date limite de règlement.
+- **Le PDF de la facture** (`FA….pdf`) est toujours l'« Avis d'échéance », avec la date limite de
+  règlement. Une fois la facture réglée, il porte aussi le montant reçu, le reste dû et la mention
+  « Échéance acquittée le … ».
+- **Réglée** : quittance dans `Quittance_FA….pdf`, avec la mention de bas de page de l'ANIL
+  (loi du 6 juillet 1989, art. 7-1).
+- **Réglée en partie** : « Reçu de paiement partiel » dans `Recu_FA….pdf`, avec le montant reçu
+  et le reste dû (art. 21).
 
-Après avoir saisi le paiement, régénérer le PDF pour obtenir la quittance.
+Dolibarr régénère le PDF après chaque paiement saisi, rapprochement bancaire compris : la
+quittance apparaît alors seule dans les fichiers joints de la facture. Elle devient le document
+principal, joint par défaut à l'envoi par email, un par un ou en masse. Une quittance ou un reçu
+qui ne correspond plus aux paiements est supprimé à la génération suivante. Supprimer un paiement
+ne régénère pas le PDF : il faut le faire à la main.
+
+Les modules qui travaillent sur le PDF de la facture, comme la facture électronique ou la fusion
+de documents, ne reçoivent que l'avis d'échéance.
 
 Les avoirs, acomptes, proformas et factures de situation sont édités avec le modèle `quittance`.
 Le montant en lettres est écrit par le module, en français et en euros seulement : la fonction du

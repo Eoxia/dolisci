@@ -27,6 +27,7 @@ require_once DOL_DOCUMENT_ROOT . '/contact/class/contact.class.php';
 require_once DOL_DOCUMENT_ROOT . '/product/class/product.class.php';
 require_once DOL_DOCUMENT_ROOT . '/projet/class/project.class.php';
 require_once DOL_DOCUMENT_ROOT . '/core/lib/company.lib.php';
+require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT . '/core/lib/pdf.lib.php';
 require_once __DIR__ . '/../../../../lib/dolisci.lib.php';
 
@@ -34,11 +35,13 @@ require_once __DIR__ . '/../../../../lib/dolisci.lib.php';
  * Rent receipt laid out as the model of the ANIL ("Location vide ou meublée à titre de résidence
  * principale : quittance de loyer"), every field filled from the invoice.
  *
- * A rent receipt proves a payment, so the document follows the payment state of the invoice:
- * paid, it is a rent receipt ("quittance"); partially paid, a receipt for the sum received ("reçu",
- * art. 21 of the law of 6 July 1989); unpaid, a rent due notice ("avis d'échéance").
+ * A home let unfurnished bears no VAT, so the tenant gets no invoice: the document of the invoice is
+ * the rent due notice ("avis d'échéance"), which calls for the sum of the term. A rent receipt proves
+ * a payment, so it is a document of its own, written once the invoice is paid: a rent receipt
+ * ("quittance"), or a receipt for the sum received when partially paid ("reçu", art. 21 of the law
+ * of 6 July 1989).
  *
- * @phpstan-type ReceiptData array{state:string,title:string,invoiceRef:string,landlordName:string,landlordAddress:string,signatory:string,tenantName:string,tenantAddress:string,doneAt:string,propertyAddress:string,statement:string,detailTitle:string,rows:list<array{0:string,1:float}>,total:float,received:float,remain:float,paymentLine:string,legalNotice:string}
+ * @phpstan-type ReceiptData array{state:string,paymentState:string,title:string,invoiceRef:string,landlordName:string,landlordAddress:string,tenantName:string,tenantAddress:string,doneAt:string,propertyAddress:string,statement:string,detailTitle:string,rows:list<array{0:string,1:float}>,total:float,received:float,remain:float,paymentLine:string,legalNotice:string}
  */
 class pdf_quittanceloyer extends ModelePDFFactures
 {
@@ -53,9 +56,14 @@ class pdf_quittanceloyer extends ModelePDFFactures
 	const STATE_PARTIAL = 'partial';
 
 	/**
-	 * Unpaid invoice: rent due notice
+	 * Unpaid invoice, and the document of every invoice: rent due notice
 	 */
 	const STATE_NOTICE = 'notice';
+
+	/**
+	 * Start of the file name of each receipt, before the invoice ref
+	 */
+	const RECEIPT_FILE_PREFIXES = [self::STATE_RECEIPT => 'Quittance', self::STATE_PARTIAL => 'Recu'];
 
 	/**
 	 * @var array<int,Product|null> Products of the invoice lines, by id
@@ -146,13 +154,13 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		$object->fetch_thirdparty();
 
 		if ($object->specimen) {
-			$dir  = $conf->facture->multidir_output[$conf->entity];
-			$file = $dir . '/SPECIMEN.pdf';
+			$objectRef = 'SPECIMEN';
+			$dir       = $conf->facture->multidir_output[$conf->entity];
 		} else {
 			$objectRef = dol_sanitizeFileName($object->ref);
 			$dir       = $conf->facture->multidir_output[$object->entity ?? $conf->entity] . '/' . $objectRef;
-			$file      = $dir . '/' . $objectRef . '.pdf';
 		}
+		$file = $dir . '/' . $objectRef . '.pdf';
 		if (!file_exists($dir) && dol_mkdir($dir) < 0) {
 			$this->error = $langs->transnoentities('ErrorCanNotCreateDir', $dir);
 			return 0;
@@ -171,7 +179,74 @@ class pdf_quittanceloyer extends ModelePDFFactures
 			$this->watermark = getDolGlobalString('FACTURE_DRAFT_WATERMARK');
 		}
 
-		$receipt = $this->getReceiptData($object, $outputlangs);
+		$notice = $this->getReceiptData($object, $outputlangs, self::STATE_NOTICE);
+		$this->writeDocument($file, $object, $notice, $outputlangs);
+
+		// The hooks (e-invoice, merged documents...) work on the document of the invoice only
+		$hookmanager->initHooks(['pdfgeneration']);
+		$parameters     = ['file' => $file, 'object' => $object, 'outputlangs' => $outputlangs];
+		$reshook        = $hookmanager->executeHooks('afterPDFCreation', $parameters, $this, $action);
+		$this->warnings = $hookmanager->warnings;
+		dolChmod($file);
+
+		$this->result = ['fullpath' => $file];
+		if ($object->specimen) {
+			return $reshook < 0 ? $this->setHookErrors($hookmanager) : 1;
+		}
+
+		// A receipt left from payments since deleted would prove a payment no longer recorded
+		foreach (self::RECEIPT_FILE_PREFIXES as $state => $prefix) {
+			$receiptFile = $dir . '/' . $prefix . '_' . $objectRef . '.pdf';
+			if ($state !== $notice['paymentState'] && dol_is_file($receiptFile)) {
+				dol_delete_file($receiptFile, 0, 0, 0, $object);
+			}
+		}
+
+		// Written even when a hook rejects the notice: an e-invoice check (tenant without company
+		// id...) is no reason to hold back the receipt of a payment
+		if (isset(self::RECEIPT_FILE_PREFIXES[$notice['paymentState']])) {
+			$receiptFile = $dir . '/' . self::RECEIPT_FILE_PREFIXES[$notice['paymentState']] . '_' . $objectRef . '.pdf';
+			$this->writeDocument($receiptFile, $object, $this->getReceiptData($object, $outputlangs, $notice['paymentState']), $outputlangs);
+			// The mass emails attach the most recent file of the invoice: the receipt, not the notice
+			// or the files the hooks derived from it within the same second
+			touch($receiptFile, time() + 1);
+			dolChmod($receiptFile);
+
+			// The core indexes the main document only: the notice would get no share link
+			$object->indexFile($file, 0);
+			// Main document, attached by default when sending the invoice by email
+			$this->result = ['fullpath' => $receiptFile];
+		}
+
+		return $reshook < 0 ? $this->setHookErrors($hookmanager) : 1;
+	}
+
+	/**
+	 * Report the errors of the hooks run after the creation of the notice, as the core templates do
+	 *
+	 * @param  HookManager $hookmanager Hook manager
+	 * @return -1                       KO
+	 */
+	protected function setHookErrors(HookManager $hookmanager): int
+	{
+		$this->error  = $hookmanager->error;
+		$this->errors = $hookmanager->errors;
+
+		return -1;
+	}
+
+	/**
+	 * Write one document onto disk: the rent due notice, or a receipt
+	 *
+	 * @param  string      $file        Full path of the PDF
+	 * @param  Facture     $object      Invoice
+	 * @param  ReceiptData $receipt     Values from getReceiptData()
+	 * @param  Translate   $outputlangs Output language
+	 * @return void
+	 */
+	protected function writeDocument(string $file, Facture $object, array $receipt, Translate $outputlangs): void
+	{
+		global $user;
 
 		$pdf = pdf_getInstance($this->format);
 		if (class_exists('TCPDF')) {
@@ -212,31 +287,17 @@ class pdf_quittanceloyer extends ModelePDFFactures
 
 		$pdf->Close();
 		$pdf->Output($file, 'F');
-
-		$hookmanager->initHooks(['pdfgeneration']);
-		$parameters     = ['file' => $file, 'object' => $object, 'outputlangs' => $outputlangs];
-		$reshook        = $hookmanager->executeHooks('afterPDFCreation', $parameters, $this, $action);
-		$this->warnings = $hookmanager->warnings;
-		dolChmod($file);
-		if ($reshook < 0) {
-			$this->error  = $hookmanager->error;
-			$this->errors = $hookmanager->errors;
-			return -1;
-		}
-
-		$this->result = ['fullpath' => $file];
-
-		return 1;
 	}
 
 	/**
-	 * Everything the receipt prints, read from the invoice
+	 * Everything a document prints, read from the invoice
 	 *
 	 * @param  Facture   $object      Invoice, lines and thirdparty loaded
 	 * @param  Translate $outputlangs Output language
+	 * @param  string    $document    self::STATE_NOTICE for the rent due notice, '' for the receipt the payments call for
 	 * @return ReceiptData            Values to print
 	 */
-	public function getReceiptData(Facture $object, Translate $outputlangs): array
+	public function getReceiptData(Facture $object, Translate $outputlangs, string $document = ''): array
 	{
 		global $conf;
 
@@ -251,12 +312,13 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		$remain       = (float) price2num($total - $paid, 'MT');
 		$closedAsPaid = (int) $object->status === Facture::STATUS_CLOSED && $object->close_code !== Facture::CLOSECODE_BADDEBT;
 		if ($remain <= 0 || $closedAsPaid) {
-			$state = self::STATE_RECEIPT;
+			$paymentState = self::STATE_RECEIPT;
 		} elseif ($paid > 0) {
-			$state = self::STATE_PARTIAL;
+			$paymentState = self::STATE_PARTIAL;
 		} else {
-			$state = self::STATE_NOTICE;
+			$paymentState = self::STATE_NOTICE;
 		}
+		$state = $document === self::STATE_NOTICE ? self::STATE_NOTICE : $paymentState;
 
 		// Mode 1: payments only, without the credit notes and down payments used
 		$paymentDates = [];
@@ -270,10 +332,13 @@ class pdf_quittanceloyer extends ModelePDFFactures
 
 		[$periodStart, $periodEnd] = dolisciGetInvoicePeriod($object);
 		$invoiceDate               = dol_print_date($object->date, 'day', false, $outputlangs);
+		$invoiceRef                = $outputlangs->convToOutputCharset($object->ref);
 		if ($periodStart > 0 && $periodEnd > 0) {
 			$periodText = $outputlangs->transnoentitiesnoconv('DoliSciRentForPeriod', dol_print_date($periodStart, 'day', false, $outputlangs), dol_print_date($periodEnd, 'day', false, $outputlangs));
+		} elseif ($state === self::STATE_NOTICE) {
+			$periodText = $outputlangs->transnoentitiesnoconv('DoliSciRentForThisNotice');
 		} else {
-			$periodText = $outputlangs->transnoentitiesnoconv('DoliSciRentForInvoice', $outputlangs->convToOutputCharset($object->ref), $invoiceDate);
+			$periodText = $outputlangs->transnoentitiesnoconv('DoliSciRentForNotice', $invoiceRef, $invoiceDate);
 		}
 
 		$titleKeys = [self::STATE_RECEIPT => 'DoliSciRentReceiptTitle', self::STATE_PARTIAL => 'DoliSciRentPartialReceiptTitle', self::STATE_NOTICE => 'DoliSciRentNoticeTitle'];
@@ -294,8 +359,7 @@ class pdf_quittanceloyer extends ModelePDFFactures
 
 		$landlordName = $outputlangs->convToOutputCharset($this->emetteur->name);
 		$managers     = trim((string) $this->emetteur->managers);
-		$signatory    = $managers !== '' ? $outputlangs->convToOutputCharset($managers) : $landlordName;
-		$landlord     = $managers !== '' ? $outputlangs->transnoentitiesnoconv('DoliSciRentLandlordOnBehalf', $signatory, $landlordName) : $landlordName;
+		$landlord     = $managers !== '' ? $outputlangs->transnoentitiesnoconv('DoliSciRentLandlordOnBehalf', $outputlangs->convToOutputCharset($managers), $landlordName) : $landlordName;
 
 		// Same recipient as the core templates: the billing contact when there is one
 		$useContact      = false;
@@ -307,8 +371,13 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		if ($useContact && $object->contact->socid != $object->thirdparty->id && getDolGlobalString('MAIN_USE_COMPANY_NAME_OF_CONTACT', '1')) {
 			$recipient = $object->contact;
 		}
-		$tenantName    = pdfBuildThirdpartyName($recipient, $outputlangs);
-		$tenantAddress = trim(pdf_build_address($outputlangs, $this->emetteur, $object->thirdparty, ($useContact ? $object->contact : ''), ($useContact ? 1 : 0), 'target', $object));
+		$tenantName   = pdfBuildThirdpartyName($recipient, $outputlangs);
+		$addressLines = explode("\n", trim(pdf_build_address($outputlangs, $this->emetteur, $object->thirdparty, ($useContact ? $object->contact : ''), ($useContact ? 1 : 0), 'target', $object)));
+		// The address of a billing contact starts with its name, the tenant name again for a person
+		if (count($addressLines) > 1 && dol_strtolower(trim($addressLines[0])) === dol_strtolower(trim($tenantName))) {
+			array_shift($addressLines);
+		}
+		$tenantAddress = implode("\n", $addressLines);
 		$tenant        = $useContact ? $outputlangs->convToOutputCharset($object->contact->getFullName($outputlangs, 1)) : $tenantName;
 
 		$rows        = [];
@@ -346,6 +415,9 @@ class pdf_quittanceloyer extends ModelePDFFactures
 
 		if ($state === self::STATE_NOTICE) {
 			$paymentLine = $outputlangs->transnoentitiesnoconv('DoliSciRentDueDate', dol_print_date($object->date_lim_reglement, 'day', false, $outputlangs));
+			if ($paymentState === self::STATE_RECEIPT) {
+				$paymentLine .= "\n" . (count($paymentDates) > 0 ? $outputlangs->transnoentitiesnoconv('DoliSciRentNoticeSettledOn', dol_print_date($paymentDates[count($paymentDates) - 1], 'day', false, $outputlangs)) : $outputlangs->transnoentitiesnoconv('DoliSciRentNoticeSettled'));
+			}
 		} elseif (count($paymentDates) > 1) {
 			$paymentLine = $outputlangs->transnoentitiesnoconv('DoliSciRentPaymentDates', implode(', ', array_map(static function (int $date) use ($outputlangs): string {
 				return dol_print_date($date, 'day', false, $outputlangs);
@@ -365,11 +437,11 @@ class pdf_quittanceloyer extends ModelePDFFactures
 
 		return [
 			'state'           => $state,
+			'paymentState'    => $paymentState,
 			'title'           => $title,
-			'invoiceRef'      => $outputlangs->transnoentitiesnoconv('DoliSciRentInvoiceRef', $outputlangs->convToOutputCharset($object->ref), $invoiceDate),
+			'invoiceRef'      => $outputlangs->transnoentitiesnoconv($state === self::STATE_NOTICE ? 'DoliSciRentNoticeRef' : 'DoliSciRentNoticeRefOf', $invoiceRef, $invoiceDate),
 			'landlordName'    => $landlordName,
 			'landlordAddress' => trim(pdf_build_address($outputlangs, $this->emetteur, $object->thirdparty, '', 0, 'source', $object)),
-			'signatory'       => $signatory,
 			'tenantName'      => $tenantName,
 			'tenantAddress'   => $tenantAddress,
 			'doneAt'          => $doneAt,
@@ -379,7 +451,8 @@ class pdf_quittanceloyer extends ModelePDFFactures
 			'rows'            => $rows,
 			'total'           => $total,
 			'received'        => $paid,
-			'remain'          => $remain,
+			// Nothing is due once the invoice is classified as paid, even with a discount granted
+			'remain'          => $paymentState === self::STATE_RECEIPT ? 0.0 : $remain,
 			'paymentLine'     => $paymentLine,
 			'legalNotice'     => $state === self::STATE_RECEIPT ? $outputlangs->transnoentitiesnoconv('DoliSciRentReceiptLegalNotice') : '',
 		];
@@ -552,7 +625,8 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		$pdf->SetTextColor(0, 0, 0);
 		$posY = $pdf->GetY() + 8;
 
-		// Landlord on the left, tenant on the right and a little lower, as in the model
+		// Landlord on the left, tenant on the right and lower, as in the model: below the landlord
+		// block, which its phone, email and website lines make taller than the room left in the model
 		$pdf->SetXY($left, $posY);
 		$pdf->SetFont('', 'B', $fontSize);
 		$pdf->MultiCell($blockWidth, 5, $receipt['landlordName'], 0, 'L');
@@ -561,7 +635,7 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		$pdf->MultiCell($blockWidth, 4, $receipt['landlordAddress'], 0, 'L');
 		$landlordBottom = $pdf->GetY();
 
-		$pdf->SetXY($rightX, $posY + 14);
+		$pdf->SetXY($rightX, max($posY + 14, $landlordBottom + 4));
 		$pdf->SetFont('', 'B', $fontSize);
 		$pdf->MultiCell($blockWidth, 5, $receipt['tenantName'], 0, 'L');
 		$pdf->SetFont('', '', $fontSize - 1);
@@ -607,7 +681,8 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		$pdf->Cell($labelWidth, 6, $outputlangs->transnoentitiesnoconv('DoliSciRentTotal'), 0, 0, 'L');
 		$pdf->Cell($amountWidth, 6, price($receipt['total'], 0, $outputlangs, 1, -1, 2, $currency), 0, 1, 'R');
 		$pdf->SetFont('', '', $fontSize);
-		if ($receipt['state'] === self::STATE_PARTIAL) {
+		// Partial receipt, or rent due notice of an invoice paid since
+		if ($receipt['state'] === self::STATE_PARTIAL || ($receipt['state'] === self::STATE_NOTICE && $receipt['received'] > 0)) {
 			$pdf->SetX($left + 2);
 			$pdf->Cell($labelWidth, 6, $outputlangs->transnoentitiesnoconv('DoliSciRentAlreadyPaid'), 0, 0, 'L');
 			$pdf->Cell($amountWidth, 6, price($receipt['received'], 0, $outputlangs, 1, -1, 2, $currency), 0, 1, 'R');
@@ -631,9 +706,9 @@ class pdf_quittanceloyer extends ModelePDFFactures
 			$pdf->SetFont('', '', $fontSize);
 		}
 
-		// Room left to sign by hand
+		// Signed in the name of the landlord company, room left to sign by hand
 		$pdf->SetXY($rightX, $pdf->GetY() + 8);
-		$pdf->MultiCell($blockWidth, 5, $outputlangs->transnoentitiesnoconv('DoliSciRentLandlord') . "\n" . $receipt['signatory'], 0, 'L');
+		$pdf->MultiCell($blockWidth, 5, $outputlangs->transnoentitiesnoconv('DoliSciRentLandlord') . "\n" . $receipt['landlordName'], 0, 'L');
 		$signatureBottom = $pdf->GetY() + 22;
 
 		// Notice the model puts at the bottom of the page
