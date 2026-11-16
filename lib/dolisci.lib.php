@@ -1719,6 +1719,128 @@ function dolisciGetInvoicePeriod(CommonInvoice $invoice): array
 }
 
 /**
+ * Addresses of the rented properties an invoice bills: the "adresse_bien" extrafield of the products
+ * of its lines, each distinct address once, in the order of the lines. An invoice may bill a flat and
+ * a parking space, two addresses. The address of the thirdparty is never used: it is not where a
+ * parking space or an office is.
+ *
+ * @param  DoliDB        $db      Database handler
+ * @param  CommonInvoice $invoice Invoice, lines loaded
+ * @return list<string>           Addresses, one or several lines each; empty when no product of the lines has one
+ */
+function dolisciGetPropertyAddresses(DoliDB $db, CommonInvoice $invoice): array
+{
+	require_once DOL_DOCUMENT_ROOT . '/product/class/product.class.php';
+
+	$addresses  = [];
+	$productIds = [];
+	foreach ($invoice->lines as $line) {
+		$productId = (int) $line->fk_product;
+		if ($productId <= 0 || isset($productIds[$productId])) {
+			continue;
+		}
+		$productIds[$productId] = true;
+
+		// Product::fetch() loads the extrafields
+		$product = new Product($db);
+		if ($product->fetch($productId) <= 0) {
+			continue;
+		}
+		$addressLines = array_filter(array_map('trim', explode("\n", str_replace("\r", '', (string) ($product->array_options['options_adresse_bien'] ?? '')))), static function (string $addressLine): bool {
+			return $addressLine !== '';
+		});
+		$address = implode("\n", $addressLines);
+		if ($address !== '' && !in_array($address, $addresses, true)) {
+			$addresses[] = $address;
+		}
+	}
+
+	return $addresses;
+}
+
+/**
+ * Whether nothing remains to pay on an invoice: paid in full, or classified as paid (with a discount
+ * granted, for instance), but not abandoned as a bad debt
+ *
+ * @param  Facture $invoice Invoice
+ * @return bool             True when settled
+ */
+function dolisciIsInvoiceSettled(Facture $invoice): bool
+{
+	if ((int) $invoice->status === Facture::STATUS_CLOSED && $invoice->close_code !== Facture::CLOSECODE_BADDEBT) {
+		return true;
+	}
+
+	return (float) $invoice->getRemainToPay() <= 0;
+}
+
+/**
+ * Bank account a tenant transfers the rent to: the one of the invoice, else the default one of the
+ * invoice setup (FACTURE_RIB_NUMBER), as on the core templates
+ *
+ * @param  DoliDB  $db      Database handler
+ * @param  Facture $invoice Invoice
+ * @return Account|null     Bank account; null when none is set, or for a direct debit, which asks nothing of the tenant
+ */
+function dolisciGetInvoiceBankAccount(DoliDB $db, Facture $invoice): ?Account
+{
+	require_once DOL_DOCUMENT_ROOT . '/compta/bank/class/account.class.php';
+
+	if ($invoice->mode_reglement_code === 'PRE') {
+		return null;
+	}
+	$accountId = (int) $invoice->fk_account > 0 ? (int) $invoice->fk_account : getDolGlobalInt('FACTURE_RIB_NUMBER');
+	if ($accountId <= 0) {
+		return null;
+	}
+	$account = new Account($db);
+
+	return $account->fetch($accountId) > 0 ? $account : null;
+}
+
+/**
+ * Link to pay an invoice online by card, whatever its payment mode: the rent is paid by transfer,
+ * and the card stays an option for the tenant. Sponge shows this link for card payments only.
+ *
+ * @param  Facture $invoice Invoice
+ * @return string           URL of the payment page; '' when Stripe is off, for a draft, a credit note or a direct debit (paid without the tenant), or when nothing remains to pay
+ */
+function dolisciGetOnlinePaymentUrl(Facture $invoice): string
+{
+	if (!isModEnabled('stripe') || (int) $invoice->status !== Facture::STATUS_VALIDATED || (int) $invoice->type === Facture::TYPE_CREDIT_NOTE || $invoice->mode_reglement_code === 'PRE' || dolisciIsInvoiceSettled($invoice)) {
+		return '';
+	}
+	require_once DOL_DOCUMENT_ROOT . '/core/lib/payments.lib.php';
+
+	return getOnlinePaymentUrl(0, 'invoice', $invoice->ref);
+}
+
+/**
+ * Write the clickable link to pay an invoice online
+ *
+ * @param  TCPDF     $pdf         PDF
+ * @param  Translate $outputlangs Output language
+ * @param  string    $url         URL from dolisciGetOnlinePaymentUrl()
+ * @param  float     $posX        Left of the text
+ * @param  float     $posY        Top of the text
+ * @param  float     $width       Width of the text
+ * @param  float     $fontSize    Font size
+ * @return float                  Bottom of the text
+ */
+function dolisciPdfWritePaymentLink($pdf, Translate $outputlangs, string $url, float $posX, float $posY, float $width, float $fontSize): float
+{
+	$outputlangs->load('dolisci@dolisci');
+
+	// Same markup as the link of Sponge: TCPDF makes the anchor a link annotation. On a line of its
+	// own, so that it is never split
+	$html = dol_escape_htmltag($outputlangs->transnoentitiesnoconv('DoliSciPayOnline')) . '<br><a href="' . $url . '">' . dol_escape_htmltag($outputlangs->transnoentitiesnoconv('DoliSciPayOnlineLink')) . '</a>';
+	$pdf->SetFont('', '', $fontSize);
+	$pdf->writeHTMLCell($width, 4, $posX, $posY, $html, 0, 1);
+
+	return $pdf->GetY();
+}
+
+/**
  * Amount in words, as written on a rent receipt: "sept cent trente euros et cinquante centimes"
  *
  * Only French amounts in euros are written. dol_convertToWord() of the core gets French wrong up

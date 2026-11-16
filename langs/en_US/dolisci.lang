@@ -125,10 +125,20 @@ DoliSciNoPropertyLinked = No property product (purchased asset / fiscal lot) lin
 DoliSciNoRentalServiceLinked = No rental service (rent / charges provision) linked to this real estate project.
 
 #
-# "Rent receipt" invoice template
+# "Rent due notice" invoice template (quittance, based on Sponge)
 #
-DoliSciQuittanceTitle = Rent receipt
-DoliSciQuittanceDescription = Template added by the DoliSCI module based on the Sponge template
+DoliSciNoticeModelLabel = Rent due notice
+DoliSciNoticeTitle = Rent due notice
+DoliSciNoticePaidTitle = Rent due notice - paid
+DoliSciQuittanceDescription = Rent due notice added by the DoliSCI module, based on the Sponge template (business tenants, parking spaces): "paid" once the invoice is settled, property address, bank account and online payment link
+
+#
+# Property address and payment, on both templates
+#
+DoliSciPropertyAddressMissing = Property address not set
+DoliSciPropertyAddressNotSet = not set
+DoliSciPayOnline = You may also pay this rent online, by card:
+DoliSciPayOnlineLink = pay online
 
 #
 # "Rent receipt" invoice template (ANIL model)

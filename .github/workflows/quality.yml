@@ -102,6 +102,7 @@ jobs:
                   path: dolibarr-core
                   sparse-checkout: |
                       htdocs/categories/class
+                      htdocs/compta/bank/class
                       htdocs/compta/facture/class
                       htdocs/contact/class
                       htdocs/core/class

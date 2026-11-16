@@ -15,3 +15,14 @@
   écrit dès que la facture est réglée. Il est joint par défaut à l'envoi par email. Signature au
   nom de la société bailleresse ; locataire placé sous le bloc du bailleur, sans son nom en double ;
   « Échéance acquittée le … » sur l'avis d'une facture réglée (#18).
+- Adresse du bien sur les deux modèles. Elle est lue dans l'attribut produit `adresse_bien` des
+  lignes, et chaque adresse distincte est affichée une fois (loyer et parking, par exemple). Elle
+  n'est jamais reprise du tiers ni du projet. Sans attribut rempli, le document affiche « Adresse
+  du bien non renseignée ».
+- Avis d'échéance de la quittance de loyer : RIB du compte de la facture, à défaut celui de
+  `FACTURE_RIB_NUMBER`. Lien de paiement en ligne cliquable quand Stripe est actif et qu'il reste
+  à payer, même en virement. Les quittances et les reçus n'ont ni RIB ni lien.
+- Le modèle `quittance` s'appelle « Avis d'échéance » dans les listes. Son titre devient « Avis
+  d'échéance acquitté » une fois la facture soldée. Il affiche le RIB quel que soit le mode de
+  règlement, et le même lien de paiement. En prélèvement, il n'affiche ni RIB ni lien. Le
+  libellé est posé à l'activation du module : il faut le désactiver puis le réactiver (#20).
