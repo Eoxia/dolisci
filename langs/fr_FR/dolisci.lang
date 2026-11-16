@@ -125,10 +125,20 @@ DoliSciNoPropertyLinked = Aucun produit (bien acheté / lot fiscal) rattaché à
 DoliSciNoRentalServiceLinked = Aucun service de location (loyer / provision sur charges) rattaché à ce projet immobilier.
 
 #
-# Modèle de facture « Quittance »
+# Modèle de facture « Avis d'échéance » (quittance, basé sur Sponge)
 #
-DoliSciQuittanceTitle = Quittance
-DoliSciQuittanceDescription = Modèle ajouté par le module DoliSCI basé sur le modèle Sponge
+DoliSciNoticeModelLabel = Avis d'échéance
+DoliSciNoticeTitle = Avis d'échéance
+DoliSciNoticePaidTitle = Avis d'échéance acquitté
+DoliSciQuittanceDescription = Avis d'échéance ajouté par le module DoliSCI, basé sur le modèle Sponge (clients professionnels, parkings) : « Avis d'échéance acquitté » une fois la facture réglée, adresse du bien, RIB et lien de paiement en ligne
+
+#
+# Adresse du bien et règlement, sur les deux modèles
+#
+DoliSciPropertyAddressMissing = Adresse du bien non renseignée
+DoliSciPropertyAddressNotSet = non renseignée
+DoliSciPayOnline = Vous pouvez aussi régler cette échéance en ligne, par carte bancaire :
+DoliSciPayOnlineLink = payer en ligne
 
 #
 # Modèle de facture « Quittance de loyer » (modèle de l'ANIL)

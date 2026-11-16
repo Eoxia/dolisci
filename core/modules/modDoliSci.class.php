@@ -559,11 +559,12 @@ class modDoliSci extends DolibarrModules
 		}
 
 		// Same as modFacture with its default template: the rent receipt templates are enabled
-		// for the current entity along with the module
+		// for the current entity along with the module. The label is what the lists of templates
+		// show: "quittance" is the rent due notice of the tenants billed with VAT details
 		$sql = [];
-		foreach (['quittance', 'quittanceloyer'] as $templateName) {
+		foreach (['quittance' => $langs->transnoentitiesnoconv('DoliSciNoticeModelLabel'), 'quittanceloyer' => ''] as $templateName => $templateLabel) {
 			$sql[] = "DELETE FROM " . MAIN_DB_PREFIX . "document_model WHERE nom = '" . $templateName . "' AND type = 'invoice' AND entity = " . ((int) $conf->entity);
-			$sql[] = "INSERT INTO " . MAIN_DB_PREFIX . "document_model (nom, type, entity) VALUES ('" . $templateName . "', 'invoice', " . ((int) $conf->entity) . ")";
+			$sql[] = "INSERT INTO " . MAIN_DB_PREFIX . "document_model (nom, type, entity, libelle) VALUES ('" . $templateName . "', 'invoice', " . ((int) $conf->entity) . ", " . ($templateLabel !== '' ? "'" . $this->db->escape($templateLabel) . "'" : 'NULL') . ")";
 		}
 
 		return $this->_init($sql, $options);

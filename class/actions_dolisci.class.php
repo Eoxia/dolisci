@@ -907,9 +907,10 @@ class ActionsDoliSci extends CommonHookActions
 
 	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
 	/**
-	 * Overloading the pdf_getLinkedObjects function: show the rent period in the header of the "Quittance" invoice template
+	 * Overloading the pdf_getLinkedObjects function: show the rent period and the property addresses in the header of the
+	 * "quittance" invoice template (Avis d'échéance)
 	 *
-	 * The period is computed by pdf_quittance::write_file() and handed over in $object->context, so the other templates are left untouched
+	 * They are computed by pdf_quittance::write_file() and handed over in $object->context, so the other templates are left untouched
 	 *
 	 * @param  array        $parameters  Hook metadatas (context, outputlangs, etc...)
 	 * @param  CommonObject $object      The object to process
@@ -925,6 +926,15 @@ class ActionsDoliSci extends CommonHookActions
 				'ref_title' => $parameters['outputlangs']->transnoentities('Period'),
 				'ref_value' => $object->context['dolisci_rent_period'],
 			];
+		}
+		if (!empty($object->context['dolisci_property_addresses']) && is_array($object->context['dolisci_property_addresses'])) {
+			$parameters['outputlangs']->load('dolisci@dolisci');
+			foreach (array_values($object->context['dolisci_property_addresses']) as $index => $address) {
+				$this->results['dolisci_property_address_' . $index] = [
+					'ref_title' => $parameters['outputlangs']->transnoentities('DoliSciPropertyAddress'),
+					'ref_value' => $address,
+				];
+			}
 		}
 		return 0;
 	}

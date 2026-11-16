@@ -35,6 +35,7 @@ parameters:
     #   grep -rhoE "DOL_DOCUMENT_ROOT *\. *['\"]/[^'\"]+" --include=*.php .
     scanDirectories:
         - ../../categories/class/
+        - ../../compta/bank/class/
         - ../../compta/facture/class/
         - ../../contact/class/
         - ../../core/class/

@@ -25,7 +25,6 @@ require_once DOL_DOCUMENT_ROOT . '/core/modules/facture/modules_facture.php';
 require_once DOL_DOCUMENT_ROOT . '/compta/facture/class/facture.class.php';
 require_once DOL_DOCUMENT_ROOT . '/contact/class/contact.class.php';
 require_once DOL_DOCUMENT_ROOT . '/product/class/product.class.php';
-require_once DOL_DOCUMENT_ROOT . '/projet/class/project.class.php';
 require_once DOL_DOCUMENT_ROOT . '/core/lib/company.lib.php';
 require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT . '/core/lib/pdf.lib.php';
@@ -41,7 +40,7 @@ require_once __DIR__ . '/../../../../lib/dolisci.lib.php';
  * ("quittance"), or a receipt for the sum received when partially paid ("reçu", art. 21 of the law
  * of 6 July 1989).
  *
- * @phpstan-type ReceiptData array{state:string,paymentState:string,title:string,invoiceRef:string,landlordName:string,landlordAddress:string,tenantName:string,tenantAddress:string,doneAt:string,propertyAddress:string,statement:string,detailTitle:string,rows:list<array{0:string,1:float}>,total:float,received:float,remain:float,paymentLine:string,legalNotice:string}
+ * @phpstan-type ReceiptData array{state:string,paymentState:string,title:string,invoiceRef:string,landlordName:string,landlordAddress:string,tenantName:string,tenantAddress:string,doneAt:string,propertyAddress:string,statement:string,detailTitle:string,rows:list<array{0:string,1:float}>,total:float,received:float,remain:float,paymentLine:string,legalNotice:string,bankAccount:Account|null,paymentUrl:string}
  */
 class pdf_quittanceloyer extends ModelePDFFactures
 {
@@ -308,10 +307,9 @@ class pdf_quittanceloyer extends ModelePDFFactures
 		$total          = (float) $object->total_ttc;
 
 		// Same sums as the "Paid" and "Remain to pay" lines of the core templates
-		$paid         = (float) $object->getSommePaiement() + (float) $object->getSumCreditNotesUsed() + (float) $object->getSumDepositsUsed();
-		$remain       = (float) price2num($total - $paid, 'MT');
-		$closedAsPaid = (int) $object->status === Facture::STATUS_CLOSED && $object->close_code !== Facture::CLOSECODE_BADDEBT;
-		if ($remain <= 0 || $closedAsPaid) {
+		$paid   = (float) $object->getSommePaiement() + (float) $object->getSumCreditNotesUsed() + (float) $object->getSumDepositsUsed();
+		$remain = (float) price2num($total - $paid, 'MT');
+		if (dolisciIsInvoiceSettled($object)) {
 			$paymentState = self::STATE_RECEIPT;
 		} elseif ($paid > 0) {
 			$paymentState = self::STATE_PARTIAL;
@@ -455,6 +453,9 @@ class pdf_quittanceloyer extends ModelePDFFactures
 			'remain'          => $paymentState === self::STATE_RECEIPT ? 0.0 : $remain,
 			'paymentLine'     => $paymentLine,
 			'legalNotice'     => $state === self::STATE_RECEIPT ? $outputlangs->transnoentitiesnoconv('DoliSciRentReceiptLegalNotice') : '',
+			// How to pay what remains, on the notice only: a receipt calls for no payment
+			'bankAccount'     => $state === self::STATE_NOTICE && $paymentState !== self::STATE_RECEIPT ? dolisciGetInvoiceBankAccount($this->db, $object) : null,
+			'paymentUrl'      => $state === self::STATE_NOTICE ? dolisciGetOnlinePaymentUrl($object) : '',
 		];
 	}
 
@@ -499,49 +500,22 @@ class pdf_quittanceloyer extends ModelePDFFactures
 	}
 
 	/**
-	 * Address of the rented property: the "property address" contact of the invoice project (field
-	 * of the project, or contact with the DoliSCI role), else of its parent project, as a lot may
-	 * hold no address of its own while its building does. Without one, the tenant address: for a
-	 * main residence, it is the rented home.
+	 * Addresses of the rented properties: the "adresse_bien" extrafield of the products of the lines,
+	 * each distinct address once. Never the tenant address, wrong for a parking space or for a tenant
+	 * who lives elsewhere.
 	 *
-	 * @param  Facture   $object      Invoice, thirdparty loaded
+	 * @param  Facture   $object      Invoice
 	 * @param  Translate $outputlangs Output language
-	 * @return string                 Address, several lines
+	 * @return string                 Addresses, separated by a blank line; the notice that none is set when no product of the lines has one, to spot the service to complete
 	 */
 	protected function getPropertyAddress(Facture $object, Translate $outputlangs): string
 	{
-		$projectId = (int) $object->fk_project;
-		for ($depth = 0; $projectId > 0 && $depth < 5; $depth++) {
-			$project = new Project($this->db);
-			if ($project->fetch($projectId) <= 0) {
-				break;
-			}
-			$project->fetch_optionals();
-			$contactIds = array_merge([(int) ($project->array_options['options_dolisci_fk_socpeople'] ?? 0)], $project->getIdContact('external', 'DOLISCI_PROPERTY_ADDRESS'));
-			foreach ($contactIds as $contactId) {
-				$contact = new Contact($this->db);
-				if ((int) $contactId > 0 && $contact->fetch((int) $contactId) > 0 && trim($contact->address . $contact->zip . $contact->town) !== '') {
-					return $this->formatAddress($contact, $outputlangs);
-				}
-			}
-			$projectId = (int) $project->fk_project;
+		$addresses = dolisciGetPropertyAddresses($this->db, $object);
+		if (count($addresses) === 0) {
+			return $outputlangs->transnoentitiesnoconv('DoliSciPropertyAddressMissing');
 		}
 
-		return $this->formatAddress($object->thirdparty, $outputlangs);
-	}
-
-	/**
-	 * Postal address of a contact or thirdparty, with its country when abroad
-	 *
-	 * @param  Contact|Societe $addressee   Contact or thirdparty
-	 * @param  Translate       $outputlangs Output language
-	 * @return string                       Address, several lines
-	 */
-	protected function formatAddress($addressee, Translate $outputlangs): string
-	{
-		$withCountry = !empty($addressee->country_code) && $addressee->country_code !== $this->emetteur->country_code ? 1 : 0;
-
-		return $outputlangs->convToOutputCharset(dol_format_address($addressee, $withCountry, "\n", $outputlangs));
+		return $outputlangs->convToOutputCharset(implode("\n\n", $addresses));
 	}
 
 	/**
@@ -696,6 +670,16 @@ class pdf_quittanceloyer extends ModelePDFFactures
 			$pdf->SetXY($left, $pdf->GetY() + 4);
 			$pdf->MultiCell($width, 5, $receipt['paymentLine'], 0, 'L');
 		}
+
+		// Bank account to transfer the rent to, as on the core templates
+		if ($receipt['bankAccount'] !== null) {
+			$pdf->SetY(pdf_bank($pdf, $outputlangs, $left, $pdf->GetY() + 6, $receipt['bankAccount'], 0, $fontSize));
+		}
+		if ($receipt['paymentUrl'] !== '') {
+			dolisciPdfWritePaymentLink($pdf, $outputlangs, $receipt['paymentUrl'], $left, $pdf->GetY() + 4, $width, $fontSize - 1);
+		}
+		// pdf_bank() leaves a small bold font behind
+		$pdf->SetFont('', '', $fontSize);
 
 		if (!empty($object->note_public)) {
 			$substitutions = pdf_getSubstitutionArray($outputlangs, null, $object);
