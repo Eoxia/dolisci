@@ -416,6 +416,12 @@ class ActionsDoliSci extends CommonHookActions
 				}
 			}
 		}
+		if (in_array('productdocuments', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
+			require_once __DIR__ . '/../lib/dolisci.lib.php';
+			if (dolisciIsPropertyProduct($this->db, $object)) {
+				$this->resprints = $this->renderPropertyDocumentsChecklist($object);
+			}
+		}
 		if (in_array('thirdpartycard', $contexts, true) && $this->isDoliSciThirdpartyContext($object)) {
 			$this->hideAllExtrafieldsForElement('societe');
 			if ($action === 'create' || $action === 'edit') {
@@ -1435,6 +1441,57 @@ class ActionsDoliSci extends CommonHookActions
 				// Hide DoliSCI Property Address extrafield on general Project list
 				$parameters['arrayfields']['ef.dolisci_fk_socpeople']['enabled'] = 0;
 				$parameters['arrayfields']['ef.dolisci_fk_socpeople']['checked'] = 0;
+			}
+		}
+
+		// 1c. Handle Property Required Documents checklist actions on product/document.php
+		if (in_array('productdocuments', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
+			if (in_array($action, ['dolisci_doc_toggle_concerned', 'dolisci_doc_upload', 'dolisci_doc_link', 'dolisci_doc_unlink'], true)) {
+				if (!$user->hasRight('produit', 'creer')) {
+					accessforbidden();
+				}
+				require_once __DIR__ . '/../lib/dolisci.lib.php';
+				require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+				$docKey = GETPOST('dolisci_doc_key', 'aZ09');
+				$defs   = dolisciGetPropertyRequiredDocuments();
+				if (isset($defs[$docKey])) {
+					$stateData = dolisciGetPropertyDocumentsChecklistState($object);
+					$items     = $stateData['items'];
+
+					if ($action === 'dolisci_doc_toggle_concerned' && !empty($defs[$docKey]['conditional'])) {
+						$items[$docKey]['concerned'] = (bool) GETPOSTINT('dolisci_concerned');
+						dolisciSavePropertyDocumentsChecklistState($object, $items);
+					} elseif ($action === 'dolisci_doc_link') {
+						$chosenFile = GETPOST('dolisci_doc_file', 'alphanohtml');
+						if ($chosenFile !== '' && in_array($chosenFile, $stateData['files_on_disk'], true)) {
+							$items[$docKey]['file'] = $chosenFile;
+							dolisciSavePropertyDocumentsChecklistState($object, $items);
+						}
+					} elseif ($action === 'dolisci_doc_unlink') {
+						$items[$docKey]['file'] = '';
+						dolisciSavePropertyDocumentsChecklistState($object, $items);
+					} elseif ($action === 'dolisci_doc_upload' && !empty($_FILES['dolisci_userfile']['name'])) {
+						$uploadDir = $stateData['upload_dir'];
+						if ($uploadDir !== '') {
+							if (!is_dir($uploadDir)) {
+								dol_mkdir($uploadDir);
+							}
+							$origName = dol_sanitizeFileName(basename((string) $_FILES['dolisci_userfile']['name']));
+							$destFile = $uploadDir . '/' . $origName;
+							$resUp    = dol_move_uploaded_file($_FILES['dolisci_userfile']['tmp_name'], $destFile, 1, 0, $_FILES['dolisci_userfile']['error']);
+							if ($resUp > 0) {
+								$items[$docKey]['file'] = $origName;
+								dolisciSavePropertyDocumentsChecklistState($object, $items);
+								setEventMessages($langs->trans('FileTransferComplete'), null);
+							} else {
+								setEventMessages($langs->trans('ErrorFileNotUploaded'), null, 'errors');
+							}
+						}
+					}
+				}
+				header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+				exit;
 			}
 		}
 
@@ -2568,5 +2625,154 @@ class ActionsDoliSci extends CommonHookActions
 			print '<tr class="oddeven"><td colspan="8" class="opacitymedium">' . $langs->trans('DoliSciNoRentalServiceLinked') . '</td></tr>';
 		}
 		print '</table></div>';
+	}
+
+	/**
+	 * Render the Required Property Documents Checklist and Documentary Completion Status bar
+	 * on product/document.php for DoliSCI Property Products.
+	 *
+	 * @param  Product $object Property Product instance
+	 * @return string          HTML content
+	 */
+	protected function renderPropertyDocumentsChecklist(Product $object): string
+	{
+		global $langs, $user;
+
+		$langs->load('dolisci@dolisci');
+		$stateData      = dolisciGetPropertyDocumentsChecklistState($object);
+		$defs           = dolisciGetPropertyRequiredDocuments();
+		$items          = $stateData['items'];
+		$filesOnDisk    = $stateData['files_on_disk'];
+		$totalConcerned = (int) $stateData['total_concerned'];
+		$completed      = (int) $stateData['completed'];
+		$percent        = (int) $stateData['percent'];
+		$canEdit        = $user->hasRight('produit', 'creer');
+		$selfUrl        = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id);
+		$token          = newToken();
+
+		$barColor = ($percent >= 100) ? '#16a34a' : (($percent >= 50) ? '#d97706' : '#dc2626');
+		$badgeCls = ($percent >= 100) ? 'badge-status4' : (($percent >= 50) ? 'badge-status1' : 'badge-status8');
+		$badgeLbl = ($percent >= 100) ? $langs->trans('DoliSciDocComplete') : $langs->trans('DoliSciDocIncomplete');
+
+		$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+		$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
+
+		$html  = '<div id="dolisci-doc-checklist-wrapper" style="margin: 12px 0 18px 0;">';
+		$html .= '<div class="titre" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;">';
+		$html .= '<div>' . $picto . '<strong>' . dolPrintHTML($langs->trans('DoliSciDocChecklistTitle')) . '</strong></div>';
+		$html .= '<div style="display:flex;align-items:center;gap:10px;">';
+		$html .= '<span class="badge ' . $badgeCls . '">' . dolPrintHTML($badgeLbl) . '</span>';
+		$html .= '<span>' . dolPrintHTML($langs->trans('DoliSciDocCompletionStatus', (string) $completed, (string) $totalConcerned, (string) $percent)) . '</span>';
+		$html .= '<div style="width:140px;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">';
+		$html .= '<div style="width:' . $percent . '%;height:100%;background:' . $barColor . ';transition:width 0.2s;"></div>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		$html .= '<div class="div-table-responsive-no-min">';
+		$html .= '<table class="noborder centpercent">';
+		$html .= '<tr class="liste_titre">';
+		$html .= '<td>' . dolPrintHTML($langs->trans('Document')) . '</td>';
+		$html .= '<td class="center">' . dolPrintHTML($langs->trans('DoliSciDocApplicability')) . '</td>';
+		$html .= '<td class="center">' . dolPrintHTML($langs->trans('Status')) . '</td>';
+		$html .= '<td>' . dolPrintHTML($langs->trans('DoliSciDocAssociatedFile')) . '</td>';
+		$html .= '</tr>';
+
+		$relativeDir = get_exdir(0, 0, 0, 1, $object, 'product');
+
+		foreach ($defs as $docKey => $def) {
+			$item        = $items[$docKey] ?? ['concerned' => true, 'file' => '', 'exists' => false];
+			$isConcerned = !empty($item['concerned']);
+			$hasFile     = !empty($item['exists']);
+			$fileName    = (string) ($item['file'] ?? '');
+			$isCond      = !empty($def['conditional']);
+
+			$html .= '<tr class="oddeven">';
+			$html .= '<td><strong>' . dolPrintHTML($langs->trans($def['labelKey'])) . '</strong></td>';
+
+			// Applicability column
+			$html .= '<td class="center nowraponall">';
+			if ($isCond && $canEdit) {
+				$html .= '<form method="post" action="' . $selfUrl . '" style="display:inline-block;margin:0;">';
+				$html .= '<input type="hidden" name="token" value="' . $token . '">';
+				$html .= '<input type="hidden" name="action" value="dolisci_doc_toggle_concerned">';
+				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+				$html .= '<select name="dolisci_concerned" class="flat" onchange="this.form.submit()">';
+				$html .= '<option value="1"' . ($isConcerned ? ' selected' : '') . '>' . dolPrintHTML($langs->trans('DoliSciDocConcerned')) . '</option>';
+				$html .= '<option value="0"' . (!$isConcerned ? ' selected' : '') . '>' . dolPrintHTML($langs->trans('DoliSciDocNotConcerned')) . '</option>';
+				$html .= '</select>';
+				$html .= '</form>';
+			} elseif ($isCond) {
+				$html .= dolPrintHTML($langs->trans($isConcerned ? 'DoliSciDocConcerned' : 'DoliSciDocNotConcerned'));
+			} else {
+				$html .= '<span class="opacitymedium">' . dolPrintHTML($langs->trans('DoliSciDocRequired')) . '</span>';
+			}
+			$html .= '</td>';
+
+			// Status column
+			$html .= '<td class="center nowraponall">';
+			if (!$isConcerned) {
+				$html .= '<span class="badge badge-status0">' . dolPrintHTML($langs->trans('DoliSciDocNotConcerned')) . '</span>';
+			} elseif ($hasFile) {
+				$html .= '<span class="badge badge-status4">' . dolPrintHTML($langs->trans('DoliSciDocProvided')) . '</span>';
+			} else {
+				$html .= '<span class="badge badge-status8">' . dolPrintHTML($langs->trans('DoliSciDocMissing')) . '</span>';
+			}
+			$html .= '</td>';
+
+			// Associated file / Upload / Link column
+			$html .= '<td class="nowraponall">';
+			if (!$isConcerned) {
+				$html .= '<span class="opacitymedium">&mdash;</span>';
+			} elseif ($hasFile) {
+				$dlUrl = DOL_URL_ROOT . '/document.php?modulepart=produit&entity=' . ((int) $object->entity) . '&file=' . urlencode($relativeDir . $fileName);
+				$html .= '<a href="' . $dlUrl . '" target="_blank">' . img_mime($fileName) . ' ' . dolPrintHTML($fileName) . '</a>';
+				if ($canEdit) {
+					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
+				}
+			} elseif ($canEdit) {
+				$html .= '<form method="post" enctype="multipart/form-data" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0;">';
+				$html .= '<input type="hidden" name="token" value="' . $token . '">';
+				$html .= '<input type="hidden" name="action" value="dolisci_doc_upload">';
+				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+				$html .= '<input type="file" name="dolisci_userfile" class="flat maxwidth200">';
+				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUpload')) . '">';
+				$html .= '</form>';
+
+				if (!empty($filesOnDisk)) {
+					$html .= ' <form method="post" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:4px;margin:0 0 0 8px;">';
+					$html .= '<input type="hidden" name="token" value="' . $token . '">';
+					$html .= '<input type="hidden" name="action" value="dolisci_doc_link">';
+					$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+					$html .= '<select name="dolisci_doc_file" class="flat maxwidth200" onchange="if(this.value)this.form.submit()">';
+					$html .= '<option value="">-- ' . dolPrintHTML($langs->trans('DoliSciDocLinkExisting')) . ' --</option>';
+					foreach ($filesOnDisk as $diskFile) {
+						$html .= '<option value="' . dolPrintHTMLForAttribute($diskFile) . '">' . dolPrintHTML($diskFile) . '</option>';
+					}
+					$html .= '</select>';
+					$html .= '</form>';
+				}
+			} else {
+				$html .= '<span class="opacitymedium">' . dolPrintHTML($langs->trans('DoliSciDocMissing')) . '</span>';
+			}
+			$html .= '</td>';
+			$html .= '</tr>';
+		}
+
+		$html .= '</table>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Position the checklist right after the document summary box (at the top of the documentary section)
+		$html .= '<script>'
+			. '(function(){'
+			. 'var w=document.getElementById("dolisci-doc-checklist-wrapper");'
+			. 'var tabsEnd=document.querySelector("div.fiche > div.tabBar");'
+			. 'if(w && tabsEnd && tabsEnd.parentNode){tabsEnd.parentNode.insertBefore(w, tabsEnd.nextSibling);}'
+			. '})();'
+			. '</script>';
+
+		return $html;
 	}
 }

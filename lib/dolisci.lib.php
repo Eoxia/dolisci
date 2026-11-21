@@ -2114,3 +2114,179 @@ function dolisciFrenchWordsBelowThousand(int $number, bool $last): string
 
 	return implode(' ', $words);
 }
+
+/**
+ * Return the list of required / conditional documents for a Property Product.
+ *
+ * @return array<string,array{labelKey:string,conditional:bool}>
+ */
+function dolisciGetPropertyRequiredDocuments(): array
+{
+	return [
+		'compromis' => [
+			'labelKey'    => 'DoliSciDocCompromis',
+			'conditional' => false,
+		],
+		'attestation_sans_prix' => [
+			'labelKey'    => 'DoliSciDocAttestationSansPrix',
+			'conditional' => false,
+		],
+		'attestation_avec_prix' => [
+			'labelKey'    => 'DoliSciDocAttestationAvecPrix',
+			'conditional' => false,
+		],
+		'reglement_copropriete' => [
+			'labelKey'    => 'DoliSciDocReglementCopropriete',
+			'conditional' => true,
+		],
+		'etat_descriptif_division' => [
+			'labelKey'    => 'DoliSciDocEdd',
+			'conditional' => true,
+		],
+		'dpe' => [
+			'labelKey'    => 'DoliSciDocDpe',
+			'conditional' => false,
+		],
+		'diagnostics_techniques' => [
+			'labelKey'    => 'DoliSciDocDdt',
+			'conditional' => false,
+		],
+		'taxe_fonciere' => [
+			'labelKey'    => 'DoliSciDocTaxeFonciere',
+			'conditional' => false,
+		],
+		'assurance_pno' => [
+			'labelKey'    => 'DoliSciDocAssurancePno',
+			'conditional' => false,
+		],
+	];
+}
+
+/**
+ * Compute the Dolibarr document upload directory for a Product / Property.
+ *
+ * @param  Product $object Product instance
+ * @return string          Absolute directory path (or empty string if unavailable)
+ */
+function dolisciGetPropertyDocumentsUploadDir(Product $object): string
+{
+	global $conf;
+
+	if (empty($object->id) || empty($object->ref)) {
+		return '';
+	}
+	$ref = dol_sanitizeFileName((string) $object->ref);
+	if (getDolGlobalInt('PRODUCT_USE_OLD_PATH_FOR_PHOTO')) {
+		return $conf->product->multidir_output[$object->entity] . '/' . get_exdir($object->id, 2, 0, 0, $object, 'product') . $object->id . '/photos';
+	}
+	return $conf->product->multidir_output[$object->entity] . '/' . get_exdir(0, 0, 0, 1, $object, 'product');
+}
+
+/**
+ * Load and evaluate the required documents checklist state for a Property Product.
+ * Metadata is persisted in `dolisci_checklist.meta` inside the product's upload directory
+ * (automatically ignored by Dolibarr's `(\.meta|_preview.*\.png)$` file listing filter).
+ *
+ * @param  Product $object Property Product instance
+ * @return array{upload_dir:string,items:array<string,array{concerned:bool,file:string,exists:bool}>,files_on_disk:array<int,string>,total_concerned:int,completed:int,percent:int}
+ */
+function dolisciGetPropertyDocumentsChecklistState(Product $object): array
+{
+	require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+	$uploadDir = dolisciGetPropertyDocumentsUploadDir($object);
+	$metaFile  = $uploadDir !== '' ? ($uploadDir . '/dolisci_checklist.meta') : '';
+
+	$saved = [];
+	if ($metaFile !== '' && is_file($metaFile)) {
+		$raw = file_get_contents($metaFile);
+		if ($raw !== false) {
+			$decoded = json_decode($raw, true);
+			if (is_array($decoded)) {
+				$saved = $decoded;
+			}
+		}
+	}
+
+	$filesOnDisk = [];
+	if ($uploadDir !== '' && is_dir($uploadDir)) {
+		$dirList = dol_dir_list($uploadDir, 'files', 0, '', '(\.meta|_preview.*\.png)$', 'name', SORT_ASC, 0);
+		foreach ($dirList as $f) {
+			$filesOnDisk[] = (string) $f['name'];
+		}
+	}
+
+	if (empty($object->array_options)) {
+		$object->fetch_optionals();
+	}
+	$legalRegime = (string) ($object->array_options['options_dolisci_legal_regime'] ?? '');
+
+	$defs           = dolisciGetPropertyRequiredDocuments();
+	$items          = [];
+	$totalConcerned = 0;
+	$completed      = 0;
+
+	foreach ($defs as $docKey => $def) {
+		$defaultConcerned = true;
+		if (!empty($def['conditional']) && $legalRegime === 'MONO') {
+			$defaultConcerned = false;
+		}
+		$concerned = !empty($def['conditional'])
+			? (isset($saved[$docKey]['concerned']) ? (bool) $saved[$docKey]['concerned'] : $defaultConcerned)
+			: true;
+
+		$fileName = (string) ($saved[$docKey]['file'] ?? '');
+		$exists   = ($fileName !== '' && in_array($fileName, $filesOnDisk, true));
+		if (!$exists) {
+			$fileName = '';
+		}
+
+		if ($concerned) {
+			$totalConcerned++;
+			if ($exists) {
+				$completed++;
+			}
+		}
+
+		$items[$docKey] = [
+			'concerned' => $concerned,
+			'file'      => $fileName,
+			'exists'    => $exists,
+		];
+	}
+
+	$percent = $totalConcerned > 0 ? (int) round(($completed / $totalConcerned) * 100) : 100;
+
+	return [
+		'upload_dir'      => $uploadDir,
+		'items'           => $items,
+		'files_on_disk'   => $filesOnDisk,
+		'total_concerned' => $totalConcerned,
+		'completed'       => $completed,
+		'percent'         => $percent,
+	];
+}
+
+/**
+ * Save the required documents checklist state to `dolisci_checklist.meta` inside the product's upload directory.
+ *
+ * @param  Product             $object Property Product instance
+ * @param  array<string,array> $state  Checklist items state
+ * @return bool                        True on success
+ */
+function dolisciSavePropertyDocumentsChecklistState(Product $object, array $state): bool
+{
+	require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+	$uploadDir = dolisciGetPropertyDocumentsUploadDir($object);
+	if ($uploadDir === '') {
+		return false;
+	}
+	if (!is_dir($uploadDir)) {
+		dol_mkdir($uploadDir);
+	}
+	$metaFile = $uploadDir . '/dolisci_checklist.meta';
+	$payload  = json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+	return $payload !== false && file_put_contents($metaFile, $payload) !== false;
+}
