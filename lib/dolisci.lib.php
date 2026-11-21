@@ -222,6 +222,76 @@ function dolisciGetExtrafieldDefinitions(): array
 			'enabled'     => $productCondition,
 			'moreparams'  => $defaultCss,
 		],
+		'ef:product:dolisci_cadastre_section' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_cadastre_section',
+			'label'       => 'DoliSciCadastreSection',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '21'),
+			'size'        => '32',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_cadastre_number' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_cadastre_number',
+			'label'       => 'DoliSciCadastreNumber',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '22'),
+			'size'        => '64',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_cadastre_lieudit' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_cadastre_lieudit',
+			'label'       => 'DoliSciCadastreLieudit',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '23'),
+			'size'        => '255',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_cadastre_surface' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_cadastre_surface',
+			'label'       => 'DoliSciCadastreSurface',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '24'),
+			'size'        => '64',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_subdivision' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_subdivision',
+			'label'       => 'DoliSciSubdivision',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '245'),
+			'size'        => '128',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
 		'ef:product:dolisci_fiscal_lot' => [
 			'group'       => 'product',
 			'attrname'    => 'dolisci_fiscal_lot',
@@ -271,6 +341,20 @@ function dolisciGetExtrafieldDefinitions(): array
 			'type'        => 'int',
 			'pos'         => (int) ($moduleNumero . '40'),
 			'size'        => '10',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_surface_carrez' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_surface_carrez',
+			'label'       => 'DoliSciSurfaceCarrez',
+			'type'        => 'double',
+			'pos'         => (int) ($moduleNumero . '42'),
+			'size'        => '10,2',
 			'elementtype' => 'product',
 			'param'       => '',
 			'list'        => '1',
@@ -334,6 +418,34 @@ function dolisciGetExtrafieldDefinitions(): array
 			'enabled'     => $productCondition,
 			'moreparams'  => $defaultCss,
 		],
+		'ef:product:dolisci_ownership_quota' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_ownership_quota',
+			'label'       => 'DoliSciOwnershipQuota',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '602'),
+			'size'        => '128',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_notary' => [
+			'group'       => 'product',
+			'attrname'    => 'dolisci_notary',
+			'label'       => 'DoliSciNotary',
+			'type'        => 'varchar',
+			'pos'         => (int) ($moduleNumero . '605'),
+			'size'        => '255',
+			'elementtype' => 'product',
+			'param'       => '',
+			'list'        => '1',
+			'help'        => '',
+			'enabled'     => $productCondition,
+			'moreparams'  => $defaultCss,
+		],
 		'ef:product:dolisci_fk_default_lease' => [
 			'group'       => 'product',
 			'attrname'    => 'dolisci_fk_default_lease',
@@ -343,9 +455,9 @@ function dolisciGetExtrafieldDefinitions(): array
 			'size'        => '10',
 			'elementtype' => 'product',
 			'param'       => '',
-			'list'        => '1',
+			'list'        => '0',
 			'help'        => '',
-			'enabled'     => $productCondition,
+			'enabled'     => '0',
 			'moreparams'  => $defaultCss,
 		],
 		'ef:product:dolisci_fk_default_rent' => [
@@ -357,9 +469,9 @@ function dolisciGetExtrafieldDefinitions(): array
 			'size'        => '10',
 			'elementtype' => 'product',
 			'param'       => '',
-			'list'        => '1',
+			'list'        => '0',
 			'help'        => '',
-			'enabled'     => $productCondition,
+			'enabled'     => '0',
 			'moreparams'  => $defaultCss,
 		],
 		'ef:product:dolisci_fk_default_charges' => [
@@ -371,9 +483,9 @@ function dolisciGetExtrafieldDefinitions(): array
 			'size'        => '10',
 			'elementtype' => 'product',
 			'param'       => '',
-			'list'        => '1',
+			'list'        => '0',
 			'help'        => '',
-			'enabled'     => $productCondition,
+			'enabled'     => '0',
 			'moreparams'  => $defaultCss,
 		],
 		'ef:product:dolisci_fk_default_deposit' => [
@@ -385,9 +497,9 @@ function dolisciGetExtrafieldDefinitions(): array
 			'size'        => '10',
 			'elementtype' => 'product',
 			'param'       => '',
-			'list'        => '1',
+			'list'        => '0',
 			'help'        => '',
-			'enabled'     => $productCondition,
+			'enabled'     => '0',
 			'moreparams'  => $defaultCss,
 		],
 		'ef:product:dolisci_fk_default_guarantee' => [
@@ -399,9 +511,9 @@ function dolisciGetExtrafieldDefinitions(): array
 			'size'        => '10',
 			'elementtype' => 'product',
 			'param'       => '',
-			'list'        => '1',
+			'list'        => '0',
 			'help'        => '',
-			'enabled'     => $productCondition,
+			'enabled'     => '0',
 			'moreparams'  => $defaultCss,
 		],
 
@@ -454,6 +566,20 @@ function dolisciGetExtrafieldDefinitions(): array
 			'param'       => ['options' => ['Product:product/class/product.class.php:0:(t.entity:=:__ENTITY__) AND (t.fk_product_type:=:0)' => null]],
 			'list'        => '1',
 			'help'        => 'DoliSciLinkedPropertyProductHelp',
+			'enabled'     => $serviceCondition,
+			'moreparams'  => $defaultCss,
+		],
+		'ef:product:dolisci_fk_lease' => [
+			'group'       => 'service',
+			'attrname'    => 'dolisci_fk_lease',
+			'label'       => 'DoliSciLinkedLease',
+			'type'        => 'link',
+			'pos'         => (int) ($moduleNumero . '78'),
+			'size'        => '',
+			'elementtype' => 'product',
+			'param'       => ['options' => ['Product:product/class/product.class.php:0:(t.entity:=:__ENTITY__) AND (t.fk_product_type:=:1)' => null]],
+			'list'        => '1',
+			'help'        => 'DoliSciLinkedLeaseHelp',
 			'enabled'     => $serviceCondition,
 			'moreparams'  => $defaultCss,
 		],
@@ -1091,13 +1217,14 @@ function dolisciGetObjectNomUrl(CommonObject $object, string $serviceNature = ''
 
 /**
  * Sort and annotate rental services by rental group (1, 2, 3...) and by nature within each group:
- * 1: Bail (parent), 2: Loyer, 3: Charge, 4: Dépôt de garantie, 5: Acte de cautionnement
+ * 1: Bail (parent), 2: Loyer, 3: Charge (multicharge supported), 4: Dépôt de garantie, 5: Acte de cautionnement (multi-caution supported)
  *
  * @param  array<int,stdClass> $services List of service rows (modified in-place)
  * @return void
  */
 function dolisciSortAndGroupRentalServices(array &$services): void
 {
+	$bailGroupMap = [];
 	foreach ($services as $obj) {
 		$nature = (string) ($obj->dolisci_service_nature ?? '');
 		$ref    = (string) ($obj->ref ?? '');
@@ -1132,6 +1259,18 @@ function dolisciSortAndGroupRentalServices(array &$services): void
 		$obj->dolisci_nature_rank = $natureRank;
 		$obj->dolisci_is_child    = ($natureRank > 1);
 		$obj->dolisci_prop_key    = $fkProp > 0 ? ('id_' . $fkProp) : ('ref_' . $propKey);
+
+		if ($natureRank === 1) {
+			$bailGroupMap[(int) $obj->rowid] = $groupIndex;
+		}
+	}
+
+	// Re-map child services to their parent Bail's group index if dolisci_fk_lease is set
+	foreach ($services as $obj) {
+		$fkLease = (int) ($obj->dolisci_fk_lease ?? 0);
+		if ($fkLease > 0 && isset($bailGroupMap[$fkLease])) {
+			$obj->dolisci_group_index = $bailGroupMap[$fkLease];
+		}
 	}
 
 	usort($services, static function ($a, $b): int {
@@ -1179,6 +1318,16 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 		return $result;
 	}
 
+	// Ensure dolisci_fk_lease column exists even if the module was not re-initialized after an update
+	static $leaseColChecked = false;
+	if (!$leaseColChecked) {
+		$leaseColChecked = true;
+		$resCol          = $db->query("SHOW COLUMNS FROM " . MAIN_DB_PREFIX . "product_extrafields LIKE 'dolisci_fk_lease'");
+		if ($resCol && $db->num_rows($resCol) === 0) {
+			dolisciSyncItem($db, 'ef:product:dolisci_fk_lease');
+		}
+	}
+
 	$escapedPropRef  = $db->escape($propertyProduct->ref);
 	$leasePrefix     = 'Bail_' . $escapedPropRef;
 	$rentPrefix      = 'Loyer_' . $escapedPropRef;
@@ -1187,8 +1336,8 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 	$depositPrefix   = 'Depot_' . $escapedPropRef;
 	$guaranteePrefix = 'Caution_' . $escapedPropRef;
 
-	$sql = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
-		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_service_fk_project,'
+	$sql = 'SELECT p.rowid, p.ref, p.label, p.description, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
+		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_fk_lease, ef.dolisci_service_fk_project,'
 		. ' pr.rowid AS pr_id, pr.ref AS pr_ref, pr.title AS pr_title, pr.fk_statut AS pr_status'
 		. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
 		. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
@@ -1234,6 +1383,11 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 
 	dolisciSortAndGroupRentalServices($result['services']);
 
+	// Ensure each rental group has an explicit Bail and all child services have dolisci_fk_lease set
+	if (!empty($result['services'])) {
+		dolisciAutoHealPropertyLeases($db, $propertyProduct, $result['services']);
+	}
+
 	$distinctGroups = [];
 	foreach ($result['services'] as $sObj) {
 		$distinctGroups[(int) ($sObj->dolisci_group_index ?? 1)] = true;
@@ -1244,6 +1398,144 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 	$result['hasBoth']    = $result['hasAll'];
 
 	return $result;
+}
+
+/**
+ * Automatically heal / ensure that every rental group of a Property Product has a real Bail service (type = 1, nature = 'BAIL')
+ * and that all child services (Loyer, Charges, Dépôt, Caution) have their dolisci_fk_lease set.
+ *
+ * @param  DoliDB              $db              Database handler
+ * @param  Product             $propertyProduct Property Product instance (type = 0)
+ * @param  array<int,stdClass> $services        List of services (modified in-place)
+ * @return void
+ */
+function dolisciAutoHealPropertyLeases(DoliDB $db, Product $propertyProduct, array &$services): void
+{
+	global $langs, $user;
+
+	if (empty($propertyProduct->id) || empty($services)) {
+		return;
+	}
+
+	$bailsByGroup    = [];
+	$servicesByGroup = [];
+	foreach ($services as $sObj) {
+		$grp  = (int) ($sObj->dolisci_group_index ?? 1);
+		$rank = (int) ($sObj->dolisci_nature_rank ?? 6);
+		if ($rank === 1) {
+			$bailsByGroup[$grp] = $sObj;
+		} else {
+			$servicesByGroup[$grp][] = $sObj;
+		}
+	}
+
+	$projectId = (int) ($propertyProduct->array_options['options_dolisci_fk_project'] ?? 0);
+	$propRef   = (string) $propertyProduct->ref;
+	$propLabel = (string) $propertyProduct->label;
+	$modified  = false;
+
+	// For any group that has services but NO Bail, create the missing Bail!
+	foreach ($servicesByGroup as $grp => $childList) {
+		if (empty($bailsByGroup[$grp])) {
+			$bailRef = 'Bail-' . $grp . '_' . $propRef;
+			$newBail = new Product($db);
+			$found   = $newBail->fetch(0, $bailRef);
+			if ($found <= 0) {
+				$newBail->ref             = $bailRef;
+				$newBail->label           = $langs->transnoentities('DoliSciLeaseServiceLabel', $propLabel);
+				$newBail->type            = Product::TYPE_SERVICE;
+				$newBail->status          = 1;
+				$newBail->status_buy      = 0;
+				$newBail->price           = 0;
+				$newBail->price_base_type = 'HT';
+				$newBail->tva_tx          = (float) $propertyProduct->tva_tx;
+				$newBail->array_options   = [
+					'options_dolisci_service_nature'      => 'BAIL',
+					'options_dolisci_fk_property_product' => (int) $propertyProduct->id,
+					'options_dolisci_service_fk_project'  => $projectId,
+				];
+				$res = $newBail->create($user);
+				if ($res > 0) {
+					dolisciAssignTag($db, $newBail, 'DOLISCI_TAG_SERVICE_LEASE', 'product');
+					$bObj                              = new stdClass();
+					$bObj->rowid                       = (int) $newBail->id;
+					$bObj->ref                         = $newBail->ref;
+					$bObj->label                       = $newBail->label;
+					$bObj->description                 = '';
+					$bObj->fk_product_type             = Product::TYPE_SERVICE;
+					$bObj->entity                      = (int) $newBail->entity;
+					$bObj->tosell                      = 1;
+					$bObj->tobuy                       = 0;
+					$bObj->price                       = 0;
+					$bObj->tva_tx                      = $newBail->tva_tx;
+					$bObj->accountancy_code_sell       = '';
+					$bObj->dolisci_service_nature      = 'BAIL';
+					$bObj->dolisci_fk_property_product = (int) $propertyProduct->id;
+					$bObj->dolisci_fk_lease            = 0;
+					$bObj->dolisci_service_fk_project  = $projectId;
+					$bObj->dolisci_group_index         = $grp;
+					$bObj->dolisci_nature_rank         = 1;
+					$bObj->dolisci_is_child            = false;
+					$bObj->dolisci_prop_key            = 'id_' . ((int) $propertyProduct->id);
+					$bailsByGroup[$grp]                = $bObj;
+					$services[]                        = $bObj;
+					$modified                          = true;
+				}
+			} else {
+				$newBail->fetch_optionals();
+				$bObj                              = new stdClass();
+				$bObj->rowid                       = (int) $newBail->id;
+				$bObj->ref                         = $newBail->ref;
+				$bObj->label                       = $newBail->label;
+				$bObj->description                 = (string) $newBail->description;
+				$bObj->fk_product_type             = Product::TYPE_SERVICE;
+				$bObj->entity                      = (int) $newBail->entity;
+				$bObj->tosell                      = (int) $newBail->status;
+				$bObj->tobuy                       = (int) $newBail->status_buy;
+				$bObj->price                       = (float) $newBail->price;
+				$bObj->tva_tx                      = (float) $newBail->tva_tx;
+				$bObj->accountancy_code_sell       = (string) $newBail->accountancy_code_sell;
+				$bObj->dolisci_service_nature      = 'BAIL';
+				$bObj->dolisci_fk_property_product = (int) $propertyProduct->id;
+				$bObj->dolisci_fk_lease            = 0;
+				$bObj->dolisci_service_fk_project  = $projectId;
+				$bObj->dolisci_group_index         = $grp;
+				$bObj->dolisci_nature_rank         = 1;
+				$bObj->dolisci_is_child            = false;
+				$bObj->dolisci_prop_key            = 'id_' . ((int) $propertyProduct->id);
+				$bailsByGroup[$grp]                = $bObj;
+				$services[]                        = $bObj;
+				$modified                          = true;
+			}
+		}
+
+		// Ensure dolisci_fk_lease is set on all child services
+		if (!empty($bailsByGroup[$grp])) {
+			$bailId      = (int) $bailsByGroup[$grp]->rowid;
+			$toUpdateIds = [];
+			foreach ($childList as $child) {
+				if (empty($child->dolisci_fk_lease) || (int) $child->dolisci_fk_lease <= 0) {
+					$child->dolisci_fk_lease = $bailId;
+					$toUpdateIds[]           = (int) $child->rowid;
+				}
+			}
+			if (!empty($toUpdateIds)) {
+				$cleanIds = array_map('intval', $toUpdateIds);
+				foreach ($cleanIds as $cid) {
+					$resChkEf = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "product_extrafields WHERE fk_object = " . $cid);
+					if ($resChkEf && $db->num_rows($resChkEf) === 0) {
+						$db->query("INSERT INTO " . MAIN_DB_PREFIX . "product_extrafields (fk_object, dolisci_fk_lease) VALUES (" . $cid . ", " . $bailId . ")");
+					}
+				}
+				$sqlUp = "UPDATE " . MAIN_DB_PREFIX . "product_extrafields SET dolisci_fk_lease = " . $bailId . " WHERE fk_object IN (" . implode(',', $cleanIds) . ")";
+				$db->query($sqlUp);
+			}
+		}
+	}
+
+	if ($modified) {
+		dolisciSortAndGroupRentalServices($services);
+	}
 }
 
 /**
@@ -1950,4 +2242,187 @@ function dolisciFrenchWordsBelowThousand(int $number, bool $last): string
 	}
 
 	return implode(' ', $words);
+}
+
+/**
+ * Return the list of required / conditional documents for a Property Product.
+ * Every document allows the user to choose Concerned / Not concerned.
+ *
+ * @return array<string,array{labelKey:string,conditional:bool,copro_only?:bool}>
+ */
+function dolisciGetPropertyRequiredDocuments(): array
+{
+	return [
+		'compromis' => [
+			'labelKey'    => 'DoliSciDocCompromis',
+			'conditional' => true,
+		],
+		'attestation_sans_prix' => [
+			'labelKey'    => 'DoliSciDocAttestationSansPrix',
+			'conditional' => true,
+		],
+		'attestation_avec_prix' => [
+			'labelKey'    => 'DoliSciDocAttestationAvecPrix',
+			'conditional' => true,
+		],
+		'reglement_copropriete' => [
+			'labelKey'    => 'DoliSciDocReglementCopropriete',
+			'conditional' => true,
+			'copro_only'  => true,
+		],
+		'etat_descriptif_division' => [
+			'labelKey'    => 'DoliSciDocEdd',
+			'conditional' => true,
+			'copro_only'  => true,
+		],
+		'dpe' => [
+			'labelKey'    => 'DoliSciDocDpe',
+			'conditional' => true,
+		],
+		'diagnostics_techniques' => [
+			'labelKey'    => 'DoliSciDocDdt',
+			'conditional' => true,
+		],
+		'taxe_fonciere' => [
+			'labelKey'    => 'DoliSciDocTaxeFonciere',
+			'conditional' => true,
+		],
+		'assurance_pno' => [
+			'labelKey'    => 'DoliSciDocAssurancePno',
+			'conditional' => true,
+		],
+	];
+}
+
+/**
+ * Compute the Dolibarr document upload directory for a Product / Property.
+ *
+ * @param  Product $object Product instance
+ * @return string          Absolute directory path (or empty string if unavailable)
+ */
+function dolisciGetPropertyDocumentsUploadDir(Product $object): string
+{
+	global $conf;
+
+	if (empty($object->id) || empty($object->ref)) {
+		return '';
+	}
+	$ref = dol_sanitizeFileName((string) $object->ref);
+	if (getDolGlobalInt('PRODUCT_USE_OLD_PATH_FOR_PHOTO')) {
+		return $conf->product->multidir_output[$object->entity] . '/' . get_exdir($object->id, 2, 0, 0, $object, 'product') . $object->id . '/photos';
+	}
+	return $conf->product->multidir_output[$object->entity] . '/' . get_exdir(0, 0, 0, 1, $object, 'product');
+}
+
+/**
+ * Load and evaluate the required documents checklist state for a Property Product.
+ * Metadata is persisted in `dolisci_checklist.meta` inside the product's upload directory
+ * (automatically ignored by Dolibarr's `(\.meta|_preview.*\.png)$` file listing filter).
+ *
+ * @param  Product $object Property Product instance
+ * @return array{upload_dir:string,items:array<string,array{concerned:bool,file:string,exists:bool}>,files_on_disk:array<int,string>,total_concerned:int,completed:int,percent:int}
+ */
+function dolisciGetPropertyDocumentsChecklistState(Product $object): array
+{
+	require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+	$uploadDir = dolisciGetPropertyDocumentsUploadDir($object);
+	$metaFile  = $uploadDir !== '' ? ($uploadDir . '/dolisci_checklist.meta') : '';
+
+	$saved = [];
+	if ($metaFile !== '' && is_file($metaFile)) {
+		$raw = file_get_contents($metaFile);
+		if ($raw !== false) {
+			$decoded = json_decode($raw, true);
+			if (is_array($decoded)) {
+				$saved = $decoded;
+			}
+		}
+	}
+
+	$filesOnDisk = [];
+	if ($uploadDir !== '' && is_dir($uploadDir)) {
+		$dirList = dol_dir_list($uploadDir, 'files', 0, '', '(\.meta|_preview.*\.png)$', 'name', SORT_ASC, 0);
+		foreach ($dirList as $f) {
+			$filesOnDisk[] = (string) $f['name'];
+		}
+	}
+
+	if (empty($object->array_options)) {
+		$object->fetch_optionals();
+	}
+	$legalRegime = (string) ($object->array_options['options_dolisci_legal_regime'] ?? '');
+
+	$defs           = dolisciGetPropertyRequiredDocuments();
+	$items          = [];
+	$totalConcerned = 0;
+	$completed      = 0;
+
+	foreach ($defs as $docKey => $def) {
+		$defaultConcerned = true;
+		if (!empty($def['copro_only']) && $legalRegime === 'MONO') {
+			$defaultConcerned = false;
+		}
+		$concerned = !empty($def['conditional'])
+			? (isset($saved[$docKey]['concerned']) ? (bool) $saved[$docKey]['concerned'] : $defaultConcerned)
+			: true;
+
+		$fileName = (string) ($saved[$docKey]['file'] ?? '');
+		$exists   = ($fileName !== '' && in_array($fileName, $filesOnDisk, true));
+		if (!$exists) {
+			$fileName = '';
+		}
+		$linkUrl = trim((string) ($saved[$docKey]['url'] ?? ''));
+		$hasDoc  = ($exists || $linkUrl !== '');
+
+		if ($concerned) {
+			$totalConcerned++;
+			if ($hasDoc) {
+				$completed++;
+			}
+		}
+
+		$items[$docKey] = [
+			'concerned' => $concerned,
+			'file'      => $fileName,
+			'exists'    => $exists,
+			'url'       => $linkUrl,
+			'has_doc'   => $hasDoc,
+		];
+	}
+
+	$percent = $totalConcerned > 0 ? (int) round(($completed / $totalConcerned) * 100) : 100;
+
+	return [
+		'upload_dir'      => $uploadDir,
+		'items'           => $items,
+		'files_on_disk'   => $filesOnDisk,
+		'total_concerned' => $totalConcerned,
+		'completed'       => $completed,
+		'percent'         => $percent,
+	];
+}
+
+/**
+ * Save the required documents checklist state to `dolisci_checklist.meta` inside the product's upload directory.
+ *
+ * @param  Product             $object Property Product instance
+ * @param  array<string,array> $state  Checklist items state
+ * @return bool                        True on success
+ */
+function dolisciSavePropertyDocumentsChecklistState(Product $object, array $state): bool
+{
+	require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+	$uploadDir = dolisciGetPropertyDocumentsUploadDir($object);
+	if ($uploadDir === '') {
+		return false;
+	}
+	if (!is_dir($uploadDir)) {
+		dol_mkdir($uploadDir);
+	}
+	$metaFile = $uploadDir . '/dolisci_checklist.meta';
+	$payload  = json_encode($state);
+
+	return $payload !== false && file_put_contents($metaFile, $payload) !== false;
 }

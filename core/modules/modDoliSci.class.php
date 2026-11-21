@@ -250,38 +250,6 @@ class modDoliSci extends DolibarrModules
 			'user'     => 0,
 		];
 
-		$this->menu[$r++] = [
-			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_thirdparties',
-			'type'     => 'left',
-			'titre'    => 'DoliSciMenuListContactSyndics',
-			'prefix'   => '<i class="fas fa-building pictofixedwidth"></i>',
-			'mainmenu' => 'dolisci',
-			'leftmenu' => 'dolisci_contacts_syndic',
-			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_syndic&dolisci_contact_tag=DOLISCI_TAG_CONTACT_SYNDIC',
-			'langs'    => 'dolisci@dolisci',
-			'position' => 1000 + $r,
-			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
-			'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
-			'target'   => '',
-			'user'     => 0,
-		];
-
-		$this->menu[$r++] = [
-			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_thirdparties',
-			'type'     => 'left',
-			'titre'    => 'DoliSciMenuListContactNotaries',
-			'prefix'   => '<i class="fas fa-gavel pictofixedwidth"></i>',
-			'mainmenu' => 'dolisci',
-			'leftmenu' => 'dolisci_contacts_notary',
-			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_notary&dolisci_contact_tag=DOLISCI_TAG_CONTACT_NOTARY',
-			'langs'    => 'dolisci@dolisci',
-			'position' => 1000 + $r,
-			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
-			'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
-			'target'   => '',
-			'user'     => 0,
-		];
-
 		// 3. Projets de type biens (Real Estate Projects)
 		$this->menu[$r++] = [
 			'fk_menu'  => 'fk_mainmenu=dolisci',
@@ -388,6 +356,38 @@ class modDoliSci extends DolibarrModules
 			'mainmenu' => 'dolisci',
 			'leftmenu' => 'dolisci_contacts_address',
 			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_address&dolisci_contact_tag=DOLISCI_TAG_CONTACT_ADDRESS',
+			'langs'    => 'dolisci@dolisci',
+			'position' => 1000 + $r,
+			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+			'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+			'target'   => '',
+			'user'     => 0,
+		];
+
+		$this->menu[$r++] = [
+			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_products',
+			'type'     => 'left',
+			'titre'    => 'DoliSciMenuListContactSyndics',
+			'prefix'   => '<i class="fas fa-building pictofixedwidth"></i>',
+			'mainmenu' => 'dolisci',
+			'leftmenu' => 'dolisci_contacts_syndic',
+			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_syndic&dolisci_contact_tag=DOLISCI_TAG_CONTACT_SYNDIC',
+			'langs'    => 'dolisci@dolisci',
+			'position' => 1000 + $r,
+			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',
+			'perms'    => '$user->hasRight(\'societe\', \'contact\', \'lire\')',
+			'target'   => '',
+			'user'     => 0,
+		];
+
+		$this->menu[$r++] = [
+			'fk_menu'  => 'fk_mainmenu=dolisci,fk_leftmenu=dolisci_products',
+			'type'     => 'left',
+			'titre'    => 'DoliSciMenuListContactNotaries',
+			'prefix'   => '<i class="fas fa-gavel pictofixedwidth"></i>',
+			'mainmenu' => 'dolisci',
+			'leftmenu' => 'dolisci_contacts_notary',
+			'url'      => '/dolisci/contact_list.php?mainmenu=dolisci&leftmenu=dolisci_contacts_notary&dolisci_contact_tag=DOLISCI_TAG_CONTACT_NOTARY',
 			'langs'    => 'dolisci@dolisci',
 			'position' => 1000 + $r,
 			'enabled'  => 'isModEnabled(\'dolisci\') && isModEnabled(\'societe\')',

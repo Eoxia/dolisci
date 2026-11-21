@@ -165,20 +165,53 @@ class ActionsDoliSci extends CommonHookActions
 
 	/**
 	 * Filter extrafields on the Rental Service card when in DoliSCI simplified environment:
-	 * keep only 'dolisci_service_nature', 'dolisci_fk_property_product', and 'dolisci_service_fk_project'.
+	 * keep only 'dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease' (unless nature is BAIL), and 'dolisci_service_fk_project',
+	 * and filter dropdown options to DoliSCI-tagged properties, projects, and leases.
 	 *
+	 * @param  CommonObject|null $object Optional current Product/Service object
 	 * @return void
 	 */
-	protected function filterServiceExtrafieldsForDoliSci(): void
+	protected function filterServiceExtrafieldsForDoliSci($object = null): void
 	{
 		global $extrafields;
 
+		$servNature = GETPOST('options_dolisci_service_nature', 'alpha');
+		if ($servNature === '' && $object instanceof Product) {
+			$servNature = (string) ($object->array_options['options_dolisci_service_nature'] ?? '');
+		}
+		$isBail = ($servNature === 'BAIL' || ($object instanceof Product && (stripos((string) $object->ref, 'Bail_') === 0 || stripos((string) $object->ref, 'Bail-') === 0)));
+
 		$allowedKeys = ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_service_fk_project'];
+		if (!$isBail) {
+			$allowedKeys[] = 'dolisci_fk_lease';
+		}
+
 		if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
 			foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
 				$keep = in_array((string) $efKey, $allowedKeys, true);
 				$extrafields->attributes['product']['enabled'][$efKey] = $keep ? '1' : '0';
 				$extrafields->attributes['product']['list'][$efKey]    = $keep ? '1' : '0';
+			}
+
+			$tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
+			if ($tagProductId > 0) {
+				$filterProp = 'product:ref|label:rowid::((fk_product_type:=:0) AND (rowid:IN:SELECT fk_product FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_categorie = ' . $tagProductId . '))';
+				$extrafields->attributes['product']['type']['dolisci_fk_property_product']             = 'sellist';
+				$extrafields->attributes['product']['param']['dolisci_fk_property_product']['options'] = [$filterProp => null];
+			}
+
+			$tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+			if ($tagProjectId > 0) {
+				$filterProj = 'projet:ref|title:rowid::(rowid:IN:SELECT fk_project FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_categorie = ' . $tagProjectId . ')';
+				$extrafields->attributes['product']['type']['dolisci_service_fk_project']             = 'sellist';
+				$extrafields->attributes['product']['param']['dolisci_service_fk_project']['options'] = [$filterProj => null];
+			}
+
+			$tagLeaseId = getDolGlobalInt('DOLISCI_TAG_SERVICE_LEASE');
+			if ($tagLeaseId > 0 && !$isBail) {
+				$filterLease = 'product:ref|label:rowid::((fk_product_type:=:1) AND (rowid:IN:SELECT fk_product FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_categorie = ' . $tagLeaseId . '))';
+				$extrafields->attributes['product']['type']['dolisci_fk_lease']             = 'sellist';
+				$extrafields->attributes['product']['param']['dolisci_fk_lease']['options'] = [$filterLease => null];
 			}
 		}
 	}
@@ -356,7 +389,7 @@ class ActionsDoliSci extends CommonHookActions
 				$extrafields->attributes['projet']['list']['dolisci_fk_socpeople']    = '0';
 			}
 		}
-		if (in_array('productcard', $contexts, true)) {
+		if (in_array('productcard', $contexts, true) && !in_array('dolisciproductproperty', $contexts, true)) {
 			if ($this->isDoliSciPropertyProductContext($object)) {
 				$this->filterProductExtrafieldsForDoliSci();
 				if ($action === 'create' || $action === 'edit') {
@@ -370,17 +403,23 @@ class ActionsDoliSci extends CommonHookActions
 						. '</td></tr>';
 				}
 			} elseif ($this->isDoliSciRentalServiceContext($object)) {
-				$this->filterServiceExtrafieldsForDoliSci();
+				$this->filterServiceExtrafieldsForDoliSci($object);
 				if ($action === 'create' || $action === 'edit') {
 					$this->resprints = '<tr class="dolisci-simplified-service-form" style="display:none"><td colspan="2">'
 						. '<style>'
-						. 'table:has(.dolisci-simplified-service-form) > tbody > tr:not(:has(input[name="ref"])):not(:has(input[name="label"])):not(:has(select[name="statut"])):not(:has([name="desc"])):not(:has([name="options_dolisci_service_nature"])):not(:has([name="options_dolisci_fk_property_product"])):not(:has([name="options_dolisci_service_fk_project"])):not(:has(#categories)),'
+						. 'table:has(.dolisci-simplified-service-form) > tbody > tr:not(:has(input[name="ref"])):not(:has(input[name="label"])):not(:has(select[name="statut"])):not(:has([name="desc"])):not(:has([name="options_dolisci_service_nature"])):not(:has([name="options_dolisci_fk_property_product"])):not(:has([name="options_dolisci_fk_lease"])):not(:has([name="options_dolisci_service_fk_project"])):not(:has(#categories)),'
 						. 'form[name="formprod"]:has(.dolisci-simplified-service-form) tr:has(input[name="price_min"]),'
 						. 'form[name="formprod"]:has(.dolisci-simplified-service-form) table:has([name="accountancy_code_sell"]) tr:not(:has([name="accountancy_code_sell"]))'
 						. '{ display: none !important; }'
 						. '</style>'
 						. '</td></tr>';
 				}
+			}
+		}
+		if (in_array('productdocuments', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
+			require_once __DIR__ . '/../lib/dolisci.lib.php';
+			if (dolisciIsPropertyProduct($this->db, $object)) {
+				$this->resprints = $this->renderPropertyDocumentsChecklist($object);
 			}
 		}
 		if (in_array('thirdpartycard', $contexts, true) && $this->isDoliSciThirdpartyContext($object)) {
@@ -635,7 +674,7 @@ class ActionsDoliSci extends CommonHookActions
 			if ($this->isDoliSciPropertyProductContext($object)) {
 				$this->filterProductExtrafieldsForDoliSci();
 			} elseif ($this->isDoliSciRentalServiceContext($object)) {
-				$this->filterServiceExtrafieldsForDoliSci();
+				$this->filterServiceExtrafieldsForDoliSci($object);
 			}
 		}
 		if (in_array('projectcard', $contexts, true) && $object instanceof Project) {
@@ -693,7 +732,7 @@ class ActionsDoliSci extends CommonHookActions
 			$this->filterProductExtrafieldsForDoliSci();
 			$_SESSION['pageforbacktolist']['product'] = dol_buildpath('/dolisci/product_list.php', 1);
 		} else {
-			$this->filterServiceExtrafieldsForDoliSci();
+			$this->filterServiceExtrafieldsForDoliSci($object);
 			$_SESSION['pageforbacktolist']['product'] = dol_buildpath('/dolisci/service_list.php', 1);
 		}
 		$this->prefixDoliSciExtrafieldLabels();
@@ -723,64 +762,113 @@ class ActionsDoliSci extends CommonHookActions
 			print '<tr><td>' . $langs->trans('PublicUrl') . '</td><td>' . dol_print_url($object->url, '_blank', 128) . '</td></tr>';
 		}
 
-		// Default Rental Services (Bail, Loyer, Charge, Dépôt de garantie, Caution) on a Property Product
+		// Leases (Baux) linked to this Property Product
 		if ((int) $object->type === Product::TYPE_PRODUCT) {
-			$defaultSpecs = dolisciEnsurePropertyDefaultServices($this->db, $object);
-			$pictoPath    = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
-			$picto        = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
-			$canEditProd  = $user->hasRight('produit', 'creer');
-			$editingField = ($action === 'edit_dolisci_default_service') ? GETPOST('dolisci_default_field', 'aZ09') : '';
+			$rentalData = dolisciGetPropertyRentalServices($this->db, $object);
+			$services   = $rentalData['services'] ?? [];
+			$pictoPath  = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+			$picto      = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
 
-			foreach ($defaultSpecs as $spec) {
-				$fieldKey  = (string) $spec['field'];
-				$labelKey  = (string) $spec['labelKey'];
-				$natureKey = (string) $spec['natureKey'];
-				$selObj    = $spec['selectedObj'];
-				$cands     = $spec['candidates'];
-
-				print '<tr><td class="titlefield">';
-				print '<table class="nobordernopadding centpercent"><tr><td class="nowrap">';
-				print $picto . dolPrintHTML($langs->trans($labelKey));
-				print '</td>';
-				if ($canEditProd && $editingField !== $fieldKey) {
-					$editUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=edit_dolisci_default_service&dolisci_default_field=' . urlencode($fieldKey) . '&token=' . newToken();
-					print '<td class="right"><a class="editfielda" href="' . $editUrl . '">' . img_edit($langs->trans('Modify'), 1) . '</a></td>';
+			// Group services by rental group index
+			$groups = [];
+			foreach ($services as $sObj) {
+				$grpIdx = (int) ($sObj->dolisci_group_index ?? 1);
+				if (!isset($groups[$grpIdx])) {
+					$groups[$grpIdx] = [
+						'bail'     => null,
+						'rents'    => [],
+						'charges'  => [],
+						'deposits' => [],
+						'cautions' => [],
+						'others'   => [],
+					];
 				}
-				print '</tr></table>';
-				print '</td><td>';
-
-				if ($canEditProd && $editingField === $fieldKey) {
-					print '<form method="post" action="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '">';
-					print '<input type="hidden" name="token" value="' . newToken() . '">';
-					print '<input type="hidden" name="action" value="set_dolisci_default_service">';
-					print '<input type="hidden" name="dolisci_default_field" value="' . dolPrintHTMLForAttribute($fieldKey) . '">';
-					print '<select name="dolisci_default_service_id" class="flat minwidth250 maxwidth400">';
-					print '<option value="0">&mdash; ' . dolPrintHTML($langs->trans('None')) . ' &mdash;</option>';
-					foreach ($cands as $candObj) {
-						$cid      = (int) $candObj->rowid;
-						$selected = ($cid === (int) $spec['selectedId']) ? ' selected' : '';
-						$optText  = $candObj->ref . ' - ' . $candObj->label . ((float) $candObj->price > 0 ? ' (' . price2num($candObj->price) . ' HT)' : '');
-						print '<option value="' . $cid . '"' . $selected . '>' . dolPrintHTML($optText) . '</option>';
-					}
-					print '</select> ';
-					print '<input type="submit" class="button button-save smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '"> ';
-					print '<a class="button button-cancel smallpaddingimp" href="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '">' . dolPrintHTML($langs->trans('Cancel')) . '</a>';
-					print '</form>';
-				} elseif ($selObj instanceof stdClass) {
-					$serv             = new Product($this->db);
-					$serv->id         = (int) $selObj->rowid;
-					$serv->ref        = (string) $selObj->ref;
-					$serv->label      = (string) $selObj->label;
-					$serv->type       = (int) $selObj->fk_product_type;
-					$serv->entity     = (int) $selObj->entity;
-					$serv->status     = (int) $selObj->tosell;
-					$serv->status_buy = (int) $selObj->tobuy;
-					$priceSuffix      = (float) $selObj->price > 0 ? ' <span class="opacitymedium">(' . price($selObj->price, 1, $langs, 1, -1, -1, 'auto') . ' HT)</span>' : '';
-					print dolisciGetObjectNomUrl($serv, $natureKey) . ' - ' . dolPrintHTML($serv->label) . $priceSuffix;
+				$rank = (int) ($sObj->dolisci_nature_rank ?? 6);
+				if ($rank === 1) {
+					$groups[$grpIdx]['bail'] = $sObj;
+				} elseif ($rank === 2) {
+					$groups[$grpIdx]['rents'][] = $sObj;
+				} elseif ($rank === 3) {
+					$groups[$grpIdx]['charges'][] = $sObj;
+				} elseif ($rank === 4) {
+					$groups[$grpIdx]['deposits'][] = $sObj;
+				} elseif ($rank === 5) {
+					$groups[$grpIdx]['cautions'][] = $sObj;
 				} else {
-					print '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
+					$groups[$grpIdx]['others'][] = $sObj;
 				}
+			}
+			ksort($groups);
 
+			if (!empty($groups)) {
+				$counter = 0;
+				foreach ($groups as $grpIdx => $grpData) {
+					$counter++;
+					$primaryObj = $grpData['bail'] ?? reset($grpData['rents']) ?? reset($grpData['others']) ?? null;
+					if (!$primaryObj) {
+						continue;
+					}
+
+					$serv              = new Product($this->db);
+					$serv->id          = (int) $primaryObj->rowid;
+					$serv->ref         = (string) $primaryObj->ref;
+					$serv->label       = (string) $primaryObj->label;
+					$serv->description = (string) ($primaryObj->description ?? '');
+					$serv->type        = (int) $primaryObj->fk_product_type;
+					$serv->entity      = (int) $primaryObj->entity;
+					$serv->status      = (int) $primaryObj->tosell;
+					$serv->status_buy  = (int) $primaryObj->tobuy;
+
+					// Determine Description or Label
+					$desc = trim(strip_tags((string) $serv->description));
+					if (empty($desc)) {
+						$desc = (string) $serv->label;
+					}
+					if (dol_strlen($desc) > 80) {
+						$desc = dol_trunc($desc, 80);
+					}
+
+					// Determine Price (rent or bail price)
+					$rentPrice = 0.0;
+					if ((float) $primaryObj->price > 0) {
+						$rentPrice = (float) $primaryObj->price;
+					} elseif (!empty($grpData['rents'])) {
+						foreach ($grpData['rents'] as $rObj) {
+							$rentPrice += (float) $rObj->price;
+						}
+					}
+
+					// Sum of all charges (multicharge support)
+					$chargesPrice = 0.0;
+					if (!empty($grpData['charges'])) {
+						foreach ($grpData['charges'] as $cObj) {
+							$chargesPrice += (float) $cObj->price;
+						}
+					}
+
+					$priceStr = price($rentPrice, 1, $langs, 1, -1, -1, 'auto') . ' ' . $langs->trans('HT');
+					if ($chargesPrice > 0) {
+						$priceStr .= ' <span class="opacitymedium">(+ ' . price($chargesPrice, 1, $langs, 1, -1, -1, 'auto') . ' ' . dolPrintHTML($langs->trans('Charges')) . ')</span>';
+					}
+
+					$displayIndex = ($grpIdx > 0 ? $grpIdx : $counter);
+					$titleLabel   = $langs->trans('DoliSciTagServiceLease') . ' ' . $displayIndex;
+
+					print '<tr><td class="titlefield">';
+					print $picto . dolPrintHTML($titleLabel);
+					print '</td><td>';
+					print dolisciGetObjectNomUrl($serv, 'BAIL');
+					if (!empty($desc)) {
+						print ' - ' . dolPrintHTML($desc);
+					}
+					print ' - ' . $priceStr;
+					print '</td></tr>';
+				}
+			} else {
+				print '<tr><td class="titlefield">';
+				print $picto . dolPrintHTML($langs->trans('DoliSciTagServiceLease'));
+				print '</td><td>';
+				print '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
 				print '</td></tr>';
 			}
 		}
@@ -958,33 +1046,47 @@ class ActionsDoliSci extends CommonHookActions
 		$filter    = $parameters['filterorigmodule'] ?? ($parameters['filter'] ?? '');
 		$targetObj = ($object instanceof CommonObject) ? $object : ($parameters['object'] ?? null);
 
-		// 1. Add DoliSCI "Loyers, Charges & Caution" tab with counter on Property Products (type == 0) and DoliSCI Rental Services (type == 1)
+		// 1. Add DoliSCI tabs on Property Products (type == 0) and DoliSCI Rental Services (type == 1)
 		if ($mode === 'add' && ($filter === 'external' || $filter === '') && $targetObj instanceof Product && !empty($targetObj->id)) {
 			require_once __DIR__ . '/../lib/dolisci.lib.php';
 			$isProp = ((int) $targetObj->type === Product::TYPE_PRODUCT && dolisciIsPropertyProduct($this->db, $targetObj));
 			$isServ = ((int) $targetObj->type === Product::TYPE_SERVICE && dolisciIsRentalService($this->db, $targetObj));
 			if ($isProp || $isServ) {
-				$head = is_array($parameters['head'] ?? null) ? $parameters['head'] : [];
+				$head       = is_array($parameters['head'] ?? null) ? $parameters['head'] : [];
+				$existingId = [];
 				foreach ($head as $tab) {
-					if (($tab[2] ?? '') === 'dolisci_services') {
-						return 0;
+					if (!empty($tab[2])) {
+						$existingId[(string) $tab[2]] = true;
 					}
 				}
 				$langs->load('dolisci@dolisci');
-				$propProduct = dolisciGetPropertyFromService($this->db, $targetObj);
-				if ($isServ) {
-					$childServices = dolisciGetServiceChildServices($this->db, $targetObj, $propProduct);
-					$badgeCount    = count($childServices);
-				} else {
-					$rentalData = $propProduct ? dolisciGetPropertyRentalServices($this->db, $propProduct) : ['count' => 0, 'groupCount' => 0, 'rentCount' => 0];
-					$badgeCount = (int) ($rentalData['groupCount'] ?? ($rentalData['rentCount'] ?? 0));
-				}
 				$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
 				$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
-				$tabUrl    = dol_buildpath('/dolisci/product_services.php', 1) . '?id=' . ((int) $targetObj->id);
-				$tabLabel  = $picto . $langs->trans('DoliSciTabRentalServices') . '<span class="badge marginleftonlyshort">' . $badgeCount . '</span>';
+				$tabsToAdd = [];
 
-				$this->results = [[$tabUrl, $tabLabel, 'dolisci_services']];
+				if ($isProp && !isset($existingId['dolisci_property'])) {
+					$propTabUrl   = dol_buildpath('/dolisci/product_property.php', 1) . '?id=' . ((int) $targetObj->id);
+					$propTabLabel = $picto . $langs->trans('DoliSciTabPropertyDetails');
+					$tabsToAdd[]  = [$propTabUrl, $propTabLabel, 'dolisci_property'];
+				}
+
+				if (!isset($existingId['dolisci_services'])) {
+					$propProduct = dolisciGetPropertyFromService($this->db, $targetObj);
+					if ($isServ) {
+						$childServices = dolisciGetServiceChildServices($this->db, $targetObj, $propProduct);
+						$badgeCount    = count($childServices);
+					} else {
+						$rentalData = $propProduct ? dolisciGetPropertyRentalServices($this->db, $propProduct) : ['count' => 0, 'groupCount' => 0, 'rentCount' => 0];
+						$badgeCount = (int) ($rentalData['groupCount'] ?? ($rentalData['rentCount'] ?? 0));
+					}
+					$tabUrl      = dol_buildpath('/dolisci/product_services.php', 1) . '?id=' . ((int) $targetObj->id);
+					$tabLabel    = $picto . $langs->trans('DoliSciTabRentalServices') . '<span class="badge marginleftonlyshort">' . $badgeCount . '</span>';
+					$tabsToAdd[] = [$tabUrl, $tabLabel, 'dolisci_services'];
+				}
+
+				if (!empty($tabsToAdd)) {
+					$this->results = $tabsToAdd;
+				}
 				return 0;
 			}
 		}
@@ -1342,25 +1444,154 @@ class ActionsDoliSci extends CommonHookActions
 			}
 		}
 
-		// 2. Pre-filter Product / Service list by DoliSCI tags ("Bien" or "Loyer" / "Charge" / "Caution")
-		if (in_array('productservicelist', $contexts, true) && !$isRemoveFilter) {
-			if ($contextpage === 'dolisciproductlist' || strpos($leftmenu, 'dolisci_products') === 0) {
-				$contextpage  = 'dolisciproductlist';
-				$tagProductId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_PRODUCT_PROPERTY');
-				if ($tagProductId > 0 && empty($searchCategoryProductList)) {
-					$searchCategoryProductList = [$tagProductId];
+		// 1c. Handle Property Required Documents checklist actions on product/document.php
+		if (in_array('productdocuments', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
+			if (in_array($action, ['dolisci_doc_stream_local', 'dolisci_doc_open_explorer'], true)) {
+				if (!$user->hasRight('produit', 'lire')) {
+					accessforbidden();
 				}
-			} elseif ($contextpage === 'dolisciservicelist' || strpos($leftmenu, 'dolisci_services') === 0) {
-				$contextpage    = 'dolisciservicelist';
-				$tagRentId      = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
-				$tagChargesId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_CHARGES');
-				$tagDepositId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
-				$tagLeaseId     = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_LEASE');
-				$tagGuaranteeId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_GUARANTEE');
-				$serviceTags    = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId, $tagLeaseId, $tagGuaranteeId]));
-				if (!empty($serviceTags) && empty($searchCategoryProductList)) {
-					$searchCategoryProductList     = $serviceTags;
-					$searchCategoryProductOperator = 1;
+				require_once __DIR__ . '/../lib/dolisci.lib.php';
+				require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+				$docKey    = GETPOST('dolisci_doc_key', 'aZ09');
+				$stateData = dolisciGetPropertyDocumentsChecklistState($object);
+				$linkUrl   = (string) ($stateData['items'][$docKey]['url'] ?? '');
+
+				if ($linkUrl !== '') {
+					$localPath = (string) preg_replace('#^file:///+#i', '', $linkUrl);
+					$localPath = str_replace('/', DIRECTORY_SEPARATOR, $localPath);
+
+					if ($action === 'dolisci_doc_open_explorer') {
+						$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+						if (PHP_OS_FAMILY === 'Windows' && in_array($remoteAddr, ['127.0.0.1', '::1'], true)) {
+							$arg = is_file($localPath)
+								? '/select,"' . str_replace('"', '', $localPath) . '"'
+								: '"' . str_replace('"', '', is_dir($localPath) ? $localPath : dirname($localPath)) . '"';
+							@pclose(@popen('start "" explorer.exe ' . $arg, 'r'));
+						}
+						header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+						exit;
+					}
+
+					if (is_file($localPath) && is_readable($localPath)) {
+						while (ob_get_level() > 0) {
+							ob_end_clean();
+						}
+						$mime = dol_mimetype($localPath);
+						header('Content-Type: ' . $mime);
+						header('Content-Disposition: inline; filename="' . basename($localPath) . '"');
+						header('Content-Length: ' . filesize($localPath));
+						readfile($localPath);
+						exit;
+					}
+					setEventMessages($langs->trans('DoliSciDocLocalFileNotAccessible', $localPath), null, 'warnings');
+					header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+					exit;
+				}
+			}
+
+			if (in_array($action, ['dolisci_doc_toggle_concerned', 'dolisci_doc_upload', 'dolisci_doc_link', 'dolisci_doc_link_url', 'dolisci_doc_unlink'], true)) {
+				if (!$user->hasRight('produit', 'creer')) {
+					accessforbidden();
+				}
+				require_once __DIR__ . '/../lib/dolisci.lib.php';
+				require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+				$docKey = GETPOST('dolisci_doc_key', 'aZ09');
+				$defs   = dolisciGetPropertyRequiredDocuments();
+				if (isset($defs[$docKey])) {
+					$stateData = dolisciGetPropertyDocumentsChecklistState($object);
+					$items     = $stateData['items'];
+
+					if ($action === 'dolisci_doc_toggle_concerned' && !empty($defs[$docKey]['conditional'])) {
+						$items[$docKey]['concerned'] = (bool) GETPOSTINT('dolisci_concerned');
+						dolisciSavePropertyDocumentsChecklistState($object, $items);
+					} elseif ($action === 'dolisci_doc_link') {
+						$chosenFile = GETPOST('dolisci_doc_file', 'alphanohtml');
+						if ($chosenFile !== '' && in_array($chosenFile, $stateData['files_on_disk'], true)) {
+							$items[$docKey]['file'] = $chosenFile;
+							$items[$docKey]['url']  = '';
+							dolisciSavePropertyDocumentsChecklistState($object, $items);
+						}
+					} elseif ($action === 'dolisci_doc_link_url') {
+						$rawUrl = trim(GETPOST('dolisci_doc_url', 'restricthtml'));
+						if ($rawUrl !== '') {
+							$items[$docKey]['url']  = $rawUrl;
+							$items[$docKey]['file'] = '';
+							dolisciSavePropertyDocumentsChecklistState($object, $items);
+							setEventMessages($langs->trans('RecordSaved'), null);
+						}
+					} elseif ($action === 'dolisci_doc_unlink') {
+						$items[$docKey]['file'] = '';
+						$items[$docKey]['url']  = '';
+						dolisciSavePropertyDocumentsChecklistState($object, $items);
+					} elseif ($action === 'dolisci_doc_upload' && !empty($_FILES['dolisci_userfile']['name'])) {
+						$uploadDir = $stateData['upload_dir'];
+						if ($uploadDir !== '') {
+							if (!is_dir($uploadDir)) {
+								dol_mkdir($uploadDir);
+							}
+							$origName = dol_sanitizeFileName(basename((string) $_FILES['dolisci_userfile']['name']));
+							$destFile = $uploadDir . '/' . $origName;
+							$resUp    = dol_move_uploaded_file($_FILES['dolisci_userfile']['tmp_name'], $destFile, 1, 0, $_FILES['dolisci_userfile']['error']);
+							if ($resUp > 0) {
+								$items[$docKey]['file'] = $origName;
+								$items[$docKey]['url']  = '';
+								dolisciSavePropertyDocumentsChecklistState($object, $items);
+								setEventMessages($langs->trans('FileTransferComplete'), null);
+							} else {
+								setEventMessages($langs->trans('ErrorFileNotUploaded'), null, 'errors');
+							}
+						}
+					}
+				}
+				header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+				exit;
+			}
+		}
+
+		// 2. Pre-filter Product / Service list by DoliSCI tags ("Bien" or "Loyer" / "Charge" / "Caution")
+		//    and restrict visible extrafield columns to the relevant context (Property vs Service)
+		if (in_array('productservicelist', $contexts, true)) {
+			global $arrayfields, $extrafields;
+			$isProdList = ($contextpage === 'dolisciproductlist' || strpos($leftmenu, 'dolisci_products') === 0);
+			$isServList = ($contextpage === 'dolisciservicelist' || strpos($leftmenu, 'dolisci_services') === 0);
+
+			if ($isProdList || $isServList) {
+				$allowedListEfs = $isProdList
+					? ['dolisci_fk_project', 'dolisci_property_nature', 'dolisci_legal_regime', 'dolisci_cadastre_section', 'dolisci_cadastre_number', 'dolisci_cadastre_lieudit', 'dolisci_cadastre_surface', 'dolisci_subdivision', 'dolisci_fiscal_lot', 'dolisci_tantiemes', 'dolisci_floor_door', 'dolisci_rooms', 'dolisci_surface_carrez', 'dolisci_dpe_energy', 'dolisci_dpe_ges', 'dolisci_purchase_date', 'dolisci_purchase_price', 'dolisci_ownership_quota', 'dolisci_notary']
+					: ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease', 'dolisci_service_fk_project'];
+				if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
+					foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
+						$keepEf = in_array((string) $efKey, $allowedListEfs, true);
+						$extrafields->attributes['product']['list'][$efKey] = $keepEf ? '1' : '0';
+						if (!$keepEf && isset($arrayfields['ef.' . $efKey])) {
+							$arrayfields['ef.' . $efKey]['checked'] = 0;
+							$arrayfields['ef.' . $efKey]['enabled'] = 0;
+						}
+					}
+				}
+			}
+
+			if (!$isRemoveFilter) {
+				if ($isProdList) {
+					$contextpage  = 'dolisciproductlist';
+					$tagProductId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_PRODUCT_PROPERTY');
+					if ($tagProductId > 0 && empty($searchCategoryProductList)) {
+						$searchCategoryProductList = [$tagProductId];
+					}
+				} elseif ($isServList) {
+					$contextpage    = 'dolisciservicelist';
+					$tagRentId      = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
+					$tagChargesId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_CHARGES');
+					$tagDepositId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
+					$tagLeaseId     = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_LEASE');
+					$tagGuaranteeId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_GUARANTEE');
+					$serviceTags    = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId, $tagLeaseId, $tagGuaranteeId]));
+					if (!empty($serviceTags) && empty($searchCategoryProductList)) {
+						$searchCategoryProductList     = $serviceTags;
+						$searchCategoryProductOperator = 1;
+					}
 				}
 			}
 		}
@@ -1448,7 +1679,7 @@ class ActionsDoliSci extends CommonHookActions
 		}
 
 		// 4. Pre-select DoliSCI tag and enforce required Project on Product / Service creation form when in DoliSCI context
-		if (in_array('productcard', $contexts, true)) {
+		if (in_array('productcard', $contexts, true) && !in_array('dolisciproductproperty', $contexts, true)) {
 			if (in_array($action, ['create', 'add', 'edit', 'update'], true) && $this->isDoliSciPropertyProductContext($object)) {
 				$this->filterProductExtrafieldsForDoliSci();
 			}
@@ -1616,6 +1847,16 @@ class ActionsDoliSci extends CommonHookActions
 			];
 
 			$defaultFieldsUpdated = false;
+			$createdBailId        = 0;
+			if ($isOnService) {
+				$sNature = (string) ($object->array_options['options_dolisci_service_nature'] ?? '');
+				if ($sNature === 'BAIL' || stripos((string) $object->ref, 'Bail_') === 0 || stripos((string) $object->ref, 'Bail-') === 0) {
+					$createdBailId = (int) $object->id;
+				} else {
+					$createdBailId = (int) ($object->array_options['options_dolisci_fk_lease'] ?? 0);
+				}
+			}
+
 			foreach ($servicesToCreate as $spec) {
 				$service  = new Product($this->db);
 				$existing = $service->fetch(0, $spec['ref']);
@@ -1625,6 +1866,11 @@ class ActionsDoliSci extends CommonHookActions
 					$service->array_options['options_dolisci_fk_property_product'] = (int) $propProduct->id;
 					if ($projectId > 0) {
 						$service->array_options['options_dolisci_service_fk_project'] = $projectId;
+					}
+					if ($spec['nature'] === 'BAIL') {
+						$createdBailId = (int) $service->id;
+					} elseif ($createdBailId > 0) {
+						$service->array_options['options_dolisci_fk_lease'] = $createdBailId;
 					}
 					$service->insertExtraFields();
 					if (!empty($spec['description']) && trim((string) $service->description) === '') {
@@ -1660,9 +1906,15 @@ class ActionsDoliSci extends CommonHookActions
 				if (!empty($spec['leaseType'])) {
 					$service->array_options['options_dolisci_lease_type'] = (string) $spec['leaseType'];
 				}
+				if ($spec['nature'] !== 'BAIL' && $createdBailId > 0) {
+					$service->array_options['options_dolisci_fk_lease'] = $createdBailId;
+				}
 
 				$res = $service->create($user);
 				if ($res > 0) {
+					if ($spec['nature'] === 'BAIL') {
+						$createdBailId = (int) $service->id;
+					}
 					$service->updatePrice($spec['amount'], 'HT', $user, $spec['tva_tx']);
 					dolisciAssignTag($this->db, $service, $spec['tagConst'], 'product');
 					if (!empty($spec['defaultField'])) {
@@ -2190,15 +2442,13 @@ class ActionsDoliSci extends CommonHookActions
 		$contexts = explode(':', $parameters['context'] ?? '');
 		$langs->load('dolisci@dolisci');
 
-		// 1. Button on Property Product card (type == 0) or on the DoliSCI Services tab of a Rental Service
+		// 1. Button on Property Product card (type == 0)
 		$isServiceTab = in_array('dolisciproductservices', $contexts, true);
-		if (in_array('productcard', $contexts, true) && $object instanceof Product && ((int) $object->type === Product::TYPE_PRODUCT || $isServiceTab)) {
+		if (in_array('productcard', $contexts, true) && !$isServiceTab && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT) {
 			require_once __DIR__ . '/../lib/dolisci.lib.php';
 			$propProduct = dolisciGetPropertyFromService($this->db, $object);
 			if ($propProduct && dolisciIsPropertyProduct($this->db, $propProduct) && $user->hasRight('service', 'creer')) {
-				$btnLabel = ((int) $object->type === Product::TYPE_SERVICE)
-					? $langs->trans('DoliSciCreateOrAttachChargesDeposit')
-					: $langs->trans('DoliSciGenerateRentalServices');
+				$btnLabel = $langs->trans('DoliSciGenerateRentalServices');
 				if (!empty($conf->use_javascript_ajax) && empty($conf->dol_use_jmobile)) {
 					print dolGetButtonAction('', $btnLabel, 'default', '#', 'action-dolisci-generate-services', true);
 				} else {
@@ -2428,5 +2678,193 @@ class ActionsDoliSci extends CommonHookActions
 			print '<tr class="oddeven"><td colspan="8" class="opacitymedium">' . $langs->trans('DoliSciNoRentalServiceLinked') . '</td></tr>';
 		}
 		print '</table></div>';
+	}
+
+	/**
+	 * Render the Required Property Documents Checklist and Documentary Completion Status bar
+	 * on product/document.php for DoliSCI Property Products.
+	 *
+	 * @param  Product $object Property Product instance
+	 * @return string          HTML content
+	 */
+	protected function renderPropertyDocumentsChecklist(Product $object): string
+	{
+		global $langs, $user;
+
+		$langs->load('dolisci@dolisci');
+		$stateData      = dolisciGetPropertyDocumentsChecklistState($object);
+		$defs           = dolisciGetPropertyRequiredDocuments();
+		$items          = $stateData['items'];
+		$filesOnDisk    = $stateData['files_on_disk'];
+		$totalConcerned = (int) $stateData['total_concerned'];
+		$completed      = (int) $stateData['completed'];
+		$percent        = (int) $stateData['percent'];
+		$canEdit        = $user->hasRight('produit', 'creer');
+		$selfUrl        = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id);
+		$token          = newToken();
+
+		$barColor = ($percent >= 100) ? '#16a34a' : (($percent >= 50) ? '#d97706' : '#dc2626');
+		$badgeCls = ($percent >= 100) ? 'badge-status4' : (($percent >= 50) ? 'badge-status1' : 'badge-status8');
+		$badgeLbl = ($percent >= 100) ? $langs->trans('DoliSciDocComplete') : $langs->trans('DoliSciDocIncomplete');
+
+		$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+		$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
+
+		$html  = '<div id="dolisci-doc-checklist-wrapper" style="margin: 12px 0 18px 0;">';
+		$html .= '<div class="titre" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;">';
+		$html .= '<div>' . $picto . '<strong>' . dolPrintHTML($langs->trans('DoliSciDocChecklistTitle')) . '</strong></div>';
+		$html .= '<div style="display:flex;align-items:center;gap:10px;">';
+		$html .= '<span class="badge ' . $badgeCls . '">' . dolPrintHTML($badgeLbl) . '</span>';
+		$html .= '<span>' . dolPrintHTML($langs->trans('DoliSciDocCompletionStatus', (string) $completed, (string) $totalConcerned, (string) $percent)) . '</span>';
+		$html .= '<div style="width:140px;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">';
+		$html .= '<div style="width:' . $percent . '%;height:100%;background:' . $barColor . ';transition:width 0.2s;"></div>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		$html .= '<div class="div-table-responsive-no-min">';
+		$html .= '<table class="noborder centpercent">';
+		$html .= '<tr class="liste_titre">';
+		$html .= '<td>' . dolPrintHTML($langs->trans('Document')) . '</td>';
+		$html .= '<td class="center">' . dolPrintHTML($langs->trans('DoliSciDocApplicability')) . '</td>';
+		$html .= '<td class="center">' . dolPrintHTML($langs->trans('Status')) . '</td>';
+		$html .= '<td>' . dolPrintHTML($langs->trans('DoliSciDocAssociatedFile')) . '</td>';
+		$html .= '</tr>';
+
+		$relativeDir = get_exdir(0, 0, 0, 1, $object, 'product');
+
+		$editDocKey = (GETPOST('action', 'aZ09') === 'dolisci_doc_edit') ? GETPOST('dolisci_doc_key', 'aZ09') : '';
+
+		foreach ($defs as $docKey => $def) {
+			$item        = $items[$docKey] ?? ['concerned' => true, 'file' => '', 'exists' => false, 'url' => '', 'has_doc' => false];
+			$isConcerned = !empty($item['concerned']);
+			$hasFile     = !empty($item['exists']);
+			$fileName    = (string) ($item['file'] ?? '');
+			$linkUrl     = (string) ($item['url'] ?? '');
+			$hasUrl      = ($linkUrl !== '');
+			$hasDoc      = ($hasFile || $hasUrl);
+			$isCond      = !empty($def['conditional']);
+			$isEditing   = ($canEdit && $editDocKey === $docKey);
+
+			$html .= '<tr class="oddeven">';
+			$html .= '<td><strong>' . dolPrintHTML($langs->trans($def['labelKey'])) . '</strong></td>';
+
+			// Applicability column
+			$html .= '<td class="center nowraponall">';
+			if ($isCond && $canEdit) {
+				$html .= '<form method="post" action="' . $selfUrl . '" style="display:inline-block;margin:0;">';
+				$html .= '<input type="hidden" name="token" value="' . $token . '">';
+				$html .= '<input type="hidden" name="action" value="dolisci_doc_toggle_concerned">';
+				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+				$html .= '<select name="dolisci_concerned" class="flat" onchange="this.form.submit()">';
+				$html .= '<option value="1"' . ($isConcerned ? ' selected' : '') . '>' . dolPrintHTML($langs->trans('DoliSciDocConcerned')) . '</option>';
+				$html .= '<option value="0"' . (!$isConcerned ? ' selected' : '') . '>' . dolPrintHTML($langs->trans('DoliSciDocNotConcerned')) . '</option>';
+				$html .= '</select>';
+				$html .= '</form>';
+			} elseif ($isCond) {
+				$html .= dolPrintHTML($langs->trans($isConcerned ? 'DoliSciDocConcerned' : 'DoliSciDocNotConcerned'));
+			} else {
+				$html .= '<span class="opacitymedium">' . dolPrintHTML($langs->trans('DoliSciDocRequired')) . '</span>';
+			}
+			$html .= '</td>';
+
+			// Status column
+			$html .= '<td class="center nowraponall">';
+			if (!$isConcerned) {
+				$html .= '<span class="badge badge-status0">' . dolPrintHTML($langs->trans('DoliSciDocNotConcerned')) . '</span>';
+			} elseif ($hasDoc) {
+				$html .= '<span class="badge badge-status4">' . dolPrintHTML($langs->trans('DoliSciDocProvided')) . '</span>';
+			} else {
+				$html .= '<span class="badge badge-status8">' . dolPrintHTML($langs->trans('DoliSciDocMissing')) . '</span>';
+			}
+			$html .= '</td>';
+
+			// Associated file / Upload / Link column
+			$html .= '<td class="nowraponall">';
+			if (!$isConcerned) {
+				$html .= '<span class="opacitymedium">&mdash;</span>';
+			} elseif ($hasFile && !$isEditing) {
+				$dlUrl = DOL_URL_ROOT . '/document.php?modulepart=produit&entity=' . ((int) $object->entity) . '&file=' . urlencode($relativeDir . $fileName);
+				$html .= '<a href="' . $dlUrl . '" target="_blank">' . img_mime($fileName) . ' ' . dolPrintHTML($fileName) . '</a>';
+				if ($canEdit) {
+					$editUrl   = $selfUrl . '&action=dolisci_doc_edit&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html .= ' <a class="editfielda paddingleft" href="' . $editUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '">' . img_edit($langs->trans('Modify')) . '</a>';
+					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
+				}
+			} elseif ($hasUrl && !$isEditing) {
+				$isWebUrl = (bool) preg_match('#^https?://#i', $linkUrl);
+				if ($isWebUrl) {
+					$html .= '<i class="fas fa-link pictofixedwidth" style="color:#0284c7;"></i>';
+					$html .= '<a href="' . dolPrintHTMLForAttribute($linkUrl) . '" target="_blank" rel="noopener">' . dolPrintHTML($linkUrl) . '</a>';
+				} else {
+					$streamUrl = $selfUrl . '&action=dolisci_doc_stream_local&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html     .= '<i class="fas fa-file-alt pictofixedwidth" style="color:#0284c7;"></i>';
+					$html     .= '<a href="' . $streamUrl . '" target="_blank" title="' . dolPrintHTMLForAttribute($linkUrl) . '">' . dolPrintHTML(basename(str_replace('\\', '/', $linkUrl)) ?: $linkUrl) . '</a>';
+					$html     .= ' <span class="opacitymedium small">(' . dolPrintHTML(dol_trunc($linkUrl, 50)) . ')</span>';
+					$html     .= ' ' . showValueWithClipboardCPButton($linkUrl, 0, 'none');
+				}
+				if ($canEdit) {
+					$editUrl   = $selfUrl . '&action=dolisci_doc_edit&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html .= ' <a class="editfielda paddingleft" href="' . $editUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '">' . img_edit($langs->trans('Modify')) . '</a>';
+					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
+				}
+			} elseif ($canEdit) {
+				$html .= '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+				$html .= '<form method="post" enctype="multipart/form-data" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:6px;margin:0;">';
+				$html .= '<input type="hidden" name="token" value="' . $token . '">';
+				$html .= '<input type="hidden" name="action" value="dolisci_doc_upload">';
+				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+				$html .= '<input type="file" name="dolisci_userfile" class="flat maxwidth150">';
+				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUpload')) . '">';
+				$html .= '</form>';
+
+				$html .= '<form method="post" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:4px;margin:0;">';
+				$html .= '<input type="hidden" name="token" value="' . $token . '">';
+				$html .= '<input type="hidden" name="action" value="dolisci_doc_link_url">';
+				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+				$html .= '<input type="text" name="dolisci_doc_url" class="flat minwidth150 maxwidth250" value="' . dolPrintHTMLForAttribute($linkUrl) . '" placeholder="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocLinkUrlPlaceholder')) . '">';
+				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans($isEditing ? 'Modify' : 'DoliSciDocLinkButton')) . '">';
+				if ($isEditing) {
+					$html .= ' <a class="button button-cancel smallpaddingimp" href="' . $selfUrl . '">' . dolPrintHTML($langs->trans('Cancel')) . '</a>';
+				}
+				$html .= '</form>';
+
+				if (!empty($filesOnDisk)) {
+					$html .= '<form method="post" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:4px;margin:0;">';
+					$html .= '<input type="hidden" name="token" value="' . $token . '">';
+					$html .= '<input type="hidden" name="action" value="dolisci_doc_link">';
+					$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+					$html .= '<select name="dolisci_doc_file" class="flat maxwidth150" onchange="if(this.value)this.form.submit()">';
+					$html .= '<option value="">-- ' . dolPrintHTML($langs->trans('DoliSciDocLinkExisting')) . ' --</option>';
+					foreach ($filesOnDisk as $diskFile) {
+						$html .= '<option value="' . dolPrintHTMLForAttribute($diskFile) . '">' . dolPrintHTML($diskFile) . '</option>';
+					}
+					$html .= '</select>';
+					$html .= '</form>';
+				}
+				$html .= '</div>';
+			} else {
+				$html .= '<span class="opacitymedium">' . dolPrintHTML($langs->trans('DoliSciDocMissing')) . '</span>';
+			}
+			$html .= '</td>';
+			$html .= '</tr>';
+		}
+
+		$html .= '</table>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Position the checklist right after the document summary box (at the top of the documentary section)
+		$html .= '<script>'
+			. '(function(){'
+			. 'var w=document.getElementById("dolisci-doc-checklist-wrapper");'
+			. 'var tabsEnd=document.querySelector("div.fiche > div.tabBar");'
+			. 'if(w && tabsEnd && tabsEnd.parentNode){tabsEnd.parentNode.insertBefore(w, tabsEnd.nextSibling);}'
+			. '})();'
+			. '</script>';
+
+		return $html;
 	}
 }
