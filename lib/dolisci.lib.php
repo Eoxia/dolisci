@@ -457,6 +457,20 @@ function dolisciGetExtrafieldDefinitions(): array
 			'enabled'     => $serviceCondition,
 			'moreparams'  => $defaultCss,
 		],
+		'ef:product:dolisci_fk_lease' => [
+			'group'       => 'service',
+			'attrname'    => 'dolisci_fk_lease',
+			'label'       => 'DoliSciLinkedLease',
+			'type'        => 'link',
+			'pos'         => (int) ($moduleNumero . '78'),
+			'size'        => '',
+			'elementtype' => 'product',
+			'param'       => ['options' => ['Product:product/class/product.class.php:0:(t.entity:=:__ENTITY__) AND (t.fk_product_type:=:1)' => null]],
+			'list'        => '1',
+			'help'        => 'DoliSciLinkedLeaseHelp',
+			'enabled'     => $serviceCondition,
+			'moreparams'  => $defaultCss,
+		],
 		'ef:product:dolisci_service_fk_project' => [
 			'group'       => 'service',
 			'attrname'    => 'dolisci_service_fk_project',
@@ -1091,13 +1105,14 @@ function dolisciGetObjectNomUrl(CommonObject $object, string $serviceNature = ''
 
 /**
  * Sort and annotate rental services by rental group (1, 2, 3...) and by nature within each group:
- * 1: Bail (parent), 2: Loyer, 3: Charge, 4: Dépôt de garantie, 5: Acte de cautionnement
+ * 1: Bail (parent), 2: Loyer, 3: Charge (multicharge supported), 4: Dépôt de garantie, 5: Acte de cautionnement (multi-caution supported)
  *
  * @param  array<int,stdClass> $services List of service rows (modified in-place)
  * @return void
  */
 function dolisciSortAndGroupRentalServices(array &$services): void
 {
+	$bailGroupMap = [];
 	foreach ($services as $obj) {
 		$nature = (string) ($obj->dolisci_service_nature ?? '');
 		$ref    = (string) ($obj->ref ?? '');
@@ -1132,6 +1147,18 @@ function dolisciSortAndGroupRentalServices(array &$services): void
 		$obj->dolisci_nature_rank = $natureRank;
 		$obj->dolisci_is_child    = ($natureRank > 1);
 		$obj->dolisci_prop_key    = $fkProp > 0 ? ('id_' . $fkProp) : ('ref_' . $propKey);
+
+		if ($natureRank === 1) {
+			$bailGroupMap[(int) $obj->rowid] = $groupIndex;
+		}
+	}
+
+	// Re-map child services to their parent Bail's group index if dolisci_fk_lease is set
+	foreach ($services as $obj) {
+		$fkLease = (int) ($obj->dolisci_fk_lease ?? 0);
+		if ($fkLease > 0 && isset($bailGroupMap[$fkLease])) {
+			$obj->dolisci_group_index = $bailGroupMap[$fkLease];
+		}
 	}
 
 	usort($services, static function ($a, $b): int {
@@ -1188,7 +1215,7 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 	$guaranteePrefix = 'Caution_' . $escapedPropRef;
 
 	$sql = 'SELECT p.rowid, p.ref, p.label, p.description, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
-		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_service_fk_project,'
+		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_fk_lease, ef.dolisci_service_fk_project,'
 		. ' pr.rowid AS pr_id, pr.ref AS pr_ref, pr.title AS pr_title, pr.fk_statut AS pr_status'
 		. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
 		. ' LEFT JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
@@ -1234,6 +1261,11 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 
 	dolisciSortAndGroupRentalServices($result['services']);
 
+	// Ensure each rental group has an explicit Bail and all child services have dolisci_fk_lease set
+	if (!empty($result['services'])) {
+		dolisciAutoHealPropertyLeases($db, $propertyProduct, $result['services']);
+	}
+
 	$distinctGroups = [];
 	foreach ($result['services'] as $sObj) {
 		$distinctGroups[(int) ($sObj->dolisci_group_index ?? 1)] = true;
@@ -1244,6 +1276,137 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 	$result['hasBoth']    = $result['hasAll'];
 
 	return $result;
+}
+
+/**
+ * Automatically heal / ensure that every rental group of a Property Product has a real Bail service (type = 1, nature = 'BAIL')
+ * and that all child services (Loyer, Charges, Dépôt, Caution) have their dolisci_fk_lease set.
+ *
+ * @param  DoliDB              $db              Database handler
+ * @param  Product             $propertyProduct Property Product instance (type = 0)
+ * @param  array<int,stdClass> $services        List of services (modified in-place)
+ * @return void
+ */
+function dolisciAutoHealPropertyLeases(DoliDB $db, Product $propertyProduct, array &$services): void
+{
+	global $langs, $user;
+
+	if (empty($propertyProduct->id) || empty($services)) {
+		return;
+	}
+
+	$bailsByGroup    = [];
+	$servicesByGroup = [];
+	foreach ($services as $sObj) {
+		$grp  = (int) ($sObj->dolisci_group_index ?? 1);
+		$rank = (int) ($sObj->dolisci_nature_rank ?? 6);
+		if ($rank === 1) {
+			$bailsByGroup[$grp] = $sObj;
+		} else {
+			$servicesByGroup[$grp][] = $sObj;
+		}
+	}
+
+	$projectId = (int) ($propertyProduct->array_options['options_dolisci_fk_project'] ?? 0);
+	$propRef   = (string) $propertyProduct->ref;
+	$propLabel = (string) $propertyProduct->label;
+	$modified  = false;
+
+	// For any group that has services but NO Bail, create the missing Bail!
+	foreach ($servicesByGroup as $grp => $childList) {
+		if (empty($bailsByGroup[$grp])) {
+			$bailRef = 'Bail-' . $grp . '_' . $propRef;
+			$newBail = new Product($db);
+			$found   = $newBail->fetch(0, $bailRef);
+			if ($found <= 0) {
+				$newBail->ref             = $bailRef;
+				$newBail->label           = $langs->transnoentities('DoliSciLeaseServiceLabel', $propLabel);
+				$newBail->type            = Product::TYPE_SERVICE;
+				$newBail->status          = 1;
+				$newBail->status_buy      = 0;
+				$newBail->price           = 0;
+				$newBail->price_base_type = 'HT';
+				$newBail->tva_tx          = (float) $propertyProduct->tva_tx;
+				$newBail->array_options   = [
+					'options_dolisci_service_nature'      => 'BAIL',
+					'options_dolisci_fk_property_product' => (int) $propertyProduct->id,
+					'options_dolisci_service_fk_project'  => $projectId,
+				];
+				$res = $newBail->create($user);
+				if ($res > 0) {
+					dolisciAssignTag($db, $newBail, 'DOLISCI_TAG_SERVICE_LEASE', 'product');
+					$bObj                              = new stdClass();
+					$bObj->rowid                       = (int) $newBail->id;
+					$bObj->ref                         = $newBail->ref;
+					$bObj->label                       = $newBail->label;
+					$bObj->description                 = '';
+					$bObj->fk_product_type             = Product::TYPE_SERVICE;
+					$bObj->entity                      = (int) $newBail->entity;
+					$bObj->tosell                      = 1;
+					$bObj->tobuy                       = 0;
+					$bObj->price                       = 0;
+					$bObj->tva_tx                      = $newBail->tva_tx;
+					$bObj->accountancy_code_sell       = '';
+					$bObj->dolisci_service_nature      = 'BAIL';
+					$bObj->dolisci_fk_property_product = (int) $propertyProduct->id;
+					$bObj->dolisci_fk_lease            = 0;
+					$bObj->dolisci_service_fk_project  = $projectId;
+					$bObj->dolisci_group_index         = $grp;
+					$bObj->dolisci_nature_rank         = 1;
+					$bObj->dolisci_is_child            = false;
+					$bObj->dolisci_prop_key            = 'id_' . ((int) $propertyProduct->id);
+					$bailsByGroup[$grp]                = $bObj;
+					$services[]                        = $bObj;
+					$modified                          = true;
+				}
+			} else {
+				$newBail->fetch_optionals();
+				$bObj                              = new stdClass();
+				$bObj->rowid                       = (int) $newBail->id;
+				$bObj->ref                         = $newBail->ref;
+				$bObj->label                       = $newBail->label;
+				$bObj->description                 = (string) $newBail->description;
+				$bObj->fk_product_type             = Product::TYPE_SERVICE;
+				$bObj->entity                      = (int) $newBail->entity;
+				$bObj->tosell                      = (int) $newBail->status;
+				$bObj->tobuy                       = (int) $newBail->status_buy;
+				$bObj->price                       = (float) $newBail->price;
+				$bObj->tva_tx                      = (float) $newBail->tva_tx;
+				$bObj->accountancy_code_sell       = (string) $newBail->accountancy_code_sell;
+				$bObj->dolisci_service_nature      = 'BAIL';
+				$bObj->dolisci_fk_property_product = (int) $propertyProduct->id;
+				$bObj->dolisci_fk_lease            = 0;
+				$bObj->dolisci_service_fk_project  = $projectId;
+				$bObj->dolisci_group_index         = $grp;
+				$bObj->dolisci_nature_rank         = 1;
+				$bObj->dolisci_is_child            = false;
+				$bObj->dolisci_prop_key            = 'id_' . ((int) $propertyProduct->id);
+				$bailsByGroup[$grp]                = $bObj;
+				$services[]                        = $bObj;
+				$modified                          = true;
+			}
+		}
+
+		// Ensure dolisci_fk_lease is set on all child services
+		if (!empty($bailsByGroup[$grp])) {
+			$bailId      = (int) $bailsByGroup[$grp]->rowid;
+			$toUpdateIds = [];
+			foreach ($childList as $child) {
+				if (empty($child->dolisci_fk_lease) || (int) $child->dolisci_fk_lease <= 0) {
+					$child->dolisci_fk_lease = $bailId;
+					$toUpdateIds[]           = (int) $child->rowid;
+				}
+			}
+			if (!empty($toUpdateIds)) {
+				$sqlUp = "UPDATE " . MAIN_DB_PREFIX . "product_extrafields SET dolisci_fk_lease = " . $bailId . " WHERE fk_object IN (" . implode(',', $toUpdateIds) . ")";
+				$db->query($sqlUp);
+			}
+		}
+	}
+
+	if ($modified) {
+		dolisciSortAndGroupRentalServices($services);
+	}
 }
 
 /**

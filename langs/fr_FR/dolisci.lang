@@ -277,6 +277,12 @@ DoliSciDefaultServiceRentObjLabel = Loyer nu / principal (Défaut)
 DoliSciDefaultServiceChargesObjLabel = Provision sur charges locatives (Défaut)
 DoliSciDefaultServiceDepositObjLabel = Dépôt de garantie (Défaut)
 DoliSciDefaultServiceGuaranteeObjLabel = Acte de cautionnement solidaire (Défaut)
-
-
+DoliSciLinkedLease = Bail rattaché
+DoliSciLinkedLeaseHelp = Bail (service locatif principal) auquel est rattaché ce service
+DoliSciAddNewLease = Nouveau bail
+DoliSciAddCharge = Ajouter une charge
+DoliSciAddGuarantee = Ajouter une caution
+DoliSciLeaseGroup = Bail %s
+DoliSciOrphanServices = Services non rattachés à un bail
+DoliSciConfirmDeleteService = Êtes-vous sûr de vouloir supprimer ce service ?
 

@@ -173,7 +173,7 @@ class ActionsDoliSci extends CommonHookActions
 	{
 		global $extrafields;
 
-		$allowedKeys = ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_service_fk_project'];
+		$allowedKeys = ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease', 'dolisci_service_fk_project'];
 		if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
 			foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
 				$keep = in_array((string) $efKey, $allowedKeys, true);
@@ -736,25 +736,25 @@ class ActionsDoliSci extends CommonHookActions
 				$grpIdx = (int) ($sObj->dolisci_group_index ?? 1);
 				if (!isset($groups[$grpIdx])) {
 					$groups[$grpIdx] = [
-						'bail'    => null,
-						'rent'    => null,
-						'charges' => null,
-						'deposit' => null,
-						'caution' => null,
-						'others'  => [],
+						'bail'     => null,
+						'rents'    => [],
+						'charges'  => [],
+						'deposits' => [],
+						'cautions' => [],
+						'others'   => [],
 					];
 				}
 				$rank = (int) ($sObj->dolisci_nature_rank ?? 6);
 				if ($rank === 1) {
 					$groups[$grpIdx]['bail'] = $sObj;
 				} elseif ($rank === 2) {
-					$groups[$grpIdx]['rent'] = $sObj;
+					$groups[$grpIdx]['rents'][] = $sObj;
 				} elseif ($rank === 3) {
-					$groups[$grpIdx]['charges'] = $sObj;
+					$groups[$grpIdx]['charges'][] = $sObj;
 				} elseif ($rank === 4) {
-					$groups[$grpIdx]['deposit'] = $sObj;
+					$groups[$grpIdx]['deposits'][] = $sObj;
 				} elseif ($rank === 5) {
-					$groups[$grpIdx]['caution'] = $sObj;
+					$groups[$grpIdx]['cautions'][] = $sObj;
 				} else {
 					$groups[$grpIdx]['others'][] = $sObj;
 				}
@@ -765,7 +765,7 @@ class ActionsDoliSci extends CommonHookActions
 				$counter = 0;
 				foreach ($groups as $grpIdx => $grpData) {
 					$counter++;
-					$primaryObj = $grpData['bail'] ?? $grpData['rent'] ?? reset($grpData['others']) ?? null;
+					$primaryObj = $grpData['bail'] ?? reset($grpData['rents']) ?? reset($grpData['others']) ?? null;
 					if (!$primaryObj) {
 						continue;
 					}
@@ -790,10 +790,24 @@ class ActionsDoliSci extends CommonHookActions
 					}
 
 					// Determine Price (rent or bail price)
-					$price = (float) $primaryObj->price > 0 ? (float) $primaryObj->price : (!empty($grpData['rent']) ? (float) $grpData['rent']->price : 0.0);
-					$chargesPrice = !empty($grpData['charges']) ? (float) $grpData['charges']->price : 0.0;
+					$rentPrice = 0.0;
+					if ((float) $primaryObj->price > 0) {
+						$rentPrice = (float) $primaryObj->price;
+					} elseif (!empty($grpData['rents'])) {
+						foreach ($grpData['rents'] as $rObj) {
+							$rentPrice += (float) $rObj->price;
+						}
+					}
 
-					$priceStr = price($price, 1, $langs, 1, -1, -1, 'auto') . ' ' . $langs->trans('HT');
+					// Sum of all charges (multicharge support)
+					$chargesPrice = 0.0;
+					if (!empty($grpData['charges'])) {
+						foreach ($grpData['charges'] as $cObj) {
+							$chargesPrice += (float) $cObj->price;
+						}
+					}
+
+					$priceStr = price($rentPrice, 1, $langs, 1, -1, -1, 'auto') . ' ' . $langs->trans('HT');
 					if ($chargesPrice > 0) {
 						$priceStr .= ' <span class="opacitymedium">(+ ' . price($chargesPrice, 1, $langs, 1, -1, -1, 'auto') . ' ' . dolPrintHTML($langs->trans('Charges')) . ')</span>';
 					}
@@ -1651,6 +1665,16 @@ class ActionsDoliSci extends CommonHookActions
 			];
 
 			$defaultFieldsUpdated = false;
+			$createdBailId        = 0;
+			if ($isOnService) {
+				$sNature = (string) ($object->array_options['options_dolisci_service_nature'] ?? '');
+				if ($sNature === 'BAIL' || stripos((string) $object->ref, 'Bail_') === 0 || stripos((string) $object->ref, 'Bail-') === 0) {
+					$createdBailId = (int) $object->id;
+				} else {
+					$createdBailId = (int) ($object->array_options['options_dolisci_fk_lease'] ?? 0);
+				}
+			}
+
 			foreach ($servicesToCreate as $spec) {
 				$service  = new Product($this->db);
 				$existing = $service->fetch(0, $spec['ref']);
@@ -1660,6 +1684,11 @@ class ActionsDoliSci extends CommonHookActions
 					$service->array_options['options_dolisci_fk_property_product'] = (int) $propProduct->id;
 					if ($projectId > 0) {
 						$service->array_options['options_dolisci_service_fk_project'] = $projectId;
+					}
+					if ($spec['nature'] === 'BAIL') {
+						$createdBailId = (int) $service->id;
+					} elseif ($createdBailId > 0) {
+						$service->array_options['options_dolisci_fk_lease'] = $createdBailId;
 					}
 					$service->insertExtraFields();
 					if (!empty($spec['description']) && trim((string) $service->description) === '') {
@@ -1695,9 +1724,15 @@ class ActionsDoliSci extends CommonHookActions
 				if (!empty($spec['leaseType'])) {
 					$service->array_options['options_dolisci_lease_type'] = (string) $spec['leaseType'];
 				}
+				if ($spec['nature'] !== 'BAIL' && $createdBailId > 0) {
+					$service->array_options['options_dolisci_fk_lease'] = $createdBailId;
+				}
 
 				$res = $service->create($user);
 				if ($res > 0) {
+					if ($spec['nature'] === 'BAIL') {
+						$createdBailId = (int) $service->id;
+					}
 					$service->updatePrice($spec['amount'], 'HT', $user, $spec['tva_tx']);
 					dolisciAssignTag($this->db, $service, $spec['tagConst'], 'product');
 					if (!empty($spec['defaultField'])) {
@@ -2227,7 +2262,7 @@ class ActionsDoliSci extends CommonHookActions
 
 		// 1. Button on Property Product card (type == 0) or on the DoliSCI Services tab of a Rental Service
 		$isServiceTab = in_array('dolisciproductservices', $contexts, true);
-		if (in_array('productcard', $contexts, true) && $object instanceof Product && ((int) $object->type === Product::TYPE_PRODUCT || $isServiceTab)) {
+		if (in_array('productcard', $contexts, true) && !$isServiceTab && $object instanceof Product && ((int) $object->type === Product::TYPE_PRODUCT || $isServiceTab)) {
 			require_once __DIR__ . '/../lib/dolisci.lib.php';
 			$propProduct = dolisciGetPropertyFromService($this->db, $object);
 			if ($propProduct && dolisciIsPropertyProduct($this->db, $propProduct) && $user->hasRight('service', 'creer')) {

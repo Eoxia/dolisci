@@ -70,7 +70,139 @@ $hookmanager->initHooks(['productcard', 'dolisciproductservices', 'globalcard'])
  * Actions
  */
 
-$parameters = ['id' => $object->id];
+// 1. Delete a service from this lease / property
+if ($action === 'confirm_delete_service' && GETPOST('confirm', 'alpha') === 'yes') {
+	if (!$user->hasRight('service', 'supprimer') && !$user->hasRight('produit', 'supprimer')) {
+		accessforbidden();
+	}
+	$serviceId = GETPOSTINT('service_id');
+	if ($serviceId > 0) {
+		$servToDelete = new Product($db);
+		if ($servToDelete->fetch($serviceId) > 0) {
+			$refDel = $servToDelete->ref;
+			$res    = $servToDelete->delete($user);
+			if ($res > 0) {
+				setEventMessages($langs->trans('RecordDeleted') . ' (' . $refDel . ')', null);
+			} else {
+				setEventMessages($servToDelete->error, $servToDelete->errors, 'errors');
+			}
+		}
+	}
+	header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+	exit;
+}
+
+// 2. Add an additional charge service to a lease (Multicharge support)
+if ($action === 'confirm_add_charge' && GETPOST('confirm', 'alpha') === 'yes') {
+	if (!$user->hasRight('service', 'creer')) {
+		accessforbidden();
+	}
+	$leaseId      = GETPOSTINT('lease_id');
+	$propProduct  = dolisciGetPropertyFromService($db, $object) ?: $object;
+	$propProduct->fetch_optionals();
+	$propRef      = (string) $propProduct->ref;
+	$propLabel    = (string) $propProduct->label;
+	$projectId    = (int) ($propProduct->array_options['options_dolisci_fk_project'] ?? 0);
+
+	$chargeLabel  = trim(GETPOST('charge_label', 'alphanohtml')) ?: $langs->transnoentities('DoliSciChargesServiceLabel', $propLabel);
+	$chargeAmount = (float) price2num(GETPOST('charge_amount', 'alphanohtml'));
+	$chargeVatRaw = (string) GETPOST('charge_tva', 'alphanohtml');
+	$chargeVat    = $chargeVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $chargeVatRaw)) : (float) $propProduct->tva_tx;
+
+	$idx = 1;
+	while (true) {
+		$chkRef = 'Charge-' . $idx . '_' . $propRef;
+		$resChk = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "product WHERE ref = '" . $db->escape($chkRef) . "' AND entity IN (" . getEntity('product') . ")");
+		if (!$resChk || $db->num_rows($resChk) === 0) {
+			break;
+		}
+		$idx++;
+	}
+	$chargeRef = 'Charge-' . $idx . '_' . $propRef;
+
+	$newCharge = new Product($db);
+	$newCharge->ref                   = $chargeRef;
+	$newCharge->label                 = $chargeLabel;
+	$newCharge->type                  = Product::TYPE_SERVICE;
+	$newCharge->status                = 1;
+	$newCharge->status_buy            = 0;
+	$newCharge->price                 = $chargeAmount;
+	$newCharge->price_base_type       = 'HT';
+	$newCharge->tva_tx                = $chargeVat;
+	$newCharge->accountancy_code_sell = '708800';
+	$newCharge->array_options         = [
+		'options_dolisci_service_nature'      => 'CHARGES',
+		'options_dolisci_fk_property_product' => (int) $propProduct->id,
+		'options_dolisci_fk_lease'            => $leaseId,
+		'options_dolisci_service_fk_project'  => $projectId,
+	];
+	$res = $newCharge->create($user);
+	if ($res > 0) {
+		dolisciAssignTag($db, $newCharge, 'DOLISCI_TAG_SERVICE_CHARGES', 'product');
+		setEventMessages($langs->trans('RecordSaved') . ' (' . $newCharge->getNomUrl(1) . ')', null);
+	} else {
+		setEventMessages($newCharge->error, $newCharge->errors, 'errors');
+	}
+	header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+	exit;
+}
+
+// 3. Add an additional guarantee act service to a lease (Multi-caution support)
+if ($action === 'confirm_add_guarantee' && GETPOST('confirm', 'alpha') === 'yes') {
+	if (!$user->hasRight('service', 'creer')) {
+		accessforbidden();
+	}
+	$leaseId         = GETPOSTINT('lease_id');
+	$propProduct     = dolisciGetPropertyFromService($db, $object) ?: $object;
+	$propProduct->fetch_optionals();
+	$propRef         = (string) $propProduct->ref;
+	$propLabel       = (string) $propProduct->label;
+	$projectId       = (int) ($propProduct->array_options['options_dolisci_fk_project'] ?? 0);
+
+	$guaranteeLabel  = trim(GETPOST('guarantee_label', 'alphanohtml')) ?: $langs->transnoentities('DoliSciGuaranteeServiceLabel', $propLabel);
+	$guaranteeAmount = (float) price2num(GETPOST('guarantee_amount', 'alphanohtml'));
+	$guaranteeVatRaw = (string) GETPOST('guarantee_tva', 'alphanohtml');
+	$guaranteeVat    = $guaranteeVatRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $guaranteeVatRaw)) : (float) $propProduct->tva_tx;
+
+	$idx = 1;
+	while (true) {
+		$chkRef = 'Caution-' . $idx . '_' . $propRef;
+		$resChk = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "product WHERE ref = '" . $db->escape($chkRef) . "' AND entity IN (" . getEntity('product') . ")");
+		if (!$resChk || $db->num_rows($resChk) === 0) {
+			break;
+		}
+		$idx++;
+	}
+	$guaranteeRef = 'Caution-' . $idx . '_' . $propRef;
+
+	$newG = new Product($db);
+	$newG->ref                   = $guaranteeRef;
+	$newG->label                 = $guaranteeLabel;
+	$newG->description           = dolisciGetGuaranteeActDefaultDescription($langs);
+	$newG->type                  = Product::TYPE_SERVICE;
+	$newG->status                = 1;
+	$newG->status_buy            = 0;
+	$newG->price                 = $guaranteeAmount;
+	$newG->price_base_type       = 'HT';
+	$newG->tva_tx                = $guaranteeVat;
+	$newG->array_options         = [
+		'options_dolisci_service_nature'      => 'ACTE_CAUTIONNEMENT',
+		'options_dolisci_fk_property_product' => (int) $propProduct->id,
+		'options_dolisci_fk_lease'            => $leaseId,
+		'options_dolisci_service_fk_project'  => $projectId,
+	];
+	$res = $newG->create($user);
+	if ($res > 0) {
+		dolisciAssignTag($db, $newG, 'DOLISCI_TAG_SERVICE_GUARANTEE', 'product');
+		setEventMessages($langs->trans('RecordSaved') . ' (' . $newG->getNomUrl(1) . ')', null);
+	} else {
+		setEventMessages($newG->error, $newG->errors, 'errors');
+	}
+	header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+	exit;
+}
+
+$parameters = ['id' => $object->id, 'context' => 'productcard:dolisciproductservices'];
 $reshook    = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
 if ($reshook < 0) {
 	setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
@@ -92,10 +224,74 @@ if ($object->id > 0) {
 	$head = product_prepare_head($object);
 	print dol_get_fiche_head($head, 'dolisci_services', $langs->trans($isService ? 'Service' : 'Product'), -1, $isService ? 'service' : 'product');
 
-	$parameters = [];
+	$parameters = ['context' => 'productcard:dolisciproductservices'];
 	$reshook    = $hookmanager->executeHooks('formConfirm', $parameters, $object, $action);
 	if (!empty($hookmanager->resPrint)) {
 		print $hookmanager->resPrint;
+	}
+
+	// Local FormConfirm modals
+	if ($action === 'ask_delete_service') {
+		$serviceId = GETPOSTINT('service_id');
+		$servToDel = new Product($db);
+		if ($servToDel->fetch($serviceId) > 0) {
+			$formquestion = [
+				['type' => 'hidden', 'name' => 'service_id', 'value' => $serviceId],
+			];
+			print $form->formconfirm(
+				$_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id),
+				$langs->trans('Delete'),
+				$langs->trans('DoliSciConfirmDeleteService') . ' (' . dolPrintHTML($servToDel->ref . ' - ' . $servToDel->label) . ')',
+				'confirm_delete_service',
+				$formquestion,
+				'yes',
+				1
+			);
+		}
+	} elseif ($action === 'ask_add_charge') {
+		$leaseId      = GETPOSTINT('lease_id');
+		$leaseObj     = new Product($db);
+		$leaseObj->fetch($leaseId);
+		$companyDefaultVat = !empty($mysoc->tva_assuj) ? (float) price2num(get_default_tva($mysoc, $mysoc)) : 0.0;
+		$baseVat      = (float) $propProduct->tva_tx > 0 ? (float) $propProduct->tva_tx : $companyDefaultVat;
+		$vatSelect    = $form->load_tva('charge_tva', $baseVat, $mysoc, null, 0, 0, '', false);
+		$formquestion = [
+			['type' => 'hidden', 'name' => 'lease_id', 'value' => $leaseId],
+			['type' => 'text', 'name' => 'charge_label', 'label' => $langs->trans('Label'), 'value' => $langs->transnoentities('DoliSciChargesServiceLabel', $propProduct->label)],
+			['type' => 'text', 'name' => 'charge_amount', 'label' => $langs->trans('AmountHT'), 'value' => '0'],
+			['type' => 'other', 'name' => 'charge_tva_field', 'label' => $langs->trans('VATRate'), 'value' => $vatSelect],
+		];
+		print $form->formconfirm(
+			$_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id),
+			$langs->trans('DoliSciAddCharge') . ' (' . dolPrintHTML($leaseObj->ref) . ')',
+			'',
+			'confirm_add_charge',
+			$formquestion,
+			'yes',
+			1
+		);
+	} elseif ($action === 'ask_add_guarantee') {
+		$leaseId      = GETPOSTINT('lease_id');
+		$leaseObj     = new Product($db);
+		$leaseObj->fetch($leaseId);
+		$companyDefaultVat = !empty($mysoc->tva_assuj) ? (float) price2num(get_default_tva($mysoc, $mysoc)) : 0.0;
+		$baseVat      = (float) $propProduct->tva_tx > 0 ? (float) $propProduct->tva_tx : $companyDefaultVat;
+		$vatSelect    = $form->load_tva('guarantee_tva', $baseVat, $mysoc, null, 0, 0, '', false);
+		$formquestion = [
+			['type' => 'hidden', 'name' => 'lease_id', 'value' => $leaseId],
+			['type' => 'text', 'name' => 'guarantee_label', 'label' => $langs->trans('Label'), 'value' => $langs->transnoentities('DoliSciGuaranteeServiceLabel', $propProduct->label)],
+			['type' => 'text', 'name' => 'guarantee_amount', 'label' => $langs->trans('AmountHT'), 'value' => '0'],
+			['type' => 'other', 'name' => 'guarantee_tva_field', 'label' => $langs->trans('VATRate'), 'value' => $vatSelect],
+		];
+		print $form->formconfirm(
+			$_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id),
+			$langs->trans('DoliSciAddGuarantee') . ' (' . dolPrintHTML($leaseObj->ref) . ')',
+			'',
+			'confirm_add_guarantee',
+			$formquestion,
+			'yes',
+			1
+		);
 	}
 
 	$listPage = $isService ? '/dolisci/service_list.php' : '/dolisci/product_list.php';
@@ -152,7 +348,14 @@ if ($object->id > 0) {
 
 	// Action buttons
 	print '<div class="tabsAction">';
-	$parameters = [];
+	if ($user->hasRight('service', 'creer')) {
+		$btnLabel = ((int) $object->type === Product::TYPE_SERVICE)
+			? $langs->trans('DoliSciCreateOrAttachChargesDeposit')
+			: $langs->trans('DoliSciGenerateRentalServices');
+		$genUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=ask_dolisci_rental_services&token=' . newToken();
+		print dolGetButtonAction('', $btnLabel, 'default', $genUrl, 'action-dolisci-generate-services');
+	}
+	$parameters = ['context' => 'productcard:dolisciproductservices'];
 	$reshook    = $hookmanager->executeHooks('addMoreActionsButtons', $parameters, $object, $action);
 	print '</div>';
 
@@ -180,6 +383,7 @@ if ($object->id > 0) {
 		print '<td>' . $langs->trans('Categories') . '</td>';
 	}
 	print '<td class="right">' . $langs->trans('Status') . ' (' . $langs->trans('Sell') . ')</td>';
+	print '<td class="center">' . $langs->trans('Action') . '</td>';
 	print '</tr>';
 
 	if (!empty($servicesToShow)) {
@@ -238,10 +442,26 @@ if ($object->id > 0) {
 				print '<td>' . $form->showCategories($serv->id, Categorie::TYPE_PRODUCT, 1) . '</td>';
 			}
 			print '<td class="right nowraponall">' . $serv->getLibStatut(5, 0) . '</td>';
+			print '<td class="center nowraponall">';
+			if ($user->hasRight('service', 'creer') || $user->hasRight('produit', 'creer')) {
+				$editUrl = dol_buildpath('/product/card.php', 1) . '?id=' . $serv->id . '&action=edit';
+				print '<a class="editfielda paddingleft paddingright" href="' . $editUrl . '" title="' . dol_escape_htmltag($langs->trans('Modify')) . '">' . img_edit() . '</a>';
+			}
+			if (!$isChild && $user->hasRight('service', 'creer')) {
+				$addChargeUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=ask_add_charge&lease_id=' . $serv->id . '&token=' . newToken();
+				print '<a class="btnTitle-icon paddingleft paddingright" href="' . $addChargeUrl . '" title="' . dol_escape_htmltag($langs->trans('DoliSciAddCharge')) . '"><i class="fas fa-plus"></i> ' . dolPrintHTML($langs->trans('Charge')) . '</a>';
+				$addGuarUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=ask_add_guarantee&lease_id=' . $serv->id . '&token=' . newToken();
+				print '<a class="btnTitle-icon paddingleft paddingright" href="' . $addGuarUrl . '" title="' . dol_escape_htmltag($langs->trans('DoliSciAddGuarantee')) . '"><i class="fas fa-plus"></i> ' . dolPrintHTML($langs->trans('Caution')) . '</a>';
+			}
+			if ($user->hasRight('service', 'supprimer') || $user->hasRight('produit', 'supprimer')) {
+				$delUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=ask_delete_service&service_id=' . $serv->id . '&token=' . newToken();
+				print '<a class="paddingleft paddingright" href="' . $delUrl . '" title="' . dol_escape_htmltag($langs->trans('Delete')) . '">' . img_delete() . '</a>';
+			}
+			print '</td>';
 			print '</tr>';
 		}
 	} else {
-		$colspan  = isModEnabled('category') ? 9 : 8;
+		$colspan  = isModEnabled('category') ? 10 : 9;
 		$emptyMsg = $isService ? $langs->trans('DoliSciNoChargesDepositForService') : $langs->trans('DoliSciNoRentalServiceForProperty');
 		print '<tr class="oddeven"><td colspan="' . $colspan . '" class="opacitymedium">' . $emptyMsg . '</td></tr>';
 	}
