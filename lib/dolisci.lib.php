@@ -2117,47 +2117,50 @@ function dolisciFrenchWordsBelowThousand(int $number, bool $last): string
 
 /**
  * Return the list of required / conditional documents for a Property Product.
+ * Every document allows the user to choose Concerned / Not concerned.
  *
- * @return array<string,array{labelKey:string,conditional:bool}>
+ * @return array<string,array{labelKey:string,conditional:bool,copro_only?:bool}>
  */
 function dolisciGetPropertyRequiredDocuments(): array
 {
 	return [
 		'compromis' => [
 			'labelKey'    => 'DoliSciDocCompromis',
-			'conditional' => false,
+			'conditional' => true,
 		],
 		'attestation_sans_prix' => [
 			'labelKey'    => 'DoliSciDocAttestationSansPrix',
-			'conditional' => false,
+			'conditional' => true,
 		],
 		'attestation_avec_prix' => [
 			'labelKey'    => 'DoliSciDocAttestationAvecPrix',
-			'conditional' => false,
+			'conditional' => true,
 		],
 		'reglement_copropriete' => [
 			'labelKey'    => 'DoliSciDocReglementCopropriete',
 			'conditional' => true,
+			'copro_only'  => true,
 		],
 		'etat_descriptif_division' => [
 			'labelKey'    => 'DoliSciDocEdd',
 			'conditional' => true,
+			'copro_only'  => true,
 		],
 		'dpe' => [
 			'labelKey'    => 'DoliSciDocDpe',
-			'conditional' => false,
+			'conditional' => true,
 		],
 		'diagnostics_techniques' => [
 			'labelKey'    => 'DoliSciDocDdt',
-			'conditional' => false,
+			'conditional' => true,
 		],
 		'taxe_fonciere' => [
 			'labelKey'    => 'DoliSciDocTaxeFonciere',
-			'conditional' => false,
+			'conditional' => true,
 		],
 		'assurance_pno' => [
 			'labelKey'    => 'DoliSciDocAssurancePno',
-			'conditional' => false,
+			'conditional' => true,
 		],
 	];
 }
@@ -2228,7 +2231,7 @@ function dolisciGetPropertyDocumentsChecklistState(Product $object): array
 
 	foreach ($defs as $docKey => $def) {
 		$defaultConcerned = true;
-		if (!empty($def['conditional']) && $legalRegime === 'MONO') {
+		if (!empty($def['copro_only']) && $legalRegime === 'MONO') {
 			$defaultConcerned = false;
 		}
 		$concerned = !empty($def['conditional'])
