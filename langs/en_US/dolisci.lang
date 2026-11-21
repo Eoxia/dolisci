@@ -285,4 +285,6 @@ DoliSciAddGuarantee = Add guarantee
 DoliSciLeaseGroup = Lease %s
 DoliSciOrphanServices = Services not linked to a lease
 DoliSciConfirmDeleteService = Are you sure you want to delete this service?
+DoliSciTabPropertyDetails = Property Details
+DoliSciPropertyDetailsTitle = Real Estate Property Specifications & Extrafields
 

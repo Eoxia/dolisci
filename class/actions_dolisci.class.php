@@ -1040,33 +1040,47 @@ class ActionsDoliSci extends CommonHookActions
 		$filter    = $parameters['filterorigmodule'] ?? ($parameters['filter'] ?? '');
 		$targetObj = ($object instanceof CommonObject) ? $object : ($parameters['object'] ?? null);
 
-		// 1. Add DoliSCI "Loyers, Charges & Caution" tab with counter on Property Products (type == 0) and DoliSCI Rental Services (type == 1)
+		// 1. Add DoliSCI tabs on Property Products (type == 0) and DoliSCI Rental Services (type == 1)
 		if ($mode === 'add' && ($filter === 'external' || $filter === '') && $targetObj instanceof Product && !empty($targetObj->id)) {
 			require_once __DIR__ . '/../lib/dolisci.lib.php';
 			$isProp = ((int) $targetObj->type === Product::TYPE_PRODUCT && dolisciIsPropertyProduct($this->db, $targetObj));
 			$isServ = ((int) $targetObj->type === Product::TYPE_SERVICE && dolisciIsRentalService($this->db, $targetObj));
 			if ($isProp || $isServ) {
-				$head = is_array($parameters['head'] ?? null) ? $parameters['head'] : [];
+				$head       = is_array($parameters['head'] ?? null) ? $parameters['head'] : [];
+				$existingId = [];
 				foreach ($head as $tab) {
-					if (($tab[2] ?? '') === 'dolisci_services') {
-						return 0;
+					if (!empty($tab[2])) {
+						$existingId[(string) $tab[2]] = true;
 					}
 				}
 				$langs->load('dolisci@dolisci');
-				$propProduct = dolisciGetPropertyFromService($this->db, $targetObj);
-				if ($isServ) {
-					$childServices = dolisciGetServiceChildServices($this->db, $targetObj, $propProduct);
-					$badgeCount    = count($childServices);
-				} else {
-					$rentalData = $propProduct ? dolisciGetPropertyRentalServices($this->db, $propProduct) : ['count' => 0, 'groupCount' => 0, 'rentCount' => 0];
-					$badgeCount = (int) ($rentalData['groupCount'] ?? ($rentalData['rentCount'] ?? 0));
-				}
 				$pictoPath = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
 				$picto     = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
-				$tabUrl    = dol_buildpath('/dolisci/product_services.php', 1) . '?id=' . ((int) $targetObj->id);
-				$tabLabel  = $picto . $langs->trans('DoliSciTabRentalServices') . '<span class="badge marginleftonlyshort">' . $badgeCount . '</span>';
+				$tabsToAdd = [];
 
-				$this->results = [[$tabUrl, $tabLabel, 'dolisci_services']];
+				if ($isProp && !isset($existingId['dolisci_property'])) {
+					$propTabUrl   = dol_buildpath('/dolisci/product_property.php', 1) . '?id=' . ((int) $targetObj->id);
+					$propTabLabel = $picto . $langs->trans('DoliSciTabPropertyDetails');
+					$tabsToAdd[]  = [$propTabUrl, $propTabLabel, 'dolisci_property'];
+				}
+
+				if (!isset($existingId['dolisci_services'])) {
+					$propProduct = dolisciGetPropertyFromService($this->db, $targetObj);
+					if ($isServ) {
+						$childServices = dolisciGetServiceChildServices($this->db, $targetObj, $propProduct);
+						$badgeCount    = count($childServices);
+					} else {
+						$rentalData = $propProduct ? dolisciGetPropertyRentalServices($this->db, $propProduct) : ['count' => 0, 'groupCount' => 0, 'rentCount' => 0];
+						$badgeCount = (int) ($rentalData['groupCount'] ?? ($rentalData['rentCount'] ?? 0));
+					}
+					$tabUrl      = dol_buildpath('/dolisci/product_services.php', 1) . '?id=' . ((int) $targetObj->id);
+					$tabLabel    = $picto . $langs->trans('DoliSciTabRentalServices') . '<span class="badge marginleftonlyshort">' . $badgeCount . '</span>';
+					$tabsToAdd[] = [$tabUrl, $tabLabel, 'dolisci_services'];
+				}
+
+				if (!empty($tabsToAdd)) {
+					$this->results = $tabsToAdd;
+				}
 				return 0;
 			}
 		}
@@ -1425,24 +1439,47 @@ class ActionsDoliSci extends CommonHookActions
 		}
 
 		// 2. Pre-filter Product / Service list by DoliSCI tags ("Bien" or "Loyer" / "Charge" / "Caution")
-		if (in_array('productservicelist', $contexts, true) && !$isRemoveFilter) {
-			if ($contextpage === 'dolisciproductlist' || strpos($leftmenu, 'dolisci_products') === 0) {
-				$contextpage  = 'dolisciproductlist';
-				$tagProductId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_PRODUCT_PROPERTY');
-				if ($tagProductId > 0 && empty($searchCategoryProductList)) {
-					$searchCategoryProductList = [$tagProductId];
+		//    and restrict visible extrafield columns to the relevant context (Property vs Service)
+		if (in_array('productservicelist', $contexts, true)) {
+			global $arrayfields, $extrafields;
+			$isProdList = ($contextpage === 'dolisciproductlist' || strpos($leftmenu, 'dolisci_products') === 0);
+			$isServList = ($contextpage === 'dolisciservicelist' || strpos($leftmenu, 'dolisci_services') === 0);
+
+			if ($isProdList || $isServList) {
+				$allowedListEfs = $isProdList
+					? ['dolisci_fk_project', 'dolisci_property_nature', 'dolisci_legal_regime', 'dolisci_fiscal_lot', 'dolisci_tantiemes', 'dolisci_floor_door', 'dolisci_rooms', 'dolisci_dpe_energy', 'dolisci_dpe_ges', 'dolisci_purchase_date', 'dolisci_purchase_price']
+					: ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease', 'dolisci_service_fk_project'];
+				if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
+					foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
+						$keepEf = in_array((string) $efKey, $allowedListEfs, true);
+						$extrafields->attributes['product']['list'][$efKey] = $keepEf ? '1' : '0';
+						if (!$keepEf && isset($arrayfields['ef.' . $efKey])) {
+							$arrayfields['ef.' . $efKey]['checked'] = 0;
+							$arrayfields['ef.' . $efKey]['enabled'] = 0;
+						}
+					}
 				}
-			} elseif ($contextpage === 'dolisciservicelist' || strpos($leftmenu, 'dolisci_services') === 0) {
-				$contextpage    = 'dolisciservicelist';
-				$tagRentId      = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
-				$tagChargesId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_CHARGES');
-				$tagDepositId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
-				$tagLeaseId     = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_LEASE');
-				$tagGuaranteeId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_GUARANTEE');
-				$serviceTags    = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId, $tagLeaseId, $tagGuaranteeId]));
-				if (!empty($serviceTags) && empty($searchCategoryProductList)) {
-					$searchCategoryProductList     = $serviceTags;
-					$searchCategoryProductOperator = 1;
+			}
+
+			if (!$isRemoveFilter) {
+				if ($isProdList) {
+					$contextpage  = 'dolisciproductlist';
+					$tagProductId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_PRODUCT_PROPERTY');
+					if ($tagProductId > 0 && empty($searchCategoryProductList)) {
+						$searchCategoryProductList = [$tagProductId];
+					}
+				} elseif ($isServList) {
+					$contextpage    = 'dolisciservicelist';
+					$tagRentId      = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_RENT');
+					$tagChargesId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_CHARGES');
+					$tagDepositId   = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_DEPOSIT');
+					$tagLeaseId     = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_LEASE');
+					$tagGuaranteeId = dolisciEnsureTagId($this->db, 'DOLISCI_TAG_SERVICE_GUARANTEE');
+					$serviceTags    = array_values(array_filter([$tagRentId, $tagChargesId, $tagDepositId, $tagLeaseId, $tagGuaranteeId]));
+					if (!empty($serviceTags) && empty($searchCategoryProductList)) {
+						$searchCategoryProductList     = $serviceTags;
+						$searchCategoryProductOperator = 1;
+					}
 				}
 			}
 		}

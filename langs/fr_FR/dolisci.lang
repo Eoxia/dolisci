@@ -285,4 +285,6 @@ DoliSciAddGuarantee = Ajouter une caution
 DoliSciLeaseGroup = Bail %s
 DoliSciOrphanServices = Services non rattachés à un bail
 DoliSciConfirmDeleteService = Êtes-vous sûr de vouloir supprimer ce service ?
+DoliSciTabPropertyDetails = Caractéristiques du bien
+DoliSciPropertyDetailsTitle = Caractéristiques et informations dédiées du bien immobilier
 
