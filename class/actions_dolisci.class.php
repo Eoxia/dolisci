@@ -1458,7 +1458,7 @@ class ActionsDoliSci extends CommonHookActions
 				$linkUrl   = (string) ($stateData['items'][$docKey]['url'] ?? '');
 
 				if ($linkUrl !== '') {
-					$localPath = preg_replace('#^file:///+#i', '', $linkUrl);
+					$localPath = (string) preg_replace('#^file:///+#i', '', $linkUrl);
 					$localPath = str_replace('/', DIRECTORY_SEPARATOR, $localPath);
 
 					if ($action === 'dolisci_doc_open_explorer') {
@@ -1473,22 +1473,20 @@ class ActionsDoliSci extends CommonHookActions
 						exit;
 					}
 
-					if ($action === 'dolisci_doc_stream_local') {
-						if (is_file($localPath) && is_readable($localPath)) {
-							while (ob_get_level() > 0) {
-								ob_end_clean();
-							}
-							$mime = dol_mimetype($localPath);
-							header('Content-Type: ' . $mime);
-							header('Content-Disposition: inline; filename="' . basename($localPath) . '"');
-							header('Content-Length: ' . filesize($localPath));
-							readfile($localPath);
-							exit;
+					if (is_file($localPath) && is_readable($localPath)) {
+						while (ob_get_level() > 0) {
+							ob_end_clean();
 						}
-						setEventMessages($langs->trans('DoliSciDocLocalFileNotAccessible', $localPath), null, 'warnings');
-						header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+						$mime = dol_mimetype($localPath);
+						header('Content-Type: ' . $mime);
+						header('Content-Disposition: inline; filename="' . basename($localPath) . '"');
+						header('Content-Length: ' . filesize($localPath));
+						readfile($localPath);
 						exit;
 					}
+					setEventMessages($langs->trans('DoliSciDocLocalFileNotAccessible', $localPath), null, 'warnings');
+					header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+					exit;
 				}
 			}
 
@@ -2444,15 +2442,13 @@ class ActionsDoliSci extends CommonHookActions
 		$contexts = explode(':', $parameters['context'] ?? '');
 		$langs->load('dolisci@dolisci');
 
-		// 1. Button on Property Product card (type == 0) or on the DoliSCI Services tab of a Rental Service
+		// 1. Button on Property Product card (type == 0)
 		$isServiceTab = in_array('dolisciproductservices', $contexts, true);
-		if (in_array('productcard', $contexts, true) && !$isServiceTab && $object instanceof Product && ((int) $object->type === Product::TYPE_PRODUCT || $isServiceTab)) {
+		if (in_array('productcard', $contexts, true) && !$isServiceTab && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT) {
 			require_once __DIR__ . '/../lib/dolisci.lib.php';
 			$propProduct = dolisciGetPropertyFromService($this->db, $object);
 			if ($propProduct && dolisciIsPropertyProduct($this->db, $propProduct) && $user->hasRight('service', 'creer')) {
-				$btnLabel = ((int) $object->type === Product::TYPE_SERVICE)
-					? $langs->trans('DoliSciCreateOrAttachChargesDeposit')
-					: $langs->trans('DoliSciGenerateRentalServices');
+				$btnLabel = $langs->trans('DoliSciGenerateRentalServices');
 				if (!empty($conf->use_javascript_ajax) && empty($conf->dol_use_jmobile)) {
 					print dolGetButtonAction('', $btnLabel, 'default', '#', 'action-dolisci-generate-services', true);
 				} else {

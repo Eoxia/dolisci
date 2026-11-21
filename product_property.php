@@ -118,6 +118,7 @@ if ($cancel) {
 }
 
 if ($action === 'update_extras' && $permissiontoedit && $object->id > 0) {
+	$error = 0;
 	$object->oldcopy = dol_clone($object, 2);
 	$ret = $extrafields->setOptionalsFromPost(null, $object, $attribute);
 	if ($ret < 0) {

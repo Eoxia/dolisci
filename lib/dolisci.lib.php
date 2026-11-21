@@ -2405,7 +2405,7 @@ function dolisciSavePropertyDocumentsChecklistState(Product $object, array $stat
 		dol_mkdir($uploadDir);
 	}
 	$metaFile = $uploadDir . '/dolisci_checklist.meta';
-	$payload  = json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+	$payload  = json_encode($state);
 
 	return $payload !== false && file_put_contents($metaFile, $payload) !== false;
 }
