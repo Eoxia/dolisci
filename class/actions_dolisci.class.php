@@ -165,20 +165,53 @@ class ActionsDoliSci extends CommonHookActions
 
 	/**
 	 * Filter extrafields on the Rental Service card when in DoliSCI simplified environment:
-	 * keep only 'dolisci_service_nature', 'dolisci_fk_property_product', and 'dolisci_service_fk_project'.
+	 * keep only 'dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease' (unless nature is BAIL), and 'dolisci_service_fk_project',
+	 * and filter dropdown options to DoliSCI-tagged properties, projects, and leases.
 	 *
+	 * @param  CommonObject|null $object Optional current Product/Service object
 	 * @return void
 	 */
-	protected function filterServiceExtrafieldsForDoliSci(): void
+	protected function filterServiceExtrafieldsForDoliSci($object = null): void
 	{
 		global $extrafields;
 
-		$allowedKeys = ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease', 'dolisci_service_fk_project'];
+		$servNature = GETPOST('options_dolisci_service_nature', 'alpha');
+		if ($servNature === '' && $object instanceof Product) {
+			$servNature = (string) ($object->array_options['options_dolisci_service_nature'] ?? '');
+		}
+		$isBail = ($servNature === 'BAIL' || ($object instanceof Product && (stripos((string) $object->ref, 'Bail_') === 0 || stripos((string) $object->ref, 'Bail-') === 0)));
+
+		$allowedKeys = ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_service_fk_project'];
+		if (!$isBail) {
+			$allowedKeys[] = 'dolisci_fk_lease';
+		}
+
 		if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
 			foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
 				$keep = in_array((string) $efKey, $allowedKeys, true);
 				$extrafields->attributes['product']['enabled'][$efKey] = $keep ? '1' : '0';
 				$extrafields->attributes['product']['list'][$efKey]    = $keep ? '1' : '0';
+			}
+
+			$tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
+			if ($tagProductId > 0) {
+				$filterProp = 'product:ref|label:rowid::((fk_product_type:=:0) AND (rowid:IN:SELECT fk_product FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_categorie = ' . $tagProductId . '))';
+				$extrafields->attributes['product']['type']['dolisci_fk_property_product']             = 'sellist';
+				$extrafields->attributes['product']['param']['dolisci_fk_property_product']['options'] = [$filterProp => null];
+			}
+
+			$tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
+			if ($tagProjectId > 0) {
+				$filterProj = 'projet:ref|title:rowid::(rowid:IN:SELECT fk_project FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_categorie = ' . $tagProjectId . ')';
+				$extrafields->attributes['product']['type']['dolisci_service_fk_project']             = 'sellist';
+				$extrafields->attributes['product']['param']['dolisci_service_fk_project']['options'] = [$filterProj => null];
+			}
+
+			$tagLeaseId = getDolGlobalInt('DOLISCI_TAG_SERVICE_LEASE');
+			if ($tagLeaseId > 0 && !$isBail) {
+				$filterLease = 'product:ref|label:rowid::((fk_product_type:=:1) AND (rowid:IN:SELECT fk_product FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_categorie = ' . $tagLeaseId . '))';
+				$extrafields->attributes['product']['type']['dolisci_fk_lease']             = 'sellist';
+				$extrafields->attributes['product']['param']['dolisci_fk_lease']['options'] = [$filterLease => null];
 			}
 		}
 	}
@@ -370,11 +403,11 @@ class ActionsDoliSci extends CommonHookActions
 						. '</td></tr>';
 				}
 			} elseif ($this->isDoliSciRentalServiceContext($object)) {
-				$this->filterServiceExtrafieldsForDoliSci();
+				$this->filterServiceExtrafieldsForDoliSci($object);
 				if ($action === 'create' || $action === 'edit') {
 					$this->resprints = '<tr class="dolisci-simplified-service-form" style="display:none"><td colspan="2">'
 						. '<style>'
-						. 'table:has(.dolisci-simplified-service-form) > tbody > tr:not(:has(input[name="ref"])):not(:has(input[name="label"])):not(:has(select[name="statut"])):not(:has([name="desc"])):not(:has([name="options_dolisci_service_nature"])):not(:has([name="options_dolisci_fk_property_product"])):not(:has([name="options_dolisci_service_fk_project"])):not(:has(#categories)),'
+						. 'table:has(.dolisci-simplified-service-form) > tbody > tr:not(:has(input[name="ref"])):not(:has(input[name="label"])):not(:has(select[name="statut"])):not(:has([name="desc"])):not(:has([name="options_dolisci_service_nature"])):not(:has([name="options_dolisci_fk_property_product"])):not(:has([name="options_dolisci_fk_lease"])):not(:has([name="options_dolisci_service_fk_project"])):not(:has(#categories)),'
 						. 'form[name="formprod"]:has(.dolisci-simplified-service-form) tr:has(input[name="price_min"]),'
 						. 'form[name="formprod"]:has(.dolisci-simplified-service-form) table:has([name="accountancy_code_sell"]) tr:not(:has([name="accountancy_code_sell"]))'
 						. '{ display: none !important; }'
@@ -635,7 +668,7 @@ class ActionsDoliSci extends CommonHookActions
 			if ($this->isDoliSciPropertyProductContext($object)) {
 				$this->filterProductExtrafieldsForDoliSci();
 			} elseif ($this->isDoliSciRentalServiceContext($object)) {
-				$this->filterServiceExtrafieldsForDoliSci();
+				$this->filterServiceExtrafieldsForDoliSci($object);
 			}
 		}
 		if (in_array('projectcard', $contexts, true) && $object instanceof Project) {
@@ -693,7 +726,7 @@ class ActionsDoliSci extends CommonHookActions
 			$this->filterProductExtrafieldsForDoliSci();
 			$_SESSION['pageforbacktolist']['product'] = dol_buildpath('/dolisci/product_list.php', 1);
 		} else {
-			$this->filterServiceExtrafieldsForDoliSci();
+			$this->filterServiceExtrafieldsForDoliSci($object);
 			$_SESSION['pageforbacktolist']['product'] = dol_buildpath('/dolisci/service_list.php', 1);
 		}
 		$this->prefixDoliSciExtrafieldLabels();
