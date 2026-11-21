@@ -2801,15 +2801,7 @@ class ActionsDoliSci extends CommonHookActions
 					$html     .= '<i class="fas fa-file-alt pictofixedwidth" style="color:#0284c7;"></i>';
 					$html     .= '<a href="' . $streamUrl . '" target="_blank" title="' . dolPrintHTMLForAttribute($linkUrl) . '">' . dolPrintHTML(basename(str_replace('\\', '/', $linkUrl)) ?: $linkUrl) . '</a>';
 					$html     .= ' <span class="opacitymedium small">(' . dolPrintHTML(dol_trunc($linkUrl, 50)) . ')</span>';
-
-					$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
-					if (PHP_OS_FAMILY === 'Windows' && in_array($remoteAddr, ['127.0.0.1', '::1'], true)) {
-						$explorerUrl = $selfUrl . '&action=dolisci_doc_open_explorer&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
-						$html       .= ' <a class="paddingleft" href="' . $explorerUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocOpenExplorer')) . '"><i class="fas fa-folder-open" style="color:#d97706;"></i></a>';
-					}
-					$jsPath = dol_escape_js($linkUrl);
-					$jsMsg  = dol_escape_js($langs->transnoentities('DoliSciDocPathCopied'));
-					$html  .= ' <a class="paddingleft" href="#" onclick="if(navigator.clipboard){navigator.clipboard.writeText(\'' . $jsPath . '\');alert(\'' . $jsMsg . '\');}return false;" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocCopyPath')) . '"><i class="fas fa-copy opacitymedium"></i></a>';
+					$html     .= ' ' . showValueWithClipboardCPButton($linkUrl, 0, 'none');
 				}
 				if ($canEdit) {
 					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
