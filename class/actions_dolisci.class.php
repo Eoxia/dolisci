@@ -2737,6 +2737,8 @@ class ActionsDoliSci extends CommonHookActions
 
 		$relativeDir = get_exdir(0, 0, 0, 1, $object, 'product');
 
+		$editDocKey = (GETPOST('action', 'aZ09') === 'dolisci_doc_edit') ? GETPOST('dolisci_doc_key', 'aZ09') : '';
+
 		foreach ($defs as $docKey => $def) {
 			$item        = $items[$docKey] ?? ['concerned' => true, 'file' => '', 'exists' => false, 'url' => '', 'has_doc' => false];
 			$isConcerned = !empty($item['concerned']);
@@ -2746,6 +2748,7 @@ class ActionsDoliSci extends CommonHookActions
 			$hasUrl      = ($linkUrl !== '');
 			$hasDoc      = ($hasFile || $hasUrl);
 			$isCond      = !empty($def['conditional']);
+			$isEditing   = ($canEdit && $editDocKey === $docKey);
 
 			$html .= '<tr class="oddeven">';
 			$html .= '<td><strong>' . dolPrintHTML($langs->trans($def['labelKey'])) . '</strong></td>';
@@ -2784,14 +2787,16 @@ class ActionsDoliSci extends CommonHookActions
 			$html .= '<td class="nowraponall">';
 			if (!$isConcerned) {
 				$html .= '<span class="opacitymedium">&mdash;</span>';
-			} elseif ($hasFile) {
+			} elseif ($hasFile && !$isEditing) {
 				$dlUrl = DOL_URL_ROOT . '/document.php?modulepart=produit&entity=' . ((int) $object->entity) . '&file=' . urlencode($relativeDir . $fileName);
 				$html .= '<a href="' . $dlUrl . '" target="_blank">' . img_mime($fileName) . ' ' . dolPrintHTML($fileName) . '</a>';
 				if ($canEdit) {
+					$editUrl   = $selfUrl . '&action=dolisci_doc_edit&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
 					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html .= ' <a class="editfielda paddingleft" href="' . $editUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '">' . img_edit($langs->trans('Modify')) . '</a>';
 					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
 				}
-			} elseif ($hasUrl) {
+			} elseif ($hasUrl && !$isEditing) {
 				$isWebUrl = (bool) preg_match('#^https?://#i', $linkUrl);
 				if ($isWebUrl) {
 					$html .= '<i class="fas fa-link pictofixedwidth" style="color:#0284c7;"></i>';
@@ -2804,7 +2809,9 @@ class ActionsDoliSci extends CommonHookActions
 					$html     .= ' ' . showValueWithClipboardCPButton($linkUrl, 0, 'none');
 				}
 				if ($canEdit) {
+					$editUrl   = $selfUrl . '&action=dolisci_doc_edit&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
 					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html .= ' <a class="editfielda paddingleft" href="' . $editUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '">' . img_edit($langs->trans('Modify')) . '</a>';
 					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
 				}
 			} elseif ($canEdit) {
@@ -2821,8 +2828,11 @@ class ActionsDoliSci extends CommonHookActions
 				$html .= '<input type="hidden" name="token" value="' . $token . '">';
 				$html .= '<input type="hidden" name="action" value="dolisci_doc_link_url">';
 				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
-				$html .= '<input type="text" name="dolisci_doc_url" class="flat minwidth150 maxwidth250" placeholder="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocLinkUrlPlaceholder')) . '">';
-				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocLinkButton')) . '">';
+				$html .= '<input type="text" name="dolisci_doc_url" class="flat minwidth150 maxwidth250" value="' . dolPrintHTMLForAttribute($linkUrl) . '" placeholder="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocLinkUrlPlaceholder')) . '">';
+				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans($isEditing ? 'Modify' : 'DoliSciDocLinkButton')) . '">';
+				if ($isEditing) {
+					$html .= ' <a class="button button-cancel smallpaddingimp" href="' . $selfUrl . '">' . dolPrintHTML($langs->trans('Cancel')) . '</a>';
+				}
 				$html .= '</form>';
 
 				if (!empty($filesOnDisk)) {
