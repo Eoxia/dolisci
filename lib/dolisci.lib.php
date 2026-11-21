@@ -2243,10 +2243,12 @@ function dolisciGetPropertyDocumentsChecklistState(Product $object): array
 		if (!$exists) {
 			$fileName = '';
 		}
+		$linkUrl = trim((string) ($saved[$docKey]['url'] ?? ''));
+		$hasDoc  = ($exists || $linkUrl !== '');
 
 		if ($concerned) {
 			$totalConcerned++;
-			if ($exists) {
+			if ($hasDoc) {
 				$completed++;
 			}
 		}
@@ -2255,6 +2257,8 @@ function dolisciGetPropertyDocumentsChecklistState(Product $object): array
 			'concerned' => $concerned,
 			'file'      => $fileName,
 			'exists'    => $exists,
+			'url'       => $linkUrl,
+			'has_doc'   => $hasDoc,
 		];
 	}
 

@@ -310,4 +310,6 @@ DoliSciDocEdd = État descriptif de division (EDD)
 DoliSciDocDdt = Dossier de Diagnostics Techniques (DDT)
 DoliSciDocTaxeFonciere = Avis de taxe foncière
 DoliSciDocAssurancePno = Attestation d'assurance PNO
+DoliSciDocLinkUrlPlaceholder = Lien URL ou chemin local (https://..., C:\..., \\...)
+DoliSciDocLinkButton = Lier
 

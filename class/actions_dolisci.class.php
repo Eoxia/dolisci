@@ -1446,7 +1446,7 @@ class ActionsDoliSci extends CommonHookActions
 
 		// 1c. Handle Property Required Documents checklist actions on product/document.php
 		if (in_array('productdocuments', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
-			if (in_array($action, ['dolisci_doc_toggle_concerned', 'dolisci_doc_upload', 'dolisci_doc_link', 'dolisci_doc_unlink'], true)) {
+			if (in_array($action, ['dolisci_doc_toggle_concerned', 'dolisci_doc_upload', 'dolisci_doc_link', 'dolisci_doc_link_url', 'dolisci_doc_unlink'], true)) {
 				if (!$user->hasRight('produit', 'creer')) {
 					accessforbidden();
 				}
@@ -1466,10 +1466,20 @@ class ActionsDoliSci extends CommonHookActions
 						$chosenFile = GETPOST('dolisci_doc_file', 'alphanohtml');
 						if ($chosenFile !== '' && in_array($chosenFile, $stateData['files_on_disk'], true)) {
 							$items[$docKey]['file'] = $chosenFile;
+							$items[$docKey]['url']  = '';
 							dolisciSavePropertyDocumentsChecklistState($object, $items);
+						}
+					} elseif ($action === 'dolisci_doc_link_url') {
+						$rawUrl = trim(GETPOST('dolisci_doc_url', 'restricthtml'));
+						if ($rawUrl !== '') {
+							$items[$docKey]['url']  = $rawUrl;
+							$items[$docKey]['file'] = '';
+							dolisciSavePropertyDocumentsChecklistState($object, $items);
+							setEventMessages($langs->trans('RecordSaved'), null);
 						}
 					} elseif ($action === 'dolisci_doc_unlink') {
 						$items[$docKey]['file'] = '';
+						$items[$docKey]['url']  = '';
 						dolisciSavePropertyDocumentsChecklistState($object, $items);
 					} elseif ($action === 'dolisci_doc_upload' && !empty($_FILES['dolisci_userfile']['name'])) {
 						$uploadDir = $stateData['upload_dir'];
@@ -1482,6 +1492,7 @@ class ActionsDoliSci extends CommonHookActions
 							$resUp    = dol_move_uploaded_file($_FILES['dolisci_userfile']['tmp_name'], $destFile, 1, 0, $_FILES['dolisci_userfile']['error']);
 							if ($resUp > 0) {
 								$items[$docKey]['file'] = $origName;
+								$items[$docKey]['url']  = '';
 								dolisciSavePropertyDocumentsChecklistState($object, $items);
 								setEventMessages($langs->trans('FileTransferComplete'), null);
 							} else {
@@ -2681,10 +2692,13 @@ class ActionsDoliSci extends CommonHookActions
 		$relativeDir = get_exdir(0, 0, 0, 1, $object, 'product');
 
 		foreach ($defs as $docKey => $def) {
-			$item        = $items[$docKey] ?? ['concerned' => true, 'file' => '', 'exists' => false];
+			$item        = $items[$docKey] ?? ['concerned' => true, 'file' => '', 'exists' => false, 'url' => '', 'has_doc' => false];
 			$isConcerned = !empty($item['concerned']);
 			$hasFile     = !empty($item['exists']);
 			$fileName    = (string) ($item['file'] ?? '');
+			$linkUrl     = (string) ($item['url'] ?? '');
+			$hasUrl      = ($linkUrl !== '');
+			$hasDoc      = ($hasFile || $hasUrl);
 			$isCond      = !empty($def['conditional']);
 
 			$html .= '<tr class="oddeven">';
@@ -2713,7 +2727,7 @@ class ActionsDoliSci extends CommonHookActions
 			$html .= '<td class="center nowraponall">';
 			if (!$isConcerned) {
 				$html .= '<span class="badge badge-status0">' . dolPrintHTML($langs->trans('DoliSciDocNotConcerned')) . '</span>';
-			} elseif ($hasFile) {
+			} elseif ($hasDoc) {
 				$html .= '<span class="badge badge-status4">' . dolPrintHTML($langs->trans('DoliSciDocProvided')) . '</span>';
 			} else {
 				$html .= '<span class="badge badge-status8">' . dolPrintHTML($langs->trans('DoliSciDocMissing')) . '</span>';
@@ -2731,21 +2745,42 @@ class ActionsDoliSci extends CommonHookActions
 					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
 					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
 				}
+			} elseif ($hasUrl) {
+				$href = $linkUrl;
+				if (!preg_match('#^(https?|file)://#i', $href)) {
+					$normalized = str_replace('\\', '/', $href);
+					$href       = 'file:///' . ltrim($normalized, '/');
+				}
+				$html .= '<i class="fas fa-link pictofixedwidth" style="color:#0284c7;"></i>';
+				$html .= '<a href="' . dolPrintHTMLForAttribute($href) . '" target="_blank" rel="noopener">' . dolPrintHTML($linkUrl) . '</a>';
+				if ($canEdit) {
+					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
+				}
 			} elseif ($canEdit) {
-				$html .= '<form method="post" enctype="multipart/form-data" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0;">';
+				$html .= '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+				$html .= '<form method="post" enctype="multipart/form-data" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:6px;margin:0;">';
 				$html .= '<input type="hidden" name="token" value="' . $token . '">';
 				$html .= '<input type="hidden" name="action" value="dolisci_doc_upload">';
 				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
-				$html .= '<input type="file" name="dolisci_userfile" class="flat maxwidth200">';
+				$html .= '<input type="file" name="dolisci_userfile" class="flat maxwidth150">';
 				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUpload')) . '">';
 				$html .= '</form>';
 
+				$html .= '<form method="post" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:4px;margin:0;">';
+				$html .= '<input type="hidden" name="token" value="' . $token . '">';
+				$html .= '<input type="hidden" name="action" value="dolisci_doc_link_url">';
+				$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
+				$html .= '<input type="text" name="dolisci_doc_url" class="flat minwidth150 maxwidth250" placeholder="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocLinkUrlPlaceholder')) . '">';
+				$html .= '<input type="submit" class="button smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocLinkButton')) . '">';
+				$html .= '</form>';
+
 				if (!empty($filesOnDisk)) {
-					$html .= ' <form method="post" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:4px;margin:0 0 0 8px;">';
+					$html .= '<form method="post" action="' . $selfUrl . '" style="display:inline-flex;align-items:center;gap:4px;margin:0;">';
 					$html .= '<input type="hidden" name="token" value="' . $token . '">';
 					$html .= '<input type="hidden" name="action" value="dolisci_doc_link">';
 					$html .= '<input type="hidden" name="dolisci_doc_key" value="' . dolPrintHTMLForAttribute($docKey) . '">';
-					$html .= '<select name="dolisci_doc_file" class="flat maxwidth200" onchange="if(this.value)this.form.submit()">';
+					$html .= '<select name="dolisci_doc_file" class="flat maxwidth150" onchange="if(this.value)this.form.submit()">';
 					$html .= '<option value="">-- ' . dolPrintHTML($langs->trans('DoliSciDocLinkExisting')) . ' --</option>';
 					foreach ($filesOnDisk as $diskFile) {
 						$html .= '<option value="' . dolPrintHTMLForAttribute($diskFile) . '">' . dolPrintHTML($diskFile) . '</option>';
@@ -2753,6 +2788,7 @@ class ActionsDoliSci extends CommonHookActions
 					$html .= '</select>';
 					$html .= '</form>';
 				}
+				$html .= '</div>';
 			} else {
 				$html .= '<span class="opacitymedium">' . dolPrintHTML($langs->trans('DoliSciDocMissing')) . '</span>';
 			}

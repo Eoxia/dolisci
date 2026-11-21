@@ -310,4 +310,6 @@ DoliSciDocEdd = Descriptive statement of division (EDD)
 DoliSciDocDdt = Technical Diagnostics File (DDT)
 DoliSciDocTaxeFonciere = Property tax notice
 DoliSciDocAssurancePno = Non-occupant landlord insurance (PNO)
+DoliSciDocLinkUrlPlaceholder = URL or local path (https://..., C:\..., \\...)
+DoliSciDocLinkButton = Link
 
