@@ -73,14 +73,22 @@ $propertyExtrafieldKeys = [
 	'dolisci_fk_project',
 	'dolisci_property_nature',
 	'dolisci_legal_regime',
+	'dolisci_cadastre_section',
+	'dolisci_cadastre_number',
+	'dolisci_cadastre_lieudit',
+	'dolisci_cadastre_surface',
+	'dolisci_subdivision',
 	'dolisci_fiscal_lot',
 	'dolisci_tantiemes',
 	'dolisci_floor_door',
 	'dolisci_rooms',
+	'dolisci_surface_carrez',
 	'dolisci_dpe_energy',
 	'dolisci_dpe_ges',
 	'dolisci_purchase_date',
 	'dolisci_purchase_price',
+	'dolisci_ownership_quota',
+	'dolisci_notary',
 ];
 
 if (isset($extrafields->attributes[$object->table_element]['label']) && is_array($extrafields->attributes[$object->table_element]['label'])) {

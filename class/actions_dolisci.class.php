@@ -1561,7 +1561,7 @@ class ActionsDoliSci extends CommonHookActions
 
 			if ($isProdList || $isServList) {
 				$allowedListEfs = $isProdList
-					? ['dolisci_fk_project', 'dolisci_property_nature', 'dolisci_legal_regime', 'dolisci_fiscal_lot', 'dolisci_tantiemes', 'dolisci_floor_door', 'dolisci_rooms', 'dolisci_dpe_energy', 'dolisci_dpe_ges', 'dolisci_purchase_date', 'dolisci_purchase_price']
+					? ['dolisci_fk_project', 'dolisci_property_nature', 'dolisci_legal_regime', 'dolisci_cadastre_section', 'dolisci_cadastre_number', 'dolisci_cadastre_lieudit', 'dolisci_cadastre_surface', 'dolisci_subdivision', 'dolisci_fiscal_lot', 'dolisci_tantiemes', 'dolisci_floor_door', 'dolisci_rooms', 'dolisci_surface_carrez', 'dolisci_dpe_energy', 'dolisci_dpe_ges', 'dolisci_purchase_date', 'dolisci_purchase_price', 'dolisci_ownership_quota', 'dolisci_notary']
 					: ['dolisci_service_nature', 'dolisci_fk_property_product', 'dolisci_fk_lease', 'dolisci_service_fk_project'];
 				if (isset($extrafields->attributes['product']['label']) && is_array($extrafields->attributes['product']['label'])) {
 					foreach (array_keys($extrafields->attributes['product']['label']) as $efKey) {
