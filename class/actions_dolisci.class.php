@@ -1446,6 +1446,52 @@ class ActionsDoliSci extends CommonHookActions
 
 		// 1c. Handle Property Required Documents checklist actions on product/document.php
 		if (in_array('productdocuments', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_PRODUCT && !empty($object->id)) {
+			if (in_array($action, ['dolisci_doc_stream_local', 'dolisci_doc_open_explorer'], true)) {
+				if (!$user->hasRight('produit', 'lire')) {
+					accessforbidden();
+				}
+				require_once __DIR__ . '/../lib/dolisci.lib.php';
+				require_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
+
+				$docKey    = GETPOST('dolisci_doc_key', 'aZ09');
+				$stateData = dolisciGetPropertyDocumentsChecklistState($object);
+				$linkUrl   = (string) ($stateData['items'][$docKey]['url'] ?? '');
+
+				if ($linkUrl !== '') {
+					$localPath = preg_replace('#^file:///+#i', '', $linkUrl);
+					$localPath = str_replace('/', DIRECTORY_SEPARATOR, $localPath);
+
+					if ($action === 'dolisci_doc_open_explorer') {
+						$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+						if (PHP_OS_FAMILY === 'Windows' && in_array($remoteAddr, ['127.0.0.1', '::1'], true)) {
+							$arg = is_file($localPath)
+								? '/select,"' . str_replace('"', '', $localPath) . '"'
+								: '"' . str_replace('"', '', is_dir($localPath) ? $localPath : dirname($localPath)) . '"';
+							@pclose(@popen('start "" explorer.exe ' . $arg, 'r'));
+						}
+						header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+						exit;
+					}
+
+					if ($action === 'dolisci_doc_stream_local') {
+						if (is_file($localPath) && is_readable($localPath)) {
+							while (ob_get_level() > 0) {
+								ob_end_clean();
+							}
+							$mime = dol_mimetype($localPath);
+							header('Content-Type: ' . $mime);
+							header('Content-Disposition: inline; filename="' . basename($localPath) . '"');
+							header('Content-Length: ' . filesize($localPath));
+							readfile($localPath);
+							exit;
+						}
+						setEventMessages($langs->trans('DoliSciDocLocalFileNotAccessible', $localPath), null, 'warnings');
+						header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+						exit;
+					}
+				}
+			}
+
 			if (in_array($action, ['dolisci_doc_toggle_concerned', 'dolisci_doc_upload', 'dolisci_doc_link', 'dolisci_doc_link_url', 'dolisci_doc_unlink'], true)) {
 				if (!$user->hasRight('produit', 'creer')) {
 					accessforbidden();
@@ -2746,13 +2792,25 @@ class ActionsDoliSci extends CommonHookActions
 					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';
 				}
 			} elseif ($hasUrl) {
-				$href = $linkUrl;
-				if (!preg_match('#^(https?|file)://#i', $href)) {
-					$normalized = str_replace('\\', '/', $href);
-					$href       = 'file:///' . ltrim($normalized, '/');
+				$isWebUrl = (bool) preg_match('#^https?://#i', $linkUrl);
+				if ($isWebUrl) {
+					$html .= '<i class="fas fa-link pictofixedwidth" style="color:#0284c7;"></i>';
+					$html .= '<a href="' . dolPrintHTMLForAttribute($linkUrl) . '" target="_blank" rel="noopener">' . dolPrintHTML($linkUrl) . '</a>';
+				} else {
+					$streamUrl = $selfUrl . '&action=dolisci_doc_stream_local&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+					$html     .= '<i class="fas fa-file-alt pictofixedwidth" style="color:#0284c7;"></i>';
+					$html     .= '<a href="' . $streamUrl . '" target="_blank" title="' . dolPrintHTMLForAttribute($linkUrl) . '">' . dolPrintHTML(basename(str_replace('\\', '/', $linkUrl)) ?: $linkUrl) . '</a>';
+					$html     .= ' <span class="opacitymedium small">(' . dolPrintHTML(dol_trunc($linkUrl, 50)) . ')</span>';
+
+					$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+					if (PHP_OS_FAMILY === 'Windows' && in_array($remoteAddr, ['127.0.0.1', '::1'], true)) {
+						$explorerUrl = $selfUrl . '&action=dolisci_doc_open_explorer&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
+						$html       .= ' <a class="paddingleft" href="' . $explorerUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocOpenExplorer')) . '"><i class="fas fa-folder-open" style="color:#d97706;"></i></a>';
+					}
+					$jsPath = dol_escape_js($linkUrl);
+					$jsMsg  = dol_escape_js($langs->transnoentities('DoliSciDocPathCopied'));
+					$html  .= ' <a class="paddingleft" href="#" onclick="if(navigator.clipboard){navigator.clipboard.writeText(\'' . $jsPath . '\');alert(\'' . $jsMsg . '\');}return false;" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocCopyPath')) . '"><i class="fas fa-copy opacitymedium"></i></a>';
 				}
-				$html .= '<i class="fas fa-link pictofixedwidth" style="color:#0284c7;"></i>';
-				$html .= '<a href="' . dolPrintHTMLForAttribute($href) . '" target="_blank" rel="noopener">' . dolPrintHTML($linkUrl) . '</a>';
 				if ($canEdit) {
 					$unlinkUrl = $selfUrl . '&action=dolisci_doc_unlink&dolisci_doc_key=' . urlencode($docKey) . '&token=' . $token;
 					$html .= ' <a class="paddingleft" href="' . $unlinkUrl . '" title="' . dolPrintHTMLForAttribute($langs->trans('DoliSciDocUnlink')) . '">' . img_delete($langs->trans('DoliSciDocUnlink')) . '</a>';

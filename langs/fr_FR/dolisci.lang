@@ -312,4 +312,8 @@ DoliSciDocTaxeFonciere = Avis de taxe foncière
 DoliSciDocAssurancePno = Attestation d'assurance PNO
 DoliSciDocLinkUrlPlaceholder = Lien URL ou chemin local (https://..., C:\..., \\...)
 DoliSciDocLinkButton = Lier
+DoliSciDocOpenExplorer = Ouvrir dans l'Explorateur Windows
+DoliSciDocCopyPath = Copier le chemin
+DoliSciDocPathCopied = Chemin copié !
+DoliSciDocLocalFileNotAccessible = Fichier local inaccessible depuis le serveur : %s
 

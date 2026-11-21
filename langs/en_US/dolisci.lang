@@ -312,4 +312,8 @@ DoliSciDocTaxeFonciere = Property tax notice
 DoliSciDocAssurancePno = Non-occupant landlord insurance (PNO)
 DoliSciDocLinkUrlPlaceholder = URL or local path (https://..., C:\..., \\...)
 DoliSciDocLinkButton = Link
+DoliSciDocOpenExplorer = Open in Windows Explorer
+DoliSciDocCopyPath = Copy path
+DoliSciDocPathCopied = Path copied!
+DoliSciDocLocalFileNotAccessible = Local file not accessible from server: %s
 
