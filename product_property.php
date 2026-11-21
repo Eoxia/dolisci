@@ -97,7 +97,7 @@ if (isset($extrafields->attributes[$object->table_element]['label']) && is_array
 	}
 }
 
-$hookmanager->initHooks(['productcard', 'dolisciproductproperty', 'globalcard']);
+$hookmanager->initHooks(['dolisciproductproperty', 'globalcard']);
 
 $permissiontoedit = $user->hasRight('produit', 'creer');
 

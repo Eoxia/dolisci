@@ -389,7 +389,7 @@ class ActionsDoliSci extends CommonHookActions
 				$extrafields->attributes['projet']['list']['dolisci_fk_socpeople']    = '0';
 			}
 		}
-		if (in_array('productcard', $contexts, true)) {
+		if (in_array('productcard', $contexts, true) && !in_array('dolisciproductproperty', $contexts, true)) {
 			if ($this->isDoliSciPropertyProductContext($object)) {
 				$this->filterProductExtrafieldsForDoliSci();
 				if ($action === 'create' || $action === 'edit') {
@@ -1681,7 +1681,7 @@ class ActionsDoliSci extends CommonHookActions
 		}
 
 		// 4. Pre-select DoliSCI tag and enforce required Project on Product / Service creation form when in DoliSCI context
-		if (in_array('productcard', $contexts, true)) {
+		if (in_array('productcard', $contexts, true) && !in_array('dolisciproductproperty', $contexts, true)) {
 			if (in_array($action, ['create', 'add', 'edit', 'update'], true) && $this->isDoliSciPropertyProductContext($object)) {
 				$this->filterProductExtrafieldsForDoliSci();
 			}
