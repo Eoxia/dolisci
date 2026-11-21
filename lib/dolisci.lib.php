@@ -1318,6 +1318,16 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 		return $result;
 	}
 
+	// Ensure dolisci_fk_lease column exists even if the module was not re-initialized after an update
+	static $leaseColChecked = false;
+	if (!$leaseColChecked) {
+		$leaseColChecked = true;
+		$resCol          = $db->query("SHOW COLUMNS FROM " . MAIN_DB_PREFIX . "product_extrafields LIKE 'dolisci_fk_lease'");
+		if ($resCol && $db->num_rows($resCol) === 0) {
+			dolisciSyncItem($db, 'ef:product:dolisci_fk_lease');
+		}
+	}
+
 	$escapedPropRef  = $db->escape($propertyProduct->ref);
 	$leasePrefix     = 'Bail_' . $escapedPropRef;
 	$rentPrefix      = 'Loyer_' . $escapedPropRef;
@@ -1510,7 +1520,14 @@ function dolisciAutoHealPropertyLeases(DoliDB $db, Product $propertyProduct, arr
 				}
 			}
 			if (!empty($toUpdateIds)) {
-				$sqlUp = "UPDATE " . MAIN_DB_PREFIX . "product_extrafields SET dolisci_fk_lease = " . $bailId . " WHERE fk_object IN (" . implode(',', $toUpdateIds) . ")";
+				$cleanIds = array_map('intval', $toUpdateIds);
+				foreach ($cleanIds as $cid) {
+					$resChkEf = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "product_extrafields WHERE fk_object = " . $cid);
+					if ($resChkEf && $db->num_rows($resChkEf) === 0) {
+						$db->query("INSERT INTO " . MAIN_DB_PREFIX . "product_extrafields (fk_object, dolisci_fk_lease) VALUES (" . $cid . ", " . $bailId . ")");
+					}
+				}
+				$sqlUp = "UPDATE " . MAIN_DB_PREFIX . "product_extrafields SET dolisci_fk_lease = " . $bailId . " WHERE fk_object IN (" . implode(',', $cleanIds) . ")";
 				$db->query($sqlUp);
 			}
 		}
