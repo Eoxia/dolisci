@@ -723,64 +723,99 @@ class ActionsDoliSci extends CommonHookActions
 			print '<tr><td>' . $langs->trans('PublicUrl') . '</td><td>' . dol_print_url($object->url, '_blank', 128) . '</td></tr>';
 		}
 
-		// Default Rental Services (Bail, Loyer, Charge, Dépôt de garantie, Caution) on a Property Product
+		// Leases (Baux) linked to this Property Product
 		if ((int) $object->type === Product::TYPE_PRODUCT) {
-			$defaultSpecs = dolisciEnsurePropertyDefaultServices($this->db, $object);
-			$pictoPath    = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
-			$picto        = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
-			$canEditProd  = $user->hasRight('produit', 'creer');
-			$editingField = ($action === 'edit_dolisci_default_service') ? GETPOST('dolisci_default_field', 'aZ09') : '';
+			$rentalData = dolisciGetPropertyRentalServices($this->db, $object);
+			$services   = $rentalData['services'] ?? [];
+			$pictoPath  = dol_buildpath('/dolisci/img/dolisci_color.png', 1);
+			$picto      = img_picto('', $pictoPath, '', 1, 0, 0, '', 'pictoModule');
 
-			foreach ($defaultSpecs as $spec) {
-				$fieldKey  = (string) $spec['field'];
-				$labelKey  = (string) $spec['labelKey'];
-				$natureKey = (string) $spec['natureKey'];
-				$selObj    = $spec['selectedObj'];
-				$cands     = $spec['candidates'];
-
-				print '<tr><td class="titlefield">';
-				print '<table class="nobordernopadding centpercent"><tr><td class="nowrap">';
-				print $picto . dolPrintHTML($langs->trans($labelKey));
-				print '</td>';
-				if ($canEditProd && $editingField !== $fieldKey) {
-					$editUrl = $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=edit_dolisci_default_service&dolisci_default_field=' . urlencode($fieldKey) . '&token=' . newToken();
-					print '<td class="right"><a class="editfielda" href="' . $editUrl . '">' . img_edit($langs->trans('Modify'), 1) . '</a></td>';
+			// Group services by rental group index
+			$groups = [];
+			foreach ($services as $sObj) {
+				$grpIdx = (int) ($sObj->dolisci_group_index ?? 1);
+				if (!isset($groups[$grpIdx])) {
+					$groups[$grpIdx] = [
+						'bail'    => null,
+						'rent'    => null,
+						'charges' => null,
+						'deposit' => null,
+						'caution' => null,
+						'others'  => [],
+					];
 				}
-				print '</tr></table>';
-				print '</td><td>';
-
-				if ($canEditProd && $editingField === $fieldKey) {
-					print '<form method="post" action="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '">';
-					print '<input type="hidden" name="token" value="' . newToken() . '">';
-					print '<input type="hidden" name="action" value="set_dolisci_default_service">';
-					print '<input type="hidden" name="dolisci_default_field" value="' . dolPrintHTMLForAttribute($fieldKey) . '">';
-					print '<select name="dolisci_default_service_id" class="flat minwidth250 maxwidth400">';
-					print '<option value="0">&mdash; ' . dolPrintHTML($langs->trans('None')) . ' &mdash;</option>';
-					foreach ($cands as $candObj) {
-						$cid      = (int) $candObj->rowid;
-						$selected = ($cid === (int) $spec['selectedId']) ? ' selected' : '';
-						$optText  = $candObj->ref . ' - ' . $candObj->label . ((float) $candObj->price > 0 ? ' (' . price2num($candObj->price) . ' HT)' : '');
-						print '<option value="' . $cid . '"' . $selected . '>' . dolPrintHTML($optText) . '</option>';
-					}
-					print '</select> ';
-					print '<input type="submit" class="button button-save smallpaddingimp" value="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '"> ';
-					print '<a class="button button-cancel smallpaddingimp" href="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '">' . dolPrintHTML($langs->trans('Cancel')) . '</a>';
-					print '</form>';
-				} elseif ($selObj instanceof stdClass) {
-					$serv             = new Product($this->db);
-					$serv->id         = (int) $selObj->rowid;
-					$serv->ref        = (string) $selObj->ref;
-					$serv->label      = (string) $selObj->label;
-					$serv->type       = (int) $selObj->fk_product_type;
-					$serv->entity     = (int) $selObj->entity;
-					$serv->status     = (int) $selObj->tosell;
-					$serv->status_buy = (int) $selObj->tobuy;
-					$priceSuffix      = (float) $selObj->price > 0 ? ' <span class="opacitymedium">(' . price($selObj->price, 1, $langs, 1, -1, -1, 'auto') . ' HT)</span>' : '';
-					print dolisciGetObjectNomUrl($serv, $natureKey) . ' - ' . dolPrintHTML($serv->label) . $priceSuffix;
+				$rank = (int) ($sObj->dolisci_nature_rank ?? 6);
+				if ($rank === 1) {
+					$groups[$grpIdx]['bail'] = $sObj;
+				} elseif ($rank === 2) {
+					$groups[$grpIdx]['rent'] = $sObj;
+				} elseif ($rank === 3) {
+					$groups[$grpIdx]['charges'] = $sObj;
+				} elseif ($rank === 4) {
+					$groups[$grpIdx]['deposit'] = $sObj;
+				} elseif ($rank === 5) {
+					$groups[$grpIdx]['caution'] = $sObj;
 				} else {
-					print '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
+					$groups[$grpIdx]['others'][] = $sObj;
 				}
+			}
+			ksort($groups);
 
+			if (!empty($groups)) {
+				$counter = 0;
+				foreach ($groups as $grpIdx => $grpData) {
+					$counter++;
+					$primaryObj = $grpData['bail'] ?? $grpData['rent'] ?? reset($grpData['others']) ?? null;
+					if (!$primaryObj) {
+						continue;
+					}
+
+					$serv              = new Product($this->db);
+					$serv->id          = (int) $primaryObj->rowid;
+					$serv->ref         = (string) $primaryObj->ref;
+					$serv->label       = (string) $primaryObj->label;
+					$serv->description = (string) ($primaryObj->description ?? '');
+					$serv->type        = (int) $primaryObj->fk_product_type;
+					$serv->entity      = (int) $primaryObj->entity;
+					$serv->status      = (int) $primaryObj->tosell;
+					$serv->status_buy  = (int) $primaryObj->tobuy;
+
+					// Determine Description or Label
+					$desc = trim(strip_tags((string) $serv->description));
+					if (empty($desc)) {
+						$desc = (string) $serv->label;
+					}
+					if (dol_strlen($desc) > 80) {
+						$desc = dol_trunc($desc, 80);
+					}
+
+					// Determine Price (rent or bail price)
+					$price = (float) $primaryObj->price > 0 ? (float) $primaryObj->price : (!empty($grpData['rent']) ? (float) $grpData['rent']->price : 0.0);
+					$chargesPrice = !empty($grpData['charges']) ? (float) $grpData['charges']->price : 0.0;
+
+					$priceStr = price($price, 1, $langs, 1, -1, -1, 'auto') . ' ' . $langs->trans('HT');
+					if ($chargesPrice > 0) {
+						$priceStr .= ' <span class="opacitymedium">(+ ' . price($chargesPrice, 1, $langs, 1, -1, -1, 'auto') . ' ' . dolPrintHTML($langs->trans('Charges')) . ')</span>';
+					}
+
+					$displayIndex = ($grpIdx > 0 ? $grpIdx : $counter);
+					$titleLabel   = $langs->trans('DoliSciTagServiceLease') . ' ' . $displayIndex;
+
+					print '<tr><td class="titlefield">';
+					print $picto . dolPrintHTML($titleLabel);
+					print '</td><td>';
+					print dolisciGetObjectNomUrl($serv, 'BAIL');
+					if (!empty($desc)) {
+						print ' - ' . dolPrintHTML($desc);
+					}
+					print ' - ' . $priceStr;
+					print '</td></tr>';
+				}
+			} else {
+				print '<tr><td class="titlefield">';
+				print $picto . dolPrintHTML($langs->trans('DoliSciTagServiceLease'));
+				print '</td><td>';
+				print '<span class="opacitymedium">' . dolPrintHTML($langs->trans('None')) . '</span>';
 				print '</td></tr>';
 			}
 		}

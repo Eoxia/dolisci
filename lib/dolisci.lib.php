@@ -1187,7 +1187,7 @@ function dolisciGetPropertyRentalServices(DoliDB $db, Product $propertyProduct):
 	$depositPrefix   = 'Depot_' . $escapedPropRef;
 	$guaranteePrefix = 'Caution_' . $escapedPropRef;
 
-	$sql = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
+	$sql = 'SELECT p.rowid, p.ref, p.label, p.description, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell,'
 		. ' ef.dolisci_service_nature, ef.dolisci_fk_property_product, ef.dolisci_service_fk_project,'
 		. ' pr.rowid AS pr_id, pr.ref AS pr_ref, pr.title AS pr_title, pr.fk_statut AS pr_status'
 		. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
