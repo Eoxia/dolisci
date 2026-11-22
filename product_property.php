@@ -99,7 +99,8 @@ if (isset($extrafields->attributes[$object->table_element]['label']) && is_array
 	}
 	$tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
 	if ($tagProjectId > 0) {
-		$filterProj = 'projet:ref|title:rowid::(rowid:IN:SELECT fk_project FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_categorie = ' . $tagProjectId . ')';
+		$projectIds = dolisciGetCategoryIdsFilterList($db, 'project', $tagProjectId);
+		$filterProj = 'projet:ref|title:rowid::(rowid:IN:' . $projectIds . ')';
 		$extrafields->attributes[$object->table_element]['type']['dolisci_fk_project']             = 'sellist';
 		$extrafields->attributes[$object->table_element]['param']['dolisci_fk_project']['options'] = [$filterProj => null];
 	}

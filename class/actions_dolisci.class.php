@@ -156,7 +156,8 @@ class ActionsDoliSci extends CommonHookActions
 			$extrafields->attributes['product']['required']['dolisci_fk_project'] = 1;
 			$tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
 			if ($tagProjectId > 0) {
-				$filter = 'projet:ref|title:rowid::(rowid:IN:SELECT fk_project FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_categorie = ' . $tagProjectId . ')';
+				$projectIds = dolisciGetCategoryIdsFilterList($this->db, 'project', $tagProjectId);
+				$filter     = 'projet:ref|title:rowid::(rowid:IN:' . $projectIds . ')';
 				$extrafields->attributes['product']['type']['dolisci_fk_project']             = 'sellist';
 				$extrafields->attributes['product']['param']['dolisci_fk_project']['options'] = [$filter => null];
 			}
@@ -195,21 +196,24 @@ class ActionsDoliSci extends CommonHookActions
 
 			$tagProductId = getDolGlobalInt('DOLISCI_TAG_PRODUCT_PROPERTY');
 			if ($tagProductId > 0) {
-				$filterProp = 'product:ref|label:rowid::((fk_product_type:=:0) AND (rowid:IN:SELECT fk_product FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_categorie = ' . $tagProductId . '))';
+				$productIds = dolisciGetCategoryIdsFilterList($this->db, 'product', $tagProductId);
+				$filterProp = 'product:ref|label:rowid::((fk_product_type:=:0) AND (rowid:IN:' . $productIds . '))';
 				$extrafields->attributes['product']['type']['dolisci_fk_property_product']             = 'sellist';
 				$extrafields->attributes['product']['param']['dolisci_fk_property_product']['options'] = [$filterProp => null];
 			}
 
 			$tagProjectId = getDolGlobalInt('DOLISCI_TAG_PROJECT_PROPERTY');
 			if ($tagProjectId > 0) {
-				$filterProj = 'projet:ref|title:rowid::(rowid:IN:SELECT fk_project FROM ' . MAIN_DB_PREFIX . 'categorie_project WHERE fk_categorie = ' . $tagProjectId . ')';
+				$projectIds = dolisciGetCategoryIdsFilterList($this->db, 'project', $tagProjectId);
+				$filterProj = 'projet:ref|title:rowid::(rowid:IN:' . $projectIds . ')';
 				$extrafields->attributes['product']['type']['dolisci_service_fk_project']             = 'sellist';
 				$extrafields->attributes['product']['param']['dolisci_service_fk_project']['options'] = [$filterProj => null];
 			}
 
 			$tagLeaseId = getDolGlobalInt('DOLISCI_TAG_SERVICE_LEASE');
 			if ($tagLeaseId > 0 && !$isBail) {
-				$filterLease = 'product:ref|label:rowid::((fk_product_type:=:1) AND (rowid:IN:SELECT fk_product FROM ' . MAIN_DB_PREFIX . 'categorie_product WHERE fk_categorie = ' . $tagLeaseId . '))';
+				$leaseIds    = dolisciGetCategoryIdsFilterList($this->db, 'product', $tagLeaseId);
+				$filterLease = 'product:ref|label:rowid::((fk_product_type:=:1) AND (rowid:IN:' . $leaseIds . '))';
 				$extrafields->attributes['product']['type']['dolisci_fk_lease']             = 'sellist';
 				$extrafields->attributes['product']['param']['dolisci_fk_lease']['options'] = [$filterLease => null];
 			}
@@ -235,7 +239,8 @@ class ActionsDoliSci extends CommonHookActions
 			}
 			$tagContactAddressId = getDolGlobalInt('DOLISCI_TAG_CONTACT_ADDRESS');
 			if ($tagContactAddressId > 0) {
-				$filter = 'socpeople:lastname|address|zip|town:rowid::(rowid:IN:SELECT fk_socpeople FROM ' . MAIN_DB_PREFIX . 'categorie_contact WHERE fk_categorie = ' . $tagContactAddressId . ')';
+				$contactIds = dolisciGetCategoryIdsFilterList($this->db, 'contact', $tagContactAddressId);
+				$filter     = 'socpeople:lastname|address|zip|town:rowid::(rowid:IN:' . $contactIds . ')';
 				$extrafields->attributes['projet']['param']['dolisci_fk_socpeople']['options'] = [$filter => null];
 			}
 		}

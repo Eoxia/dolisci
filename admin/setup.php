@@ -154,6 +154,13 @@ print dol_get_fiche_head($head, 'settings', $title, -1, 'dolisci_color@dolisci')
 
 print '<span class="opacitymedium">' . $langs->trans('DoliSciSetupPage') . '</span><br><br>';
 
+$accountingWarnings = dolisciGetAccountingConfigurationWarnings($db);
+if (!empty($accountingWarnings)) {
+	print '<div class="warning">';
+	print implode('<br>', $accountingWarnings);
+	print '</div><br>';
+}
+
 if (!empty($formSetup->items)) {
 	print $formSetup->generateOutput();
 }

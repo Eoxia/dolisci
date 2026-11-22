@@ -324,4 +324,7 @@ DoliSciDocOpenExplorer = Open in Windows Explorer
 DoliSciDocCopyPath = Copy path
 DoliSciDocPathCopied = Path copied!
 DoliSciDocLocalFileNotAccessible = Local file not accessible from server: %s
+DoliSciAccountingChartNotConfigured = The Accounting module is enabled, but no chart of accounts is configured. Please configure your chart of accounts so that DoliSCI rental service accounting codes (706100, 708800, 165000) can be selected.
+DoliSciAccountingMissingAccounts = The Accounting module is enabled, but the following active accounting codes used by DoliSCI are missing from your chart of accounts: %s.
+DoliSciAccountingConfigureLink = Configure chart of accounts
 
