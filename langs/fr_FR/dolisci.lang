@@ -324,4 +324,7 @@ DoliSciDocOpenExplorer = Ouvrir dans l'Explorateur Windows
 DoliSciDocCopyPath = Copier le chemin
 DoliSciDocPathCopied = Chemin copié !
 DoliSciDocLocalFileNotAccessible = Fichier local inaccessible depuis le serveur : %s
+DoliSciAccountingChartNotConfigured = Le module Comptabilité est activé, mais aucun plan comptable n'est configuré. Veuillez configurer votre plan comptable afin de pouvoir sélectionner les codes comptables des services locatifs DoliSCI (706100, 708800, 165000).
+DoliSciAccountingMissingAccounts = Le module Comptabilité est activé, mais les comptes actifs suivants utilisés par DoliSCI sont absents de votre plan comptable : %s.
+DoliSciAccountingConfigureLink = Configurer le plan comptable
 

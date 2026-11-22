@@ -104,6 +104,97 @@ function dolisciIsSimplifiedEnvironment(): bool
 }
 
 /**
+ * Build a comma-separated list of integer object IDs belonging to a Dolibarr category
+ * for safe use in Universal Search Criteria IN filters, avoiding SQL subqueries.
+ *
+ * @param  DoliDB $db         Database handler
+ * @param  string $type       Link type: 'project', 'product', or 'contact'
+ * @param  int    $categoryId Category rowid
+ * @return string             Comma-separated IDs, or '0' when none match
+ */
+function dolisciGetCategoryIdsFilterList(DoliDB $db, string $type, int $categoryId): string
+{
+	$map = [
+		'project' => ['table' => 'categorie_project', 'col' => 'fk_project'],
+		'product' => ['table' => 'categorie_product', 'col' => 'fk_product'],
+		'contact' => ['table' => 'categorie_contact', 'col' => 'fk_socpeople'],
+	];
+	if ($categoryId <= 0 || !isset($map[$type])) {
+		return '0';
+	}
+
+	$table = $map[$type]['table'];
+	$col   = $map[$type]['col'];
+	$ids   = [];
+
+	$sql = 'SELECT DISTINCT ' . $col . ' AS obj_id'
+		. ' FROM ' . MAIN_DB_PREFIX . $table
+		. ' WHERE fk_categorie = ' . ((int) $categoryId)
+		. ' ORDER BY ' . $col . ' ASC';
+	$resql = $db->query($sql);
+	if ($resql) {
+		while ($obj = $db->fetch_object($resql)) {
+			$id = (int) $obj->obj_id;
+			if ($id > 0) {
+				$ids[] = $id;
+			}
+		}
+		$db->free($resql);
+	}
+
+	return !empty($ids) ? implode(',', $ids) : '0';
+}
+
+/**
+ * Check accounting configuration when the Accounting module is enabled and return
+ * warning messages (chart of accounts not configured or required DoliSCI accounts missing).
+ *
+ * @param  DoliDB        $db Database handler
+ * @return array<string>     List of translated warning HTML messages
+ */
+function dolisciGetAccountingConfigurationWarnings(DoliDB $db): array
+{
+	global $conf, $langs;
+
+	if (!isModEnabled('accounting')) {
+		return [];
+	}
+
+	$langs->load('dolisci@dolisci');
+	$chartId  = getDolGlobalInt('CHARTOFACCOUNTS');
+	$setupUrl = DOL_URL_ROOT . '/accountancy/admin/account.php';
+	$linkHtml = '<a href="' . dolPrintHTMLForAttributeUrl($setupUrl) . '">' . dolPrintHTML($langs->trans('DoliSciAccountingConfigureLink')) . '</a>';
+
+	if ($chartId <= 0) {
+		return [dolPrintHTML($langs->trans('DoliSciAccountingChartNotConfigured')) . ' ' . $linkHtml];
+	}
+
+	$requiredCodes = ['706100', '708800', '165000'];
+	$foundCodes    = [];
+	$sql           = 'SELECT DISTINCT aa.account_number'
+		. ' FROM ' . MAIN_DB_PREFIX . 'accounting_account AS aa'
+		. ' INNER JOIN ' . MAIN_DB_PREFIX . 'accounting_system AS asy ON aa.fk_pcg_version = asy.pcg_version'
+		. ' WHERE asy.rowid = ' . ((int) $chartId)
+		. ' AND aa.active = 1'
+		. ' AND aa.entity = ' . ((int) $conf->entity)
+		. " AND aa.account_number IN ('706100', '708800', '165000')";
+	$resql = $db->query($sql);
+	if ($resql) {
+		while ($obj = $db->fetch_object($resql)) {
+			$foundCodes[] = (string) $obj->account_number;
+		}
+		$db->free($resql);
+	}
+
+	$missingCodes = array_diff($requiredCodes, $foundCodes);
+	if (!empty($missingCodes)) {
+		return [dolPrintHTML($langs->trans('DoliSciAccountingMissingAccounts', implode(', ', $missingCodes))) . ' ' . $linkHtml];
+	}
+
+	return [];
+}
+
+/**
  * Return all DoliSCI extrafield definitions for Projects, Products (properties), and Services (rentals)
  * following Saturne/Evarisk extrafield conventions (positions prefixed by module numero 436371,
  * translation keys in select options, entity = 0, langfile = 'dolisci@dolisci', standard CSS classes).
@@ -112,13 +203,19 @@ function dolisciIsSimplifiedEnvironment(): bool
  */
 function dolisciGetExtrafieldDefinitions(): array
 {
+	global $db;
+
 	$moduleNumero         = 436371;
 	$projectCondition     = "isModEnabled('dolisci') && isModEnabled('project')";
 	$productCondition     = "isModEnabled('dolisci') && isModEnabled('product') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 0)";
 	$serviceCondition     = "isModEnabled('dolisci') && isModEnabled('service') && ((int) (\$objectoffield->type ?? \$object->type ?? 0) === 1)";
 	$defaultCss           = ['css' => 'minwidth100 maxwidth300 widthcentpercentminusx'];
 	$tagContactAddressId  = getDolGlobalInt('DOLISCI_TAG_CONTACT_ADDRESS');
-	$contactAddressFilter = $tagContactAddressId > 0 ? '::(rowid:IN:SELECT fk_socpeople FROM ' . MAIN_DB_PREFIX . 'categorie_contact WHERE fk_categorie = ' . $tagContactAddressId . ')' : '';
+	$contactAddressFilter = '';
+	if ($tagContactAddressId > 0 && isset($db) && $db instanceof DoliDB) {
+		$contactIds           = dolisciGetCategoryIdsFilterList($db, 'contact', $tagContactAddressId);
+		$contactAddressFilter = '::(rowid:IN:' . $contactIds . ')';
+	}
 
 	$dpeOptions = [
 		'options' => [
