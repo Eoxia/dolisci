@@ -566,6 +566,10 @@ class modDoliSci extends DolibarrModules
 			$sql[] = "DELETE FROM " . MAIN_DB_PREFIX . "document_model WHERE nom = '" . $templateName . "' AND type = 'invoice' AND entity = " . ((int) $conf->entity);
 			$sql[] = "INSERT INTO " . MAIN_DB_PREFIX . "document_model (nom, type, entity, libelle) VALUES ('" . $templateName . "', 'invoice', " . ((int) $conf->entity) . ", " . ($templateLabel !== '' ? "'" . $this->db->escape($templateLabel) . "'" : 'NULL') . ")";
 		}
+		foreach (['fichebien' => $langs->transnoentitiesnoconv('DoliSciPdfFicheBienLabel'), 'fichebail' => $langs->transnoentitiesnoconv('DoliSciPdfFicheBailLabel')] as $templateName => $templateLabel) {
+			$sql[] = "DELETE FROM " . MAIN_DB_PREFIX . "document_model WHERE nom = '" . $templateName . "' AND type = 'product' AND entity = " . ((int) $conf->entity);
+			$sql[] = "INSERT INTO " . MAIN_DB_PREFIX . "document_model (nom, type, entity, libelle) VALUES ('" . $templateName . "', 'product', " . ((int) $conf->entity) . ", " . ($templateLabel !== '' ? "'" . $this->db->escape($templateLabel) . "'" : 'NULL') . ")";
+		}
 
 		return $this->_init($sql, $options);
 	}
