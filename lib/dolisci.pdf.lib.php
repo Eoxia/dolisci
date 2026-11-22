@@ -260,7 +260,7 @@ function dolisciCollectPdfSheetData(DoliDB $db, Product $object, Translate $outp
 		foreach ($docDefs as $docKey => $docDef) {
 			$st = $docState[$docKey] ?? null;
 			if (!empty($st['concerned']) && !empty($st['provided'])) {
-				$ddtList[] = $outputlangs->transnoentitiesnoconv($docDef['label']);
+				$ddtList[] = $outputlangs->transnoentitiesnoconv($docDef['labelKey']);
 			}
 		}
 	}
@@ -355,7 +355,7 @@ function dolisciPdfDrawSheetFooter(TCPDF $pdf, array $data, Translate $outputlan
 	$pdf->SetXY($margeGauche, $footerY);
 	$pdf->Cell(($pageLargeur - $margeGauche - $margeDroite) * 0.75, 5, $outputlangs->convToOutputCharset($leftTxt), 0, 0, 'L');
 
-	$rightTxt = $outputlangs->transnoentitiesnoconv('DoliSciPdfPageOf', $pageNum, $totalPages);
+	$rightTxt = $outputlangs->transnoentitiesnoconv('DoliSciPdfPageOf', (string) $pageNum, (string) $totalPages);
 	$pdf->Cell(($pageLargeur - $margeGauche - $margeDroite) * 0.25, 5, $outputlangs->convToOutputCharset($rightTxt), 0, 0, 'R');
 	$pdf->SetTextColor(31, 41, 51);
 }
@@ -379,9 +379,6 @@ function dolisciWritePropertyOrLeasePdf(DoliDB $db, Product $object, Translate $
 {
 	global $conf, $user, $hookmanager, $langs;
 
-	if (!is_object($outputlangs)) {
-		$outputlangs = $langs;
-	}
 	if (getDolGlobalString('MAIN_USE_FPDF')) {
 		$outputlangs->charset_output = 'ISO-8859-1';
 	}

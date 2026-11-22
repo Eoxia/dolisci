@@ -55,7 +55,7 @@ class pdf_fichebien extends ModelePDFProduct
 	public $version = 'dolibarr';
 
 	/**
-	 * @var Societe|null Issuer company
+	 * @var Societe Issuer company
 	 */
 	public $emetteur;
 
