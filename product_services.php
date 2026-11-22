@@ -71,6 +71,25 @@ $hookmanager->initHooks(['productcard', 'dolisciproductservices', 'globalcard'])
  * Actions
  */
 
+// 0. Inline update of selling price and VAT rate on the current product/service
+$canEditPrice = ($object->type == Product::TYPE_SERVICE ? $user->hasRight('service', 'creer') : $user->hasRight('produit', 'creer'));
+if ($action === 'set_selling_price' && !GETPOST('cancel', 'alpha')) {
+	if (!$canEditPrice) {
+		accessforbidden();
+	}
+	$newPrice = (float) price2num(GETPOST('selling_price', 'alphanohtml'));
+	$tvaRaw   = (string) GETPOST('selling_tva', 'alphanohtml');
+	$newVat   = $tvaRaw !== '' ? (float) price2num(preg_replace('/[^0-9.,]/', '', $tvaRaw)) : (float) $object->tva_tx;
+	$resPrice = $object->updatePrice($newPrice, 'HT', $user, $newVat);
+	if ($resPrice >= 0) {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	} else {
+		setEventMessages($object->error, $object->errors, 'errors');
+	}
+	header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id));
+	exit;
+}
+
 // 1. Delete a service from this lease / property
 if ($action === 'confirm_delete_service' && GETPOST('confirm', 'alpha') === 'yes') {
 	if (!$user->hasRight('service', 'supprimer') && !$user->hasRight('produit', 'supprimer')) {
@@ -332,8 +351,27 @@ if ($object->id > 0) {
 	}
 	print '<tr><td class="titlefield">' . $picto . $langs->trans('DoliSciPropertyProject') . '</td><td>' . $projectHtml . '</td></tr>';
 
-	// Selling price HT
-	print '<tr><td>' . $langs->trans('SellingPrice') . '</td><td>' . price($object->price, 1, $langs, 1, -1, -1, $conf->currency) . ' ' . $langs->trans('HT') . ' (' . $langs->trans('VATRate') . ' : ' . vatrate($object->tva_tx, true) . ')</td></tr>';
+	// Selling price HT (inline editable)
+	print '<tr><td>';
+	print '<table class="nobordernopadding centpercent"><tr><td>' . $langs->trans('SellingPrice') . '</td>';
+	if ($action !== 'edit_selling_price' && $canEditPrice) {
+		print '<td class="right"><a class="editfielda" href="' . $_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id) . '&action=edit_selling_price&token=' . newToken() . '">' . img_edit($langs->trans('Modify')) . '</a></td>';
+	}
+	print '</tr></table>';
+	print '</td><td>';
+	if ($action === 'edit_selling_price' && $canEditPrice) {
+		print '<form method="POST" action="' . dolPrintHTMLForAttributeUrl($_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id)) . '" class="inline-block">';
+		print '<input type="hidden" name="token" value="' . newToken() . '">';
+		print '<input type="hidden" name="action" value="set_selling_price">';
+		print '<input type="text" name="selling_price" class="flat maxwidth100" value="' . dolPrintHTMLForAttribute(price($object->price, 0, $langs, 0, -1, 2)) . '"> ' . $langs->trans('HT') . ' &nbsp; ';
+		print $langs->trans('VATRate') . ' : ' . $form->load_tva('selling_tva', $object->tva_tx, $mysoc, null, 0, 0, '', false) . ' ';
+		print '<input type="submit" class="button smallpaddingimp" name="save" value="' . dolPrintHTMLForAttribute($langs->trans('Modify')) . '">';
+		print ' <input type="submit" class="button button-cancel smallpaddingimp" name="cancel" value="' . dolPrintHTMLForAttribute($langs->trans('Cancel')) . '">';
+		print '</form>';
+	} else {
+		print price($object->price, 1, $langs, 1, -1, -1, $conf->currency) . ' ' . $langs->trans('HT') . ' (' . $langs->trans('VATRate') . ' : ' . vatrate($object->tva_tx, true) . ')';
+	}
+	print '</td></tr>';
 
 	// Categories / Tags
 	if (isModEnabled('category')) {
