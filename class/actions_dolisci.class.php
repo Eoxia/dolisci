@@ -2072,6 +2072,70 @@ class ActionsDoliSci extends CommonHookActions
 			}
 		}
 
+		// 6. Handle deletion of a Lease Service (BAIL): cascade delete unreferenced child services
+		//    (Loyer, Charge, Dépôt, Caution), or set out of sale (tosell = 0) if already used in documents.
+		if (in_array('productcard', $contexts, true) && $object instanceof Product && (int) $object->type === Product::TYPE_SERVICE && !empty($object->id)) {
+			if ($action === 'confirm_delete' && GETPOST('confirm', 'alpha') === 'yes' && dolisciIsLeaseService($object)) {
+				if (!$user->hasRight('service', 'supprimer')) {
+					accessforbidden();
+				}
+
+				$langs->loadLangs(['products', 'dolisci@dolisci']);
+				$linkedServices = dolisciGetLeaseLinkedServices($this->db, $object);
+				$deletedRefs    = [];
+				$disabledRefs   = [];
+				$keptChildIds   = [];
+
+				$this->db->begin();
+
+				foreach ($linkedServices as $cObj) {
+					$child = new Product($this->db);
+					if ($child->fetch((int) $cObj->rowid) > 0) {
+						if (!dolisciIsServiceUsedInDocuments($this->db, (int) $child->id) && $child->delete($user) > 0) {
+							$deletedRefs[] = $child->ref;
+						} else {
+							$sqlDisable = 'UPDATE ' . MAIN_DB_PREFIX . 'product SET tosell = 0, tobuy = 0 WHERE rowid = ' . ((int) $child->id);
+							if ($this->db->query($sqlDisable)) {
+								$disabledRefs[] = $child->ref;
+								$keptChildIds[] = (int) $child->id;
+							}
+						}
+					}
+				}
+
+				$bailDeleted = (!dolisciIsServiceUsedInDocuments($this->db, (int) $object->id) && $object->delete($user) > 0);
+				if ($bailDeleted) {
+					if (!empty($keptChildIds)) {
+						$sqlDetach = 'UPDATE ' . MAIN_DB_PREFIX . 'product_extrafields SET dolisci_fk_lease = NULL WHERE fk_object IN (' . implode(',', $keptChildIds) . ')';
+						$this->db->query($sqlDetach);
+					}
+					$this->db->commit();
+					if (!empty($deletedRefs)) {
+						setEventMessages($langs->trans('DoliSciServicesDeleted', implode(', ', $deletedRefs)), null, 'mesgs');
+					}
+					if (!empty($disabledRefs)) {
+						setEventMessages($langs->trans('DoliSciLeaseChildServicesDisabled', implode(', ', $disabledRefs)), null, 'warnings');
+					}
+					header('Location: ' . dol_buildpath('/dolisci/service_list.php', 1) . '?type=1&delprod=' . urlencode($object->ref));
+					exit;
+				}
+
+				// Bail itself is referenced in documents: set it out of sale as well
+				$this->db->query('UPDATE ' . MAIN_DB_PREFIX . 'product SET tosell = 0, tobuy = 0 WHERE rowid = ' . ((int) $object->id));
+				$object->status     = 0;
+				$object->status_buy = 0;
+				$this->db->commit();
+
+				if (!empty($deletedRefs)) {
+					setEventMessages($langs->trans('DoliSciServicesDeleted', implode(', ', $deletedRefs)), null, 'mesgs');
+				}
+				$allDisabled = array_merge([(string) $object->ref], $disabledRefs);
+				setEventMessages($langs->trans('DoliSciLeaseDisabledInsteadOfDelete', implode(', ', $allDisabled)), null, 'warnings');
+				header('Location: ' . DOL_URL_ROOT . '/product/card.php?id=' . ((int) $object->id));
+				exit;
+			}
+		}
+
 		return 0;
 	}
 
@@ -2094,16 +2158,12 @@ class ActionsDoliSci extends CommonHookActions
 			return 0;
 		}
 		$isServiceTab = in_array('dolisciproductservices', $contexts, true);
-		if ((int) $object->type !== Product::TYPE_PRODUCT && !$isServiceTab) {
+		require_once __DIR__ . '/../lib/dolisci.lib.php';
+		$isLeaseCard = ((int) $object->type === Product::TYPE_SERVICE && !$isServiceTab && dolisciIsLeaseService($object));
+		if ((int) $object->type !== Product::TYPE_PRODUCT && !$isServiceTab && !$isLeaseCard) {
 			return 0;
 		}
 		if (in_array($action, ['create', 'edit'], true)) {
-			return 0;
-		}
-
-		require_once __DIR__ . '/../lib/dolisci.lib.php';
-		$propProduct = dolisciGetPropertyFromService($this->db, $object);
-		if (!$propProduct || !dolisciIsPropertyProduct($this->db, $propProduct)) {
 			return 0;
 		}
 
@@ -2111,6 +2171,72 @@ class ActionsDoliSci extends CommonHookActions
 		if (!is_object($form)) {
 			require_once DOL_DOCUMENT_ROOT . '/core/class/html.form.class.php';
 			$form = new Form($this->db);
+		}
+
+		// On a Lease service card (BAIL), show cascade delete / out-of-sale preview in the Delete modal
+		if ($isLeaseCard) {
+			$linkedServices = dolisciGetLeaseLinkedServices($this->db, $object);
+			if (empty($linkedServices)) {
+				return 0;
+			}
+			if (($action === 'delete' && (empty($conf->use_javascript_ajax) || !empty($conf->dol_use_jmobile)))
+				|| (!empty($conf->use_javascript_ajax) && empty($conf->dol_use_jmobile))) {
+				$toDeleteLinks  = [];
+				$toDisableLinks = [];
+				foreach ($linkedServices as $cObj) {
+					$child             = new Product($this->db);
+					$child->id         = (int) $cObj->rowid;
+					$child->ref        = (string) $cObj->ref;
+					$child->label      = (string) $cObj->label;
+					$child->type       = (int) ($cObj->fk_product_type ?? Product::TYPE_SERVICE);
+					$child->entity     = (int) ($cObj->entity ?? $conf->entity);
+					$child->status     = (int) ($cObj->tosell ?? 1);
+					$child->status_buy = (int) ($cObj->tobuy ?? 0);
+					$link              = str_replace('<a ', '<a target="_blank" rel="noopener noreferrer" ', $child->getNomUrl(1, '', 0, -1, 1));
+					if (!empty($child->label)) {
+						$link .= ' - ' . dolPrintHTML($child->label);
+					}
+					if (dolisciIsServiceUsedInDocuments($this->db, (int) $cObj->rowid)) {
+						$toDisableLinks[] = $link;
+					} else {
+						$toDeleteLinks[] = $link;
+					}
+				}
+				$confirmHtml = $langs->trans('ConfirmDeleteProduct');
+				if (!empty($toDeleteLinks)) {
+					$confirmHtml .= '<br><br><b>' . $langs->trans('DoliSciLeaseCascadeDeleteList') . '</b><br>' . implode('<br>', $toDeleteLinks);
+				}
+				if (!empty($toDisableLinks)) {
+					$confirmHtml .= '<br><br><span class="warning">' . $langs->trans('DoliSciLeaseCascadeDisableList') . '</span><br>' . implode('<br>', $toDisableLinks);
+				}
+				$customDeleteConfirm = $form->formconfirm(
+					$_SERVER['PHP_SELF'] . '?id=' . ((int) $object->id),
+					$langs->trans('DeleteProduct'),
+					$confirmHtml,
+					'confirm_delete',
+					'',
+					'yes',
+					'action-delete',
+					320,
+					620
+				);
+				$existingFormConfirm = (string) ($parameters['formConfirm'] ?? '');
+				if (strpos($existingFormConfirm, 'confirm_delete') !== false) {
+					$clonePos  = strpos($existingFormConfirm, '<!-- begin formconfirm');
+					$secondPos = $clonePos !== false ? strpos($existingFormConfirm, '<!-- begin formconfirm', $clonePos + 20) : false;
+					$this->resprints = ($secondPos !== false)
+						? $customDeleteConfirm . substr($existingFormConfirm, $secondPos)
+						: $customDeleteConfirm;
+					return 1;
+				}
+				$this->resprints = $customDeleteConfirm;
+			}
+			return 0;
+		}
+
+		$propProduct = dolisciGetPropertyFromService($this->db, $object);
+		if (!$propProduct || !dolisciIsPropertyProduct($this->db, $propProduct)) {
+			return 0;
 		}
 
 		$rentalData   = dolisciGetPropertyRentalServices($this->db, $propProduct);

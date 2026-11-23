@@ -370,4 +370,8 @@ DoliSciPdfContactVisits = Renseignements & Visites
 DoliSciPdfFooterProperty = %s — Fiche Bien %s (DoliSCI)
 DoliSciPdfFooterLease = %s — Fiche Bail %s (DoliSCI)
 DoliSciPdfPageOf = Page %s / %s
+DoliSciLeaseCascadeDeleteList = Services rattachés qui seront supprimés en cascade :
+DoliSciLeaseCascadeDisableList = Services rattachés déjà utilisés sur des documents (seront passés hors vente) :
+DoliSciLeaseChildServicesDisabled = Les services rattachés déjà utilisés sur des documents ont été passés hors vente : %s
+DoliSciLeaseDisabledInsteadOfDelete = Le bail est déjà utilisé sur des documents et ne peut pas être supprimé ; les services suivants ont été passés hors vente : %s
 

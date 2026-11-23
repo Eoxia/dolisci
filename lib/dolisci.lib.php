@@ -1277,6 +1277,104 @@ function dolisciGetServiceChildServices(DoliDB $db, Product $service, ?Product $
 }
 
 /**
+ * Check whether a Product/Service is a DoliSCI Lease service (BAIL).
+ *
+ * @param  Product $service Product or Service object
+ * @return bool             True if it is a Lease service
+ */
+function dolisciIsLeaseService(Product $service): bool
+{
+	if ((int) $service->type !== Product::TYPE_SERVICE || empty($service->id)) {
+		return false;
+	}
+	if (empty($service->array_options)) {
+		$service->fetch_optionals();
+	}
+	$nature = (string) ($service->array_options['options_dolisci_service_nature'] ?? '');
+	if ($nature === 'BAIL') {
+		return true;
+	}
+
+	return (stripos((string) $service->ref, 'Bail_') === 0 || stripos((string) $service->ref, 'Bail-') === 0);
+}
+
+/**
+ * Check whether a Product/Service is referenced in any commercial document line
+ * (invoices, recurring invoices, proposals, orders, contracts, supplier docs).
+ *
+ * @param  DoliDB $db        Database handler
+ * @param  int    $serviceId Product/Service rowid
+ * @return bool              True if referenced in at least one document
+ */
+function dolisciIsServiceUsedInDocuments(DoliDB $db, int $serviceId): bool
+{
+	if ($serviceId <= 0) {
+		return false;
+	}
+
+	$tables = [
+		'facturedet',
+		'facturedet_rec',
+		'propaldet',
+		'commandedet',
+		'contratdet',
+		'commande_fournisseurdet',
+		'facture_fourn_det',
+	];
+	foreach ($tables as $tbl) {
+		$sql = 'SELECT 1 FROM ' . MAIN_DB_PREFIX . $tbl . ' WHERE fk_product = ' . ((int) $serviceId) . ' LIMIT 1';
+		$res = $db->query($sql);
+		if ($res) {
+			$used = ($db->num_rows($res) > 0);
+			$db->free($res);
+			if ($used) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Return all child services attached to a Lease (via dolisci_fk_lease or group index).
+ *
+ * @param  DoliDB            $db    Database handler
+ * @param  Product           $lease Lease service instance
+ * @return array<int,stdClass>      List of child service rows keyed by rowid
+ */
+function dolisciGetLeaseLinkedServices(DoliDB $db, Product $lease): array
+{
+	$linked = [];
+	foreach (dolisciGetServiceChildServices($db, $lease) as $obj) {
+		$sid = (int) $obj->rowid;
+		if ($sid > 0 && $sid !== (int) $lease->id) {
+			$linked[$sid] = $obj;
+		}
+	}
+
+	if (!empty($lease->id)) {
+		$sql = 'SELECT p.rowid, p.ref, p.label, p.fk_product_type, p.entity, p.tosell, p.tobuy, p.price, p.tva_tx, p.accountancy_code_sell'
+			. ' FROM ' . MAIN_DB_PREFIX . 'product AS p'
+			. ' INNER JOIN ' . MAIN_DB_PREFIX . 'product_extrafields AS ef ON ef.fk_object = p.rowid'
+			. ' WHERE ef.dolisci_fk_lease = ' . ((int) $lease->id)
+			. ' AND p.rowid <> ' . ((int) $lease->id);
+		$res = $db->query($sql);
+		if ($res) {
+			while ($obj = $db->fetch_object($res)) {
+				$sid = (int) $obj->rowid;
+				if ($sid > 0 && !isset($linked[$sid])) {
+					$linked[$sid] = $obj;
+				}
+			}
+			$db->free($res);
+		}
+	}
+
+	return $linked;
+}
+
+/**
  * Return a link to a Project, Property Product (type = 0) or Rental Service (type = 1)
  * using the DoliSCI pictos (fa-city for Project, fa-key for Property, fa-file-contract/fa-file-invoice-dollar for Service).
  *
