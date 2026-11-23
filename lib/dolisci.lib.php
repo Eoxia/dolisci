@@ -212,9 +212,13 @@ function dolisciGetExtrafieldDefinitions(): array
 	$defaultCss           = ['css' => 'minwidth100 maxwidth300 widthcentpercentminusx'];
 	$tagContactAddressId  = getDolGlobalInt('DOLISCI_TAG_CONTACT_ADDRESS');
 	$contactAddressFilter = '';
-	if ($tagContactAddressId > 0 && isset($db) && $db instanceof DoliDB) {
-		$contactIds           = dolisciGetCategoryIdsFilterList($db, 'contact', $tagContactAddressId);
-		$contactAddressFilter = '::(rowid:IN:' . $contactIds . ')';
+	$notaryIds            = '0';
+	if (isset($db) && $db instanceof DoliDB) {
+		if ($tagContactAddressId > 0) {
+			$contactIds           = dolisciGetCategoryIdsFilterList($db, 'contact', $tagContactAddressId);
+			$contactAddressFilter = '::(rowid:IN:' . $contactIds . ')';
+		}
+		$notaryIds = dolisciGetNotarySocIdsFilterList($db);
 	}
 
 	$dpeOptions = [
@@ -533,11 +537,11 @@ function dolisciGetExtrafieldDefinitions(): array
 			'group'       => 'product',
 			'attrname'    => 'dolisci_notary',
 			'label'       => 'DoliSciNotary',
-			'type'        => 'varchar',
+			'type'        => 'chkbxlst',
 			'pos'         => (int) ($moduleNumero . '605'),
 			'size'        => '255',
 			'elementtype' => 'product',
-			'param'       => '',
+			'param'       => ['options' => ['societe:nom:rowid::(rowid:IN:' . $notaryIds . ')' => null]],
 			'list'        => '1',
 			'help'        => '',
 			'enabled'     => $productCondition,
@@ -904,6 +908,14 @@ function dolisciGetTagDefinitions(): array
 			'color'    => '475569',
 			'icon'     => 'fa-gavel',
 			'position' => (int) ($moduleNumero . '75'),
+		],
+		'tag:DOLISCI_TAG_SUPPLIER_NOTARY' => [
+			'const'    => 'DOLISCI_TAG_SUPPLIER_NOTARY',
+			'type'     => 'supplier',
+			'label'    => 'DoliSciTagContactNotary',
+			'color'    => '475569',
+			'icon'     => 'fa-gavel',
+			'position' => (int) ($moduleNumero . '80'),
 		],
 	];
 }
@@ -2522,4 +2534,64 @@ function dolisciSavePropertyDocumentsChecklistState(Product $object, array $stat
 	$payload  = json_encode($state);
 
 	return $payload !== false && file_put_contents($metaFile, $payload) !== false;
+}
+
+/**
+ * Return a comma-separated list of third-party (Societe) rowids that have at least one
+ * contact tagged as Notary (DOLISCI_TAG_CONTACT_NOTARY), safe for chkbxlst/sellist IN filters.
+ *
+ * @param  DoliDB $db Database handler
+ * @return string     Comma-separated Societe rowids, or '0' if none
+ */
+function dolisciGetNotarySocIdsFilterList(DoliDB $db): string
+{
+	$tagSupplierId = getDolGlobalInt('DOLISCI_TAG_SUPPLIER_NOTARY');
+	$tagContactId  = getDolGlobalInt('DOLISCI_TAG_CONTACT_NOTARY');
+	if ($tagSupplierId <= 0 && $tagContactId <= 0) {
+		return '0';
+	}
+
+	$ids = [];
+	if ($tagSupplierId > 0) {
+		$sqlSup = 'SELECT DISTINCT s.rowid'
+			. ' FROM ' . MAIN_DB_PREFIX . 'societe AS s'
+			. ' INNER JOIN ' . MAIN_DB_PREFIX . 'categorie_fournisseur AS cf ON cf.fk_soc = s.rowid'
+			. ' WHERE cf.fk_categorie = ' . ((int) $tagSupplierId)
+			. ' AND s.entity IN (' . getEntity('societe') . ')'
+			. ' AND s.status = 1';
+		$resSup = $db->query($sqlSup);
+		if ($resSup) {
+			while ($obj = $db->fetch_object($resSup)) {
+				$sid = (int) $obj->rowid;
+				if ($sid > 0) {
+					$ids[$sid] = $sid;
+				}
+			}
+			$db->free($resSup);
+		}
+	}
+
+	if ($tagContactId > 0) {
+		$sqlCon = 'SELECT DISTINCT s.rowid'
+			. ' FROM ' . MAIN_DB_PREFIX . 'societe AS s'
+			. ' INNER JOIN ' . MAIN_DB_PREFIX . 'socpeople AS sp ON sp.fk_soc = s.rowid'
+			. ' INNER JOIN ' . MAIN_DB_PREFIX . 'categorie_contact AS cc ON cc.fk_socpeople = sp.rowid'
+			. ' WHERE cc.fk_categorie = ' . ((int) $tagContactId)
+			. ' AND s.entity IN (' . getEntity('societe') . ')'
+			. ' AND s.status = 1';
+		$resCon = $db->query($sqlCon);
+		if ($resCon) {
+			while ($obj = $db->fetch_object($resCon)) {
+				$sid = (int) $obj->rowid;
+				if ($sid > 0) {
+					$ids[$sid] = $sid;
+				}
+			}
+			$db->free($resCon);
+		}
+	}
+
+	ksort($ids);
+
+	return !empty($ids) ? implode(',', $ids) : '0';
 }

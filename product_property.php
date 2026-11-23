@@ -104,6 +104,10 @@ if (isset($extrafields->attributes[$object->table_element]['label']) && is_array
 		$extrafields->attributes[$object->table_element]['type']['dolisci_fk_project']             = 'sellist';
 		$extrafields->attributes[$object->table_element]['param']['dolisci_fk_project']['options'] = [$filterProj => null];
 	}
+	$notaryIds    = dolisciGetNotarySocIdsFilterList($db);
+	$filterNotary = 'societe:nom:rowid::(rowid:IN:' . $notaryIds . ')';
+	$extrafields->attributes[$object->table_element]['type']['dolisci_notary']             = 'chkbxlst';
+	$extrafields->attributes[$object->table_element]['param']['dolisci_notary']['options'] = [$filterNotary => null];
 }
 
 $hookmanager->initHooks(['dolisciproductproperty', 'globalcard']);

@@ -285,6 +285,27 @@ function dolisciCollectPdfSheetData(DoliDB $db, Product $object, Translate $outp
 		$descText = trim((string) $propProduct->description);
 	}
 
+	// Resolve Notary names from chkbxlst IDs (or legacy text fallback)
+	$rawNotary     = trim((string) ($propOpts['options_dolisci_notary'] ?? ''));
+	$notaryDisplay = $rawNotary !== '' ? $rawNotary : '-';
+	if ($rawNotary !== '' && preg_match('/^[0-9,\s]+$/', $rawNotary)) {
+		$ids = array_filter(array_map('intval', explode(',', $rawNotary)));
+		if (!empty($ids)) {
+			$notaryNames = [];
+			$sqlNot      = 'SELECT nom FROM ' . MAIN_DB_PREFIX . 'societe WHERE rowid IN (' . implode(',', $ids) . ') ORDER BY nom ASC';
+			$resNot      = $db->query($sqlNot);
+			if ($resNot) {
+				while ($objNot = $db->fetch_object($resNot)) {
+					$notaryNames[] = (string) $objNot->nom;
+				}
+				$db->free($resNot);
+			}
+			if (!empty($notaryNames)) {
+				$notaryDisplay = implode(', ', $notaryNames);
+			}
+		}
+	}
+
 	return [
 		'mode'               => $mode,
 		'object'             => $object,
@@ -309,7 +330,7 @@ function dolisciCollectPdfSheetData(DoliDB $db, Product $object, Translate $outp
 		'purchase_date'      => $purchaseDateStr,
 		'purchase_price'     => $purchasePriceStr,
 		'ownership_quota'    => trim((string) ($propOpts['options_dolisci_ownership_quota'] ?? '')) ?: '-',
-		'notary'             => trim((string) ($propOpts['options_dolisci_notary'] ?? '')) ?: '-',
+		'notary'             => $notaryDisplay,
 		'dpe_energy'         => $dpeEnergy !== '' ? $dpeEnergy : 'NA',
 		'dpe_ges'            => $dpeGes !== '' ? $dpeGes : 'NA',
 		'ddt_summary'        => !empty($ddtList) ? implode(', ', $ddtList) : $outputlangs->transnoentitiesnoconv('DoliSciPdfNoDdtAttached'),
