@@ -370,4 +370,8 @@ DoliSciPdfContactVisits = Information & Visits
 DoliSciPdfFooterProperty = %s — Property Sheet %s (DoliSCI)
 DoliSciPdfFooterLease = %s — Lease Sheet %s (DoliSCI)
 DoliSciPdfPageOf = Page %s / %s
+DoliSciLeaseCascadeDeleteList = Linked services that will be deleted in cascade:
+DoliSciLeaseCascadeDisableList = Linked services already used in documents (will be set out of sale):
+DoliSciLeaseChildServicesDisabled = Linked services already used in documents were set out of sale: %s
+DoliSciLeaseDisabledInsteadOfDelete = Lease is already used in documents and could not be deleted; the following services were set out of sale: %s
 
