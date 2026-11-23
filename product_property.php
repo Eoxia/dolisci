@@ -108,6 +108,10 @@ if (isset($extrafields->attributes[$object->table_element]['label']) && is_array
 	$filterNotary = 'societe:nom:rowid::(rowid:IN:' . $notaryIds . ')';
 	$extrafields->attributes[$object->table_element]['type']['dolisci_notary']             = 'chkbxlst';
 	$extrafields->attributes[$object->table_element]['param']['dolisci_notary']['options'] = [$filterNotary => null];
+	$rawNotaryVal = (string) ($object->array_options['options_dolisci_notary'] ?? '');
+	if ($rawNotaryVal !== '' && !preg_match('/^[0-9]+(,[0-9]+)*$/', $rawNotaryVal)) {
+		$object->array_options['options_dolisci_notary'] = '';
+	}
 }
 
 $hookmanager->initHooks(['dolisciproductproperty', 'globalcard']);

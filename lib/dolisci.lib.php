@@ -1897,7 +1897,7 @@ function dolisciSyncItem(DoliDB $db, string $itemKey): int
 		}
 
 		// 2. Always synchronize definition (pos, label, param, enabled, css, etc.) as in saturne_manage_extrafields()
-		return $extraFields->updateExtraField(
+		$resUpd = $extraFields->updateExtraField(
 			(string) $def['attrname'],
 			(string) $def['label'],
 			(string) $def['type'],
@@ -1920,6 +1920,16 @@ function dolisciSyncItem(DoliDB $db, string $itemKey): int
 			0,
 			$moreparams
 		);
+		if ($resUpd > 0 && $itemKey === 'ef:product:dolisci_notary') {
+			// Clear legacy free-text values so chkbxlst WHERE rowid IN (...) never fails with SQL errors
+			$sqlClean = "UPDATE " . MAIN_DB_PREFIX . "product_extrafields"
+				. " SET dolisci_notary = NULL"
+				. " WHERE dolisci_notary IS NOT NULL"
+				. " AND dolisci_notary <> ''"
+				. " AND dolisci_notary NOT REGEXP '^[0-9]+(,[0-9]+)*$'";
+			$db->query($sqlClean);
+		}
+		return $resUpd;
 	}
 
 	$ctDefs = dolisciGetContactRoleDefinitions();
